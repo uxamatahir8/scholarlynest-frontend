@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { 
-  BookOpen, Zap, Globe, ShieldCheck, 
+import {
+  BookOpen, Zap, Globe, ShieldCheck,
   Check, GraduationCap, ChevronDown, Feather, ArrowRight, Sparkles, BookOpenText
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
@@ -34,17 +34,17 @@ export default function Home() {
   return (
     <div className="flex flex-col w-full min-h-screen">
       <title>Home - ScholarlyNest</title>
-      
+
       {/* 1. IMMERSIVE HERO WITH MESH GRADIENT */}
       <section className="relative w-full min-h-screen pt-40 pb-24 flex items-center justify-center overflow-hidden">
         {/* Background Image Banner */}
         <div className="absolute inset-0 z-0">
-          <Image 
-            src="/main-banner.jpg" 
-            alt="Main Banner Background" 
-            fill 
-            priority 
-            className="object-cover object-center scale-105 filter brightness-[0.85] dark:brightness-[0.45] transition-all duration-700" 
+          <Image
+            src="/main-banner.jpg"
+            alt="Main Banner Background"
+            fill
+            priority
+            className="object-cover object-center scale-105 filter brightness-[0.85] dark:brightness-[0.45] transition-all duration-700"
           />
           {/* Responsive contrast gradient mask and radial mesh overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-[var(--background)]/85 via-[var(--background)]/75 to-[var(--background)] pointer-events-none" />
@@ -55,19 +55,19 @@ export default function Home() {
 
         <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 text-center animate-in fade-in zoom-in-95 duration-1000 mt-20">
           <div className="inline-flex items-center space-x-2 px-4 py-2 glass-panel rounded-full text-[10px] font-bold uppercase tracking-widest text-[var(--foreground)] mb-8 shadow-sm hover:scale-105 transition-all duration-300 cursor-default border-amber-500/25 dark:border-blue-500/20">
-            <span className="w-2 h-2 rounded-full bg-[var(--accent-gold)] animate-pulse" />
+            {/* <span className="w-2 h-2 rounded-full bg-[var(--accent-gold)] animate-pulse" /> */}
             <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-[var(--accent-gold)]" /> The Open Science Standard</span>
           </div>
-          
+
           <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-[var(--foreground)] leading-[1.1] mb-6">
             Accelerating the Frontier of <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-[var(--accent)] to-[var(--accent-gold)] dark:from-blue-400 dark:to-[var(--accent-gold)] italic font-serif">Scientific Discovery</span>
           </h1>
-          
+
           <p className="text-sm sm:text-base text-[var(--muted)] leading-relaxed max-w-2xl mx-auto mb-10 font-medium">
             ScholarlyNest connects researchers, editors, and institutions in a high-velocity, open-access publication pipeline. Secure, pristine, and optimized for immediate global indexation.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
             <Link href="/magazines" className="w-full sm:flex-1">
               <Button variant="primary" size="lg" className="w-full shadow-2xl flex items-center justify-center gap-2 group transition-all duration-300 hover:shadow-blue-500/10">
@@ -119,7 +119,7 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-[280px]">
-          
+
           {/* Feature 1 (Large Span) */}
           <div className="glass-panel rounded-3xl p-8 md:col-span-8 flex flex-col justify-end relative overflow-hidden group hover-glow border-[var(--muted-border)] shadow-sm hover:-translate-y-1 transition-all duration-300">
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20 group-hover:bg-blue-500/20 transition-colors duration-750" />
