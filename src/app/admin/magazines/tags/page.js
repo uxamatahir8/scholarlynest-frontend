@@ -21,6 +21,12 @@ export default function AdminMagazineTags() {
   // Filters
   const [selectedMagazineId, setSelectedMagazineId] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -41,7 +47,7 @@ export default function AdminMagazineTags() {
   const fetchMagazines = async () => {
     try {
       setLoadingMagazines(true);
-      const response = await api.get('/magazines');
+      const response = await api.get('/magazines', { params: { all: true } });
       setMagazines(response.data);
       if (response.data.length > 0) {
         setNewTagMagazineId(response.data[0].id.toString());
@@ -60,9 +66,22 @@ export default function AdminMagazineTags() {
       setLoadingTags(true);
       setError(null);
       
-      const queryParam = selectedMagazineId !== 'all' ? `?magazine_id=${selectedMagazineId}` : '';
-      const response = await api.get(`/tags${queryParam}`);
-      setTags(response.data);
+      const params = {
+        paginate: 1,
+        page: currentPage,
+        limit: 12
+      };
+      if (selectedMagazineId !== 'all') {
+        params.magazine_id = selectedMagazineId;
+      }
+      if (debouncedSearchQuery.trim()) {
+        params.search = debouncedSearchQuery.trim();
+      }
+
+      const response = await api.get('/tags', { params });
+      setTags(response.data.data || []);
+      setTotalPages(response.data.last_page || 1);
+      setTotalResults(response.data.total || 0);
     } catch (err) {
       console.error(err);
       setError('Could not retrieve tags registry.');
@@ -75,9 +94,23 @@ export default function AdminMagazineTags() {
     fetchMagazines();
   }, []);
 
+  // Debounce search query input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset page when filter/search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchQuery, selectedMagazineId]);
+
+  // Refetch tags when page, filter, or search changes
   useEffect(() => {
     fetchTags();
-  }, [selectedMagazineId]);
+  }, [currentPage, debouncedSearchQuery, selectedMagazineId]);
 
   // Handle Add Tag
   const handleAddTag = async (e) => {
@@ -168,9 +201,7 @@ export default function AdminMagazineTags() {
     setIsDeleteModalOpen(true);
   };
 
-  const filteredTags = tags.filter(tag => 
-    tag.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredTags = tags;
 
   return (
     <div className="space-y-6">
@@ -281,6 +312,31 @@ export default function AdminMagazineTags() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {!loadingTags && !error && totalPages > 1 && (
+        <div className="flex items-center justify-between pt-6 border-t border-zinc-200 mt-6">
+          <button
+            type="button"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-white border border-zinc-200 disabled:opacity-50 hover:bg-zinc-50 cursor-pointer transition-colors"
+          >
+            Previous
+          </button>
+          <span className="text-xs font-mono font-bold text-zinc-500">
+            Page {currentPage} of {totalPages} (Total {totalResults} tags)
+          </span>
+          <button
+            type="button"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-white border border-zinc-200 disabled:opacity-50 hover:bg-zinc-50 cursor-pointer transition-colors"
+          >
+            Next
+          </button>
         </div>
       )}
 

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import api from '../../../../../utils/api';
 import { useToast } from '../../../../../context/ToastContext';
+import { ConfirmationModal } from '../../../../../components/ui/ConfirmationModal';
 
 const RichEditor = dynamic(() => import('../../../../../components/ui/RichEditor'), {
   ssr: false,
@@ -41,6 +42,9 @@ export default function AdminMagazinePages() {
   const [sortOrder, setSortOrder] = useState(0);
   const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'html'
   const [saving, setSaving] = useState(false);
+
+  // Confirmation modal states
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const fetchMagazineDetails = async () => {
     if (!slug) return;
@@ -119,19 +123,24 @@ export default function AdminMagazinePages() {
     }
   };
 
-  // Delete page
-  const handleDeletePage = async (pageId) => {
-    if (!window.confirm('Are you sure you want to delete this custom page? This cannot be undone.')) {
-      return;
-    }
+  // Delete page Trigger
+  const triggerDeletePage = (pageId) => {
+    setSelectedPageId(pageId);
+    setIsConfirmOpen(true);
+  };
 
+  const executeDeletePage = async () => {
+    if (!selectedPageId) return;
     try {
-      await api.delete(`/admin/magazines/${magazine.id}/pages/${pageId}`);
+      await api.delete(`/admin/magazines/${magazine.id}/pages/${selectedPageId}`);
       toast('Custom subpage deleted successfully.', 'success');
       fetchMagazineDetails();
     } catch (err) {
       console.error(err);
       toast('Failed to delete custom subpage.', 'error');
+    } finally {
+      setIsConfirmOpen(false);
+      setSelectedPageId(null);
     }
   };
 
@@ -236,7 +245,7 @@ export default function AdminMagazinePages() {
                           <span>Edit</span>
                         </button>
                         <button
-                          onClick={() => handleDeletePage(p.id)}
+                          onClick={() => triggerDeletePage(p.id)}
                           className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-red-600 hover:text-red-800 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -384,6 +393,20 @@ export default function AdminMagazinePages() {
         </div>
       )}
 
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        title="Delete Page?"
+        message="Are you absolutely sure you want to delete this custom subpage? This action cannot be undone."
+        confirmText="Delete Page"
+        cancelText="Cancel"
+        onConfirm={executeDeletePage}
+        onCancel={() => {
+          setIsConfirmOpen(false);
+          setSelectedPageId(null);
+        }}
+        variant="danger"
+      />
     </div>
   );
 }

@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
   FileText, Check, X, AlertCircle, Loader2, Eye, Calendar, User, 
-  BookOpen, Download, ShieldAlert, ArrowRight, MessageSquare, Plus, Edit, Save
+  BookOpen, Download, ShieldAlert, ArrowRight, MessageSquare, Plus, Edit, Save,
+  Search, ChevronDown
 } from 'lucide-react';
 import api from '../../../utils/api';
 import { useToast } from '../../../context/ToastContext';
@@ -24,6 +25,37 @@ export default function AdminArticlesBoard() {
   
   // Status filter state: 'all' | 'pending' | 'approved' | 'rejected'
   const [statusFilter, setStatusFilter] = useState('all');
+
+  // Live search and magazine filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMagazineId, setSelectedMagazineId] = useState('all');
+  const [magazines, setMagazines] = useState([]);
+  const [loadingMagazines, setLoadingMagazines] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
+
+  // Fetch magazines for the filter dropdown
+  useEffect(() => {
+    const fetchMagazines = async () => {
+      try {
+        setLoadingMagazines(true);
+        const response = await api.get('/magazines', { params: { all: true } });
+        setMagazines(response.data || []);
+      } catch (err) {
+        console.error('Failed to fetch magazines for filter', err);
+      } finally {
+        setLoadingMagazines(false);
+      }
+    };
+    fetchMagazines();
+  }, []);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedMagazineId, statusFilter]);
 
   // Selected article for review modal
   const [selectedArticle, setSelectedArticle] = useState(null);
@@ -61,6 +93,56 @@ export default function AdminArticlesBoard() {
     setRejectionReason('');
     setActiveReviewTab('abstract');
     setIsReviewModalOpen(true);
+  };
+
+  const filteredArticles = articles.filter((art) => {
+    // 1. Filter by magazine
+    if (selectedMagazineId !== 'all') {
+      const magId = art.magazine_id || art.magazine?.id;
+      if (magId?.toString() !== selectedMagazineId.toString()) {
+        return false;
+      }
+    }
+
+    // 2. Filter by search query (live search)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchTitle = art.title?.toLowerCase().includes(q);
+      const matchAbstract = art.abstract?.toLowerCase().includes(q);
+      const matchAuthorName = art.user?.name?.toLowerCase().includes(q);
+      const matchAuthorEmail = art.user?.email?.toLowerCase().includes(q);
+      const matchTags = art.tags?.some(tag => tag.name?.toLowerCase().includes(q));
+
+      if (!matchTitle && !matchAbstract && !matchAuthorName && !matchAuthorEmail && !matchTags) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  const totalArticles = filteredArticles.length;
+  const totalPages = Math.ceil(totalArticles / itemsPerPage);
+  
+  const paginatedArticles = filteredArticles.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const getPageNumbers = () => {
+    const pageLimit = 5;
+    if (totalPages <= pageLimit) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    
+    let start = Math.max(currentPage - 2, 1);
+    let end = Math.min(start + pageLimit - 1, totalPages);
+    
+    if (end === totalPages) {
+      start = Math.max(end - pageLimit + 1, 1);
+    }
+    
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   };
 
   const handleReviewAction = async (status) => {
@@ -171,21 +253,65 @@ export default function AdminArticlesBoard() {
         )}
       </div>
 
-      {/* Status filter tabs */}
-      <div className="flex rounded-xl p-1 bg-black/5 dark:bg-white/5 border border-[var(--muted-border)]/60 max-w-md">
-        {['all', 'pending', 'approved', 'rejected'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setStatusFilter(tab)}
-            className={`flex-1 py-2 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-              statusFilter === tab
-                ? 'bg-[var(--background)] shadow-md text-[var(--accent)]'
-                : 'text-[var(--muted)] hover:text-[var(--foreground)]'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+      {/* Search and Filters Section */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* Status filter tabs */}
+        <div className="flex rounded-xl p-1 bg-black/5 dark:bg-white/5 border border-[var(--muted-border)]/60 w-full lg:max-w-md">
+          {['all', 'pending', 'approved', 'rejected'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setStatusFilter(tab)}
+              className={`flex-1 py-2 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                statusFilter === tab
+                  ? 'bg-[var(--background)] shadow-md text-[var(--accent)]'
+                  : 'text-[var(--muted)] hover:text-[var(--foreground)]'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Live Search & Magazine Filter Dropdown */}
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full lg:w-auto">
+          {/* Search Input */}
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted)]" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search title, author, abstract..."
+              className="w-full text-xs font-semibold pl-9 pr-8 py-2 bg-[var(--background)] border border-[var(--muted-border)]/60 rounded-xl focus:outline-none focus:border-[var(--accent)] transition-colors text-[var(--foreground)]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] p-0.5 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Magazine Filter Dropdown */}
+          <div className="relative w-full sm:w-60">
+            <select
+              value={selectedMagazineId}
+              onChange={(e) => setSelectedMagazineId(e.target.value)}
+              className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-[var(--background)] border border-[var(--muted-border)]/60 rounded-xl focus:outline-none focus:border-[var(--accent)] transition-colors text-[var(--foreground)] cursor-pointer appearance-none"
+            >
+              <option value="all">All Magazines</option>
+              {magazines.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.title}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted)] pointer-events-none" />
+          </div>
+        </div>
       </div>
 
       {/* Main workspace listing */}
@@ -203,14 +329,14 @@ export default function AdminArticlesBoard() {
         </div>
       )}
 
-      {!loading && !error && articles.length === 0 && (
+      {!loading && !error && filteredArticles.length === 0 && (
         <div className="text-center py-20 glass-panel border border-[var(--muted-border)]/60 rounded-2xl bg-[var(--card-bg)]">
           <FileText className="w-12 h-12 mx-auto text-[var(--muted)] mb-3 opacity-55" />
-          <p className="text-xs font-semibold text-[var(--muted)]">No articles match the selected filter query.</p>
+          <p className="text-xs font-semibold text-[var(--muted)]">No articles match the selected search or filter criteria.</p>
         </div>
       )}
 
-      {!loading && !error && articles.length > 0 && (
+      {!loading && !error && filteredArticles.length > 0 && (
         <Card className="border border-[var(--muted-border)] bg-[var(--card-bg)] shadow-md overflow-hidden animate-in fade-in duration-300">
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[700px]">
@@ -224,7 +350,7 @@ export default function AdminArticlesBoard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--muted-border)]/50 text-xs font-semibold text-[var(--foreground)]">
-                {articles.map((art) => (
+                {paginatedArticles.map((art) => (
                   <tr key={art.id} className="hover:bg-[var(--foreground)]/5 transition-colors">
                     <td className="px-6 py-4 space-y-1 max-w-[280px]">
                       <h4 className="text-sm font-bold text-[var(--foreground)] line-clamp-1">{art.title}</h4>
@@ -285,6 +411,65 @@ export default function AdminArticlesBoard() {
               </tbody>
             </table>
           </CardContent>
+
+          {/* Card Footer for Pagination */}
+          <div className="px-6 py-4 border-t border-[var(--muted-border)]/55 flex flex-col sm:flex-row items-center justify-between gap-4 bg-black/5 dark:bg-white/5 text-xs font-semibold text-[var(--muted)]">
+            <div className="flex items-center space-x-4">
+              <span>Total Articles: <strong className="text-[var(--foreground)]">{totalArticles}</strong></span>
+              <span className="h-4 w-px bg-[var(--muted-border)]/65 hidden sm:inline" />
+              <span>
+                {totalArticles === 0 ? (
+                  "Showing 0-0 of 0"
+                ) : (
+                  <>
+                    Showing <strong className="text-[var(--foreground)]">{(currentPage - 1) * itemsPerPage + 1}</strong> -{" "}
+                    <strong className="text-[var(--foreground)]">{Math.min(currentPage * itemsPerPage, totalArticles)}</strong> of{" "}
+                    <strong className="text-[var(--foreground)]">{totalArticles}</strong>
+                  </>
+                )}
+              </span>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  className="px-3 py-1.5 rounded-lg border border-[var(--muted-border)]/65 bg-[var(--background)] hover:text-[var(--foreground)] disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-not-allowed text-[10px] uppercase font-bold tracking-wider"
+                >
+                  Previous
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex items-center space-x-1">
+                  {getPageNumbers().map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      className={`h-8 w-8 rounded-lg flex items-center justify-center border transition-colors cursor-pointer text-[10px] font-bold ${
+                        currentPage === page
+                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
+                          : 'border-[var(--muted-border)]/50 bg-[var(--background)] hover:text-[var(--foreground)]'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  className="px-3 py-1.5 rounded-lg border border-[var(--muted-border)]/65 bg-[var(--background)] hover:text-[var(--foreground)] disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-not-allowed text-[10px] uppercase font-bold tracking-wider"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
         </Card>
       )}
 

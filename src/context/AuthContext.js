@@ -108,7 +108,7 @@ export const AuthProvider = ({ children }) => {
     if (!user) return false;
 
     // Check if user is super_admin
-    if (user.roles && user.roles.some((r) => r.name.toLowerCase().replace('_', '-') === 'super_admin')) {
+    if (user.roles && user.roles.some((r) => r.name.toLowerCase().replace('_', '-') === 'super-admin' || r.name.toLowerCase() === 'super_admin')) {
       return true;
     }
 

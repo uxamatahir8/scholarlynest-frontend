@@ -9,8 +9,10 @@ import {
   List, ListOrdered, Quote, Image, Loader2 
 } from 'lucide-react';
 import api from '../../utils/api';
+import { useToast } from '../../context/ToastContext';
 
 export default function RichEditor({ value, onChange, placeholder = 'Start writing...' }) {
+  const { toast } = useToast();
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -63,7 +65,7 @@ export default function RichEditor({ value, onChange, placeholder = 'Start writi
         }
       } catch (err) {
         console.error('Image upload failed', err);
-        alert('Image upload failed. Please ensure it is under 10MB.');
+        toast('Image upload failed. Please ensure it is under 10MB.', 'error');
       }
     };
   }, [editor]);

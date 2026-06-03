@@ -9,6 +9,7 @@ import {
 import api from '../../../utils/api';
 import { useToast } from '../../../context/ToastContext';
 import { Button } from '../../../components/ui/Button';
+import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
@@ -45,6 +46,9 @@ export default function AdminMagazines() {
   const [description, setDescription] = useState('');
   const [aboutText, setAboutText] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Confirmation modal states
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   // Fetch all magazines
   const fetchMagazines = async () => {
@@ -141,19 +145,24 @@ export default function AdminMagazines() {
     }
   };
 
-  // Delete magazine
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you absolutely sure you want to delete this magazine? This will delete all associated pages, articles, and documents permanently.')) {
-      return;
-    }
+  // Delete magazine Trigger
+  const triggerDelete = (id) => {
+    setSelectedMagazineId(id);
+    setIsConfirmOpen(true);
+  };
 
+  const executeDelete = async () => {
+    if (!selectedMagazineId) return;
     try {
-      await api.delete(`/admin/magazines/${id}`);
+      await api.delete(`/admin/magazines/${selectedMagazineId}`);
       toast('Magazine and all associated content deleted successfully.', 'success');
       fetchMagazines();
     } catch (err) {
       console.error(err);
       toast('Failed to delete magazine catalog.', 'error');
+    } finally {
+      setIsConfirmOpen(false);
+      setSelectedMagazineId(null);
     }
   };
 
@@ -294,7 +303,7 @@ export default function AdminMagazines() {
                     
                     {hasPermission('magazines.delete') && (
                       <button
-                        onClick={() => handleDelete(mag.id)}
+                        onClick={() => triggerDelete(mag.id)}
                         className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -475,6 +484,20 @@ export default function AdminMagazines() {
         </div>
       )}
 
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        title="Delete Magazine?"
+        message="Are you absolutely sure you want to delete this magazine? This will permanently delete all associated pages, articles, and documents."
+        confirmText="Delete Magazine"
+        cancelText="Cancel"
+        onConfirm={executeDelete}
+        onCancel={() => {
+          setIsConfirmOpen(false);
+          setSelectedMagazineId(null);
+        }}
+        variant="danger"
+      />
     </div>
   );
 }

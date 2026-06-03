@@ -122,29 +122,10 @@ const Header = () => {
                   alt="ScholarlyNest Logo"
                   width={690}
                   height={362}
-                  className="h-8 sm:h-20 md:h-30 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                  className="h-8 sm:h-12 md:h-16 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
                   priority
                 />
               </Link>
-            </div>
-
-            {/* MIDDLE: PREMIUM INTEGRATED SEARCH BAR */}
-            <div className="hidden md:flex items-center flex-grow max-w-md mx-8">
-              <form onSubmit={handleSearchSubmit} className="w-full relative">
-                <div className="relative flex items-center group">
-                  <Search className="absolute left-3 w-4 h-4 text-[var(--muted)] group-focus-within:text-[var(--accent-gold)] transition-colors" />
-                  <input
-                    type="text"
-                    placeholder="Search articles, authors, records..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-12 py-1.5 rounded-full text-xs font-medium border border-[var(--muted-border)] bg-[var(--background)] focus:outline-none focus:border-[var(--accent-gold)] focus:ring-1 focus:ring-[var(--accent-gold)] transition-all placeholder:text-gray-400"
-                  />
-                  <span className="absolute right-3.5 text-[9px] font-mono text-gray-400 select-none group-focus-within:opacity-0 transition-opacity">
-                    ⌘K
-                  </span>
-                </div>
-              </form>
             </div>
 
             {/* RIGHT: CONTROLS & AUTH */}

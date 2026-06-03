@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -8,6 +8,10 @@ import {
   Check, GraduationCap, ChevronDown, Feather, ArrowRight, Sparkles, BookOpenText
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import MagazineCarousel from '../components/ui/MagazineCarousel';
+import RecentArticles from '../components/ui/RecentArticles';
+import GlobalSearchInput from '../components/home/GlobalSearchInput';
+import api from '../utils/api';
 
 export default function Home() {
   const [activeFaq, setActiveFaq] = useState(null);
@@ -16,29 +20,45 @@ export default function Home() {
     setActiveFaq(activeFaq === index ? null : index);
   };
 
-  const faqs = [
+  const defaultFaqs = [
     {
-      q: "What is ScholarlyNest?",
-      a: "ScholarlyNest is a trusted, open-access platform where researchers, institutions, and readers collaborate on scientific discovery and knowledge sharing."
+      question: "What is ScholarlyNest?",
+      answer: "ScholarlyNest is a trusted, open-access platform where researchers, institutions, and readers collaborate on scientific discovery and knowledge sharing."
     },
     {
-      q: "How secure is my data?",
-      a: "We maintain complete data integrity. All information is secured with enterprise-grade encryption and access control protocols."
+      question: "How secure is my data?",
+      answer: "We maintain complete data integrity. All information is secured with enterprise-grade encryption and access control protocols."
     },
     {
-      q: "Is there a charge for open-access publishing?",
-      a: "No. In alignment with our Open Science Pledge, all publications are funded via institutional grants and community support. Access is free forever."
+      question: "Is there a charge for open-access publishing?",
+      answer: "No. In alignment with our Open Science Pledge, all publications are funded via institutional grants and community support. Access is free forever."
     }
   ];
+
+  const [faqs, setFaqs] = useState(defaultFaqs);
+
+  useEffect(() => {
+    const fetchFaqs = async () => {
+      try {
+        const response = await api.get('/faqs');
+        if (response.data && response.data.length > 0) {
+          setFaqs(response.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch FAQs from DB:', err);
+      }
+    };
+    fetchFaqs();
+  }, []);
 
   return (
     <div className="flex flex-col w-full min-h-screen">
       <title>Home - ScholarlyNest</title>
 
       {/* 1. IMMERSIVE HERO WITH MESH GRADIENT */}
-      <section className="relative w-full min-h-screen pt-40 pb-24 flex items-center justify-center overflow-hidden">
+      <section className="relative w-full min-h-screen pt-40 pb-24 flex items-center justify-center z-20">
         {/* Background Image Banner */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 overflow-hidden">
           <Image
             src="/main-banner.jpg"
             alt="Main Banner Background"
@@ -53,7 +73,7 @@ export default function Home() {
           <div className="absolute bottom-0 left-0 w-full h-48 bg-gradient-to-t from-[var(--background)] to-transparent pointer-events-none" />
         </div>
 
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 text-center animate-in fade-in zoom-in-95 duration-1000 mt-20">
+        <div className="relative z-30 max-w-6xl mx-auto px-4 sm:px-6 text-center animate-in fade-in zoom-in-95 duration-1000 mt-20">
           <div className="inline-flex items-center space-x-2 px-4 py-2 glass-panel rounded-full text-[10px] font-bold uppercase tracking-widest text-[var(--foreground)] mb-8 shadow-sm hover:scale-105 transition-all duration-300 cursor-default border-amber-500/25 dark:border-blue-500/20">
             {/* <span className="w-2 h-2 rounded-full bg-[var(--accent-gold)] animate-pulse" /> */}
             <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-[var(--accent-gold)]" /> The Open Science Standard</span>
@@ -67,6 +87,11 @@ export default function Home() {
           <p className="text-sm sm:text-base text-[var(--muted)] leading-relaxed max-w-2xl mx-auto mb-10 font-medium">
             ScholarlyNest connects researchers, editors, and institutions in a high-velocity, open-access publication pipeline. Secure, pristine, and optimized for immediate global indexation.
           </p>
+
+          {/* Autocomplete Global Search Input */}
+          <div className="max-w-2xl mx-auto mb-10 relative z-[9999]">
+            <GlobalSearchInput />
+          </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
             <Link href="/magazines" className="w-full sm:flex-1">
@@ -90,8 +115,16 @@ export default function Home() {
         </div>
       </section>
 
+
+
+      {/* RECENTLY PUBLISHED ARTICLES SECTION */}
+      <RecentArticles />
+
+      {/* MAGAZINE CAROUSEL SECTION */}
+      <MagazineCarousel />
+
       {/* 2. PLATFORM METRICS (FLOATING BAR) */}
-      <section className="relative z-20 -mt-12 max-w-7xl mx-auto px-4 w-full">
+      <section className="relative z-10 -mt-12 max-w-7xl mx-auto px-4 w-full">
         <div className="glass-panel rounded-2xl p-8 sm:p-10 shadow-2xl border border-[var(--accent)]/10 dark:border-white/5 bg-[var(--card-bg)]/90 backdrop-blur-xl">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-[var(--muted-border)]">
             <div className="flex flex-col space-y-2 hover:scale-105 transition-transform duration-500 py-4 md:py-0">
@@ -99,7 +132,7 @@ export default function Home() {
               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Open Access Archiving</span>
             </div>
             <div className="flex flex-col space-y-2 hover:scale-105 transition-transform duration-500 py-4 md:py-0">
-              <span className="text-5xl font-bold tracking-tight text-[var(--foreground)] drop-shadow-sm font-serif">14<span className="text-2xl text-[var(--accent)] dark:text-blue-400 font-sans">d</span></span>
+              <span className="text-5xl font-bold tracking-tight text-[var(--foreground)] drop-shadow-sm font-serif">30<span className="text-2xl text-[var(--accent)] dark:text-blue-400 font-sans">d</span></span>
               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Avg. Editorial Turnaround</span>
             </div>
             <div className="flex flex-col space-y-2 hover:scale-105 transition-transform duration-500 py-4 md:py-0">
@@ -187,12 +220,12 @@ export default function Home() {
                 onClick={() => toggleFaq(index)}
                 className="w-full flex justify-between items-center text-left p-6 font-bold text-[var(--foreground)] hover:bg-[var(--foreground)]/5 transition-colors focus:outline-none cursor-pointer"
               >
-                <span className="text-sm sm:text-base font-semibold">{faq.q}</span>
+                <span className="text-sm sm:text-base font-semibold">{faq.question}</span>
                 <ChevronDown className={`w-4 h-4 text-[var(--muted)] transition-transform duration-300 ${activeFaq === index ? 'rotate-180 text-[var(--accent-gold)]' : ''}`} />
               </button>
               {activeFaq === index && (
-                <div className="px-6 pb-6 text-xs sm:text-sm font-medium text-[var(--muted)] leading-relaxed animate-in fade-in slide-in-from-top-2">
-                  {faq.a}
+                <div className="px-6 pb-6 text-xs sm:text-sm font-medium text-[var(--muted)] leading-relaxed animate-in fade-in slide-in-from-top-2 whitespace-pre-line">
+                  {faq.answer}
                 </div>
               )}
             </div>

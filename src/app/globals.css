@@ -131,6 +131,9 @@ body {
 input, select, textarea {
   color: var(--foreground) !important;
 }
+textarea.text-white, textarea.bg-zinc-900 {
+  color: #ffffff !important;
+}
 input::placeholder, textarea::placeholder {
   color: var(--muted) !important;
   opacity: 0.65;

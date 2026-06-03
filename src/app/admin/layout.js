@@ -411,6 +411,20 @@ export default function AdminLayout({ children }) {
                       <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
                       <span>Metadata Manifests</span>
                     </Link>
+                    <Link
+                      href="/admin/cms/editorial-board"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/cms/editorial-board' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
+                      <span>Editorial Board</span>
+                    </Link>
+                    <Link
+                      href="/admin/cms/faqs"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/cms/faqs' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
+                      <span>Manage FAQs</span>
+                    </Link>
                   </div>
                 )}
               </div>

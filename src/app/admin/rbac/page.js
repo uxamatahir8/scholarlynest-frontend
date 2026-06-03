@@ -12,6 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 
 export default function RbacManager() {
   const { user: authUser, hasRole, hasPermission, loading: authLoading } = useAuth();
@@ -27,6 +28,11 @@ export default function RbacManager() {
   const [permissions, setPermissions] = useState([]);
   const [selectedRole, setSelectedRole] = useState(null);
   const [defaultRoleName, setDefaultRoleName] = useState('author');
+
+  // Confirmation modal states
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [deleteRoleId, setDeleteRoleId] = useState(null);
+  const [deleteRoleName, setDeleteRoleName] = useState('');
 
   // Modal / Editing states
   const [editingUser, setEditingUser] = useState(null);
@@ -136,21 +142,28 @@ export default function RbacManager() {
     }
   };
 
-  // Delete custom Role
-  const handleDeleteRole = async (roleId, roleName) => {
-    if (!confirm(`Are you sure you want to permanently delete the role "${roleName}"?`)) {
-      return;
-    }
+  // Delete custom Role Trigger
+  const handleDeleteRole = (roleId, roleName) => {
+    setDeleteRoleId(roleId);
+    setDeleteRoleName(roleName);
+    setIsConfirmOpen(true);
+  };
+
+  const executeDeleteRole = async () => {
+    if (!deleteRoleId) return;
     setUpdating(true);
     try {
-      await api.delete(`/admin/rbac/roles/${roleId}`);
-      toast(`Role "${roleName}" deleted successfully.`, 'success');
+      await api.delete(`/admin/rbac/roles/${deleteRoleId}`);
+      toast(`Role "${deleteRoleName}" deleted successfully.`, 'success');
       await fetchData();
     } catch (err) {
       const errMsg = err.response?.data?.message || 'Failed to delete role.';
       toast(errMsg, 'error');
     } finally {
       setUpdating(false);
+      setIsConfirmOpen(false);
+      setDeleteRoleId(null);
+      setDeleteRoleName('');
     }
   };
 
@@ -1047,6 +1060,22 @@ export default function RbacManager() {
         </div>
       )}
 
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        title="Delete Role?"
+        message={`Are you sure you want to permanently delete the role "${deleteRoleName}"? This action cannot be undone.`}
+        confirmText="Delete Role"
+        cancelText="Cancel"
+        onConfirm={executeDeleteRole}
+        onCancel={() => {
+          setIsConfirmOpen(false);
+          setDeleteRoleId(null);
+          setDeleteRoleName('');
+        }}
+        variant="danger"
+        isLoading={updating}
+      />
     </div>
   );
 }
