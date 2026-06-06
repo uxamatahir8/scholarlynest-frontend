@@ -4,20 +4,33 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PageBanner from '../../components/PageBanner';
 import api from '../../utils/api';
+import SeoHead from '../../components/SeoHead';
 
 export default function TermsOfService() {
   const [dynamicHtml, setDynamicHtml] = useState(null);
   const [dynamicTitle, setDynamicTitle] = useState('Terms of Service');
+  const [seoData, setSeoData] = useState({
+    title: 'Terms of Service | ScholarlyNest',
+    description: 'These terms govern your access to the ScholarlyNest publishing portal and all related content registries.',
+    keywords: 'terms, guidelines, licensing, scholarlynest'
+  });
 
   useEffect(() => {
     let active = true;
     api.get('/cms/terms')
       .then(res => {
-        if (active && res.data && res.data.content_html) {
-          setDynamicHtml(res.data.content_html);
+        if (active && res.data) {
+          if (res.data.content_html) {
+            setDynamicHtml(res.data.content_html);
+          }
           if (res.data.title) {
             setDynamicTitle(res.data.title);
           }
+          setSeoData({
+            title: res.data.seo_title,
+            description: res.data.seo_description,
+            keywords: res.data.seo_keywords
+          });
         }
       })
       .catch(err => {
@@ -28,7 +41,12 @@ export default function TermsOfService() {
 
   return (
     <div className="bg-[var(--background)] min-height-screen transition-premium">
-      <title>{dynamicTitle}  - ScholarlyNest</title>
+      <SeoHead
+        title={seoData.title}
+        description={seoData.description}
+        keywords={seoData.keywords}
+        ogUrl="/terms"
+      />
       <PageBanner 
         title={dynamicTitle} 
         description="Effective as of May 17, 2026. These terms govern your access to the ScholarlyNest publishing portal and all related content registries."

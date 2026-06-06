@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { Search, LogOut, Monitor, Sun, Moon, LayoutDashboard, Menu, X, Shield, User } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
+import GlobalSearchInput from './home/GlobalSearchInput';
 
 const PUBLIC_NAV_LINKS = [
   { label: 'Home', href: '/' },
@@ -93,8 +94,7 @@ const Header = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      // Placeholder search navigation
-      router.push(`/?search=${encodeURIComponent(searchQuery)}`);
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
   };
 
@@ -126,6 +126,11 @@ const Header = () => {
                   priority
                 />
               </Link>
+            </div>
+
+            {/* CENTER: SEARCH BAR (DESKTOP ONLY) */}
+            <div className="hidden lg:block w-64 xl:w-80 mx-4 relative z-50">
+              <GlobalSearchInput size="sm" placeholder="Search publications..." />
             </div>
 
             {/* RIGHT: CONTROLS & AUTH */}

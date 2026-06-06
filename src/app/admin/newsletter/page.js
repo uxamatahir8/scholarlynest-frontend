@@ -38,6 +38,7 @@ export default function NewsletterAdmin() {
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('<p>Dear Scholar,</p>\n<p>We are delighted to share our latest research developments and publications with our academic community.</p>\n<p>In this digest, we cover:</p>\n<ul>\n  <li><strong>Breakthrough Manuscripts:</strong> Exploring newly peer-reviewed and published works.</li>\n  <li><strong>Editor Selections:</strong> Curated papers of outstanding scientific significance.</li>\n  <li><strong>Upcoming Issues:</strong> Sneak previews of our forthcoming ScholarlyNest volume.</li>\n</ul>\n<p>We thank you for your continued support and collaboration in advancing open-access research.</p>\n<p>Sincerely,<br><strong>ScholarlyNest Editorial Board</strong></p>');
   const [showConfirmSend, setShowConfirmSend] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Modals / Ledger previews
   const [previewCampaign, setPreviewCampaign] = useState(null);
@@ -302,7 +303,20 @@ export default function NewsletterAdmin() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {/* Form Column */}
-            <form onSubmit={(e) => { e.preventDefault(); setShowConfirmSend(true); }} className="space-y-4">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const errors = {};
+              if (!subject.trim()) {
+                errors.subject = 'Subject line is required.';
+              }
+              if (!content.trim()) {
+                errors.content = 'Campaign HTML content body is required.';
+              }
+              setValidationErrors(errors);
+              if (Object.keys(errors).length === 0) {
+                setShowConfirmSend(true);
+              }
+            }} className="space-y-4">
               <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Campaign Editor</h3>
 
               <div className="space-y-1.5">
@@ -311,12 +325,27 @@ export default function NewsletterAdmin() {
                 </label>
                 <input
                   type="text"
-                  required
                   placeholder="e.g. ScholarlyNest Quarterly Journal Update"
                   value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  className="w-full text-xs font-medium px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/60 rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors placeholder-zinc-400"
+                  onChange={(e) => {
+                    setSubject(e.target.value);
+                    if (validationErrors.subject) {
+                      setValidationErrors(prev => {
+                        const copy = { ...prev };
+                        delete copy.subject;
+                        return copy;
+                      });
+                    }
+                  }}
+                  className={`w-full text-xs font-medium px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border rounded-lg focus:outline-none transition-colors placeholder-zinc-400 ${
+                    validationErrors.subject
+                      ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 dark:border-red-500'
+                      : 'border-zinc-200 dark:border-zinc-800/60 focus:border-[var(--accent)]'
+                  }`}
                 />
+                {validationErrors.subject && (
+                  <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.subject}</span>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -328,12 +357,27 @@ export default function NewsletterAdmin() {
                 </div>
                 <textarea
                   rows={14}
-                  required
                   placeholder="Enter HTML tags and paragraphs..."
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="w-full text-xs font-mono p-3.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/60 rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors placeholder-zinc-500 leading-relaxed"
+                  onChange={(e) => {
+                    setContent(e.target.value);
+                    if (validationErrors.content) {
+                      setValidationErrors(prev => {
+                        const copy = { ...prev };
+                        delete copy.content;
+                        return copy;
+                      });
+                    }
+                  }}
+                  className={`w-full text-xs font-mono p-3.5 bg-zinc-50 dark:bg-zinc-900/50 border rounded-lg focus:outline-none transition-colors placeholder-zinc-500 leading-relaxed ${
+                    validationErrors.content
+                      ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 dark:border-red-500'
+                      : 'border-zinc-200 dark:border-zinc-800/60 focus:border-[var(--accent)]'
+                  }`}
                 />
+                {validationErrors.content && (
+                  <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.content}</span>
+                )}
               </div>
 
               <button

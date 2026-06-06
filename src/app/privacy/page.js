@@ -5,20 +5,33 @@ import Link from 'next/link';
 import { ShieldCheck, Database, Lock, Eye } from 'lucide-react';
 import PageBanner from '../../components/PageBanner';
 import api from '../../utils/api';
+import SeoHead from '../../components/SeoHead';
 
 export default function PrivacyPolicy() {
   const [dynamicHtml, setDynamicHtml] = useState(null);
   const [dynamicTitle, setDynamicTitle] = useState('Data Privacy Protocol');
+  const [seoData, setSeoData] = useState({
+    title: 'Data Privacy Protocol | ScholarlyNest',
+    description: 'ScholarlyNest maintains rigorous standards for user data protection. This protocol outlines how your personal information and academic manuscripts are collected, stored, and utilized.',
+    keywords: 'privacy, security, data protection, scholarlynest'
+  });
 
   useEffect(() => {
     let active = true;
     api.get('/cms/privacy')
       .then(res => {
-        if (active && res.data && res.data.content_html) {
-          setDynamicHtml(res.data.content_html);
+        if (active && res.data) {
+          if (res.data.content_html) {
+            setDynamicHtml(res.data.content_html);
+          }
           if (res.data.title) {
             setDynamicTitle(res.data.title);
           }
+          setSeoData({
+            title: res.data.seo_title,
+            description: res.data.seo_description,
+            keywords: res.data.seo_keywords
+          });
         }
       })
       .catch(err => {
@@ -29,7 +42,12 @@ export default function PrivacyPolicy() {
 
   return (
     <div className="bg-[var(--background)] min-height-screen transition-premium">
-      <title>{dynamicTitle}  - ScholarlyNest</title>
+      <SeoHead
+        title={seoData.title}
+        description={seoData.description}
+        keywords={seoData.keywords}
+        ogUrl="/privacy"
+      />
       
       <PageBanner 
         title={dynamicTitle} 

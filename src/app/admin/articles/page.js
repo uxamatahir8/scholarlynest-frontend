@@ -12,6 +12,7 @@ import { useToast } from '../../../context/ToastContext';
 import { Button } from '../../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 import { useAuth } from '../../../context/AuthContext';
+import Pagination from '../../../components/ui/Pagination';
 
 export default function AdminArticlesBoard() {
   const { toast } = useToast();
@@ -35,6 +36,17 @@ export default function AdminArticlesBoard() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
+  const [totalArticles, setTotalArticles] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Fetch magazines for the filter dropdown
   useEffect(() => {
@@ -55,7 +67,7 @@ export default function AdminArticlesBoard() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedMagazineId, statusFilter]);
+  }, [debouncedSearchQuery, selectedMagazineId, statusFilter]);
 
   // Selected article for review modal
   const [selectedArticle, setSelectedArticle] = useState(null);
@@ -71,9 +83,32 @@ export default function AdminArticlesBoard() {
       setLoading(true);
       setError(null);
       
-      const queryParam = statusFilter !== 'all' ? `?status=${statusFilter}` : '';
-      const response = await api.get(`/admin/articles${queryParam}`);
-      setArticles(response.data);
+      const params = {
+        page: currentPage,
+        per_page: itemsPerPage,
+      };
+
+      if (statusFilter !== 'all') {
+        params.status = statusFilter;
+      }
+      if (selectedMagazineId !== 'all') {
+        params.magazine_id = selectedMagazineId;
+      }
+      if (debouncedSearchQuery.trim()) {
+        params.search = debouncedSearchQuery.trim();
+      }
+
+      const response = await api.get('/admin/articles', { params });
+      
+      if (response.data && response.data.data) {
+        setArticles(response.data.data);
+        setTotalArticles(response.data.total || 0);
+        setTotalPages(response.data.last_page || 1);
+      } else {
+        setArticles(Array.isArray(response.data) ? response.data : []);
+        setTotalArticles(Array.isArray(response.data) ? response.data.length : 0);
+        setTotalPages(1);
+      }
     } catch (err) {
       console.error(err);
       setError('Could not download the articles registry database.');
@@ -86,7 +121,7 @@ export default function AdminArticlesBoard() {
     if (!authLoading && user) {
       fetchArticles();
     }
-  }, [statusFilter, user, authLoading]);
+  }, [currentPage, statusFilter, selectedMagazineId, debouncedSearchQuery, user, authLoading]);
 
   const openReviewModal = (article) => {
     setSelectedArticle(article);
@@ -95,55 +130,9 @@ export default function AdminArticlesBoard() {
     setIsReviewModalOpen(true);
   };
 
-  const filteredArticles = articles.filter((art) => {
-    // 1. Filter by magazine
-    if (selectedMagazineId !== 'all') {
-      const magId = art.magazine_id || art.magazine?.id;
-      if (magId?.toString() !== selectedMagazineId.toString()) {
-        return false;
-      }
-    }
+  const paginatedArticles = articles;
 
-    // 2. Filter by search query (live search)
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchTitle = art.title?.toLowerCase().includes(q);
-      const matchAbstract = art.abstract?.toLowerCase().includes(q);
-      const matchAuthorName = art.user?.name?.toLowerCase().includes(q);
-      const matchAuthorEmail = art.user?.email?.toLowerCase().includes(q);
-      const matchTags = art.tags?.some(tag => tag.name?.toLowerCase().includes(q));
 
-      if (!matchTitle && !matchAbstract && !matchAuthorName && !matchAuthorEmail && !matchTags) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  const totalArticles = filteredArticles.length;
-  const totalPages = Math.ceil(totalArticles / itemsPerPage);
-  
-  const paginatedArticles = filteredArticles.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const getPageNumbers = () => {
-    const pageLimit = 5;
-    if (totalPages <= pageLimit) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    
-    let start = Math.max(currentPage - 2, 1);
-    let end = Math.min(start + pageLimit - 1, totalPages);
-    
-    if (end === totalPages) {
-      start = Math.max(end - pageLimit + 1, 1);
-    }
-    
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-  };
 
   const handleReviewAction = async (status) => {
     if (status === 'rejected' && !rejectionReason.trim()) {
@@ -329,14 +318,14 @@ export default function AdminArticlesBoard() {
         </div>
       )}
 
-      {!loading && !error && filteredArticles.length === 0 && (
+      {!loading && !error && articles.length === 0 && (
         <div className="text-center py-20 glass-panel border border-[var(--muted-border)]/60 rounded-2xl bg-[var(--card-bg)]">
           <FileText className="w-12 h-12 mx-auto text-[var(--muted)] mb-3 opacity-55" />
           <p className="text-xs font-semibold text-[var(--muted)]">No articles match the selected search or filter criteria.</p>
         </div>
       )}
 
-      {!loading && !error && filteredArticles.length > 0 && (
+      {!loading && !error && articles.length > 0 && (
         <Card className="border border-[var(--muted-border)] bg-[var(--card-bg)] shadow-md overflow-hidden animate-in fade-in duration-300">
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[700px]">
@@ -430,45 +419,11 @@ export default function AdminArticlesBoard() {
               </span>
             </div>
 
-            {totalPages > 1 && (
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  className="px-3 py-1.5 rounded-lg border border-[var(--muted-border)]/65 bg-[var(--background)] hover:text-[var(--foreground)] disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-not-allowed text-[10px] uppercase font-bold tracking-wider"
-                >
-                  Previous
-                </button>
-
-                {/* Page numbers */}
-                <div className="flex items-center space-x-1">
-                  {getPageNumbers().map((page) => (
-                    <button
-                      key={page}
-                      type="button"
-                      onClick={() => setCurrentPage(page)}
-                      className={`h-8 w-8 rounded-lg flex items-center justify-center border transition-colors cursor-pointer text-[10px] font-bold ${
-                        currentPage === page
-                          ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
-                          : 'border-[var(--muted-border)]/50 bg-[var(--background)] hover:text-[var(--foreground)]'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                  className="px-3 py-1.5 rounded-lg border border-[var(--muted-border)]/65 bg-[var(--background)] hover:text-[var(--foreground)] disabled:opacity-40 transition-colors cursor-pointer disabled:cursor-not-allowed text-[10px] uppercase font-bold tracking-wider"
-                >
-                  Next
-                </button>
-              </div>
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </Card>
       )}

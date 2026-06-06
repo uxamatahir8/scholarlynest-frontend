@@ -15,7 +15,12 @@ export default function QuillEditor({ value, onChange, placeholder = 'Start writ
     const Quill = require('quill');
     const QuillConstructor = Quill.default || Quill;
 
-    const quill = new QuillConstructor(containerRef.current, {
+    // Create a nested editor div. This allows us to safely clear the parent
+    // container on cleanup, removing both the editor container and the toolbar.
+    const editorDiv = document.createElement('div');
+    containerRef.current.appendChild(editorDiv);
+
+    const quill = new QuillConstructor(editorDiv, {
       theme: 'snow',
       placeholder: placeholder,
       modules: {
@@ -39,6 +44,13 @@ export default function QuillEditor({ value, onChange, placeholder = 'Start writ
       const html = quill.root.innerHTML;
       onChange(html === '<p><br></p>' ? '' : html);
     });
+
+    return () => {
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
+      }
+      quillRef.current = null;
+    };
   }, []);
 
   // Sync value from external state change

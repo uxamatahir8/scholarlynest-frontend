@@ -8,6 +8,8 @@ import {
   ChevronRight, Calendar, User, ArrowRight, ExternalLink 
 } from 'lucide-react';
 import api from '../../../utils/api';
+import TableOfContents from '../../../components/magazine/TableOfContents';
+import SeoHead from '../../../components/SeoHead';
 
 export default function MagazineShell() {
   const params = useParams();
@@ -15,12 +17,7 @@ export default function MagazineShell() {
   const slug = params ? params.slug : null;
 
   const [magazine, setMagazine] = useState(null);
-  const [articles, setArticles] = useState([]);
-  const [articlesPage, setArticlesPage] = useState(1);
-  const [articlesTotalPages, setArticlesTotalPages] = useState(1);
-  
   const [loading, setLoading] = useState(true);
-  const [loadingArticles, setLoadingArticles] = useState(false);
   const [error, setError] = useState(null);
 
   // Active section in the layout: 'about' | 'articles' | 'page_[slug]'
@@ -40,11 +37,6 @@ export default function MagazineShell() {
         const response = await api.get(`/magazines/${slug}`);
         setMagazine(response.data);
 
-        // 2. Fetch magazine approved articles
-        const articlesResponse = await api.get(`/magazines/${slug}/articles?page=1`);
-        setArticles(articlesResponse.data.data || []);
-        setArticlesTotalPages(articlesResponse.data.last_page || 1);
-
       } catch (err) {
         console.error('Failed to load magazine details', err);
         setError('The requested magazine catalog or articles could not be found.');
@@ -55,21 +47,6 @@ export default function MagazineShell() {
 
     fetchMagazineData();
   }, [slug]);
-
-  // Fetch paginated articles when page changes
-  const fetchArticlesPage = async (pageNumber) => {
-    try {
-      setLoadingArticles(true);
-      const response = await api.get(`/magazines/${slug}/articles?page=${pageNumber}`);
-      setArticles(response.data.data || []);
-      setArticlesPage(pageNumber);
-      setArticlesTotalPages(response.data.last_page || 1);
-    } catch (err) {
-      console.error('Failed to paginate articles', err);
-    } finally {
-      setLoadingArticles(false);
-    }
-  };
 
   // Helper to change sections cleanly
   const selectSection = (sectionId, pageObj = null) => {
@@ -118,7 +95,13 @@ export default function MagazineShell() {
 
   return (
     <div className="min-h-screen bg-[var(--background)] pb-24 font-sans">
-      <title>{`${magazine.title}  - ScholarlyNest`}</title>
+      <SeoHead 
+        title={magazine.seo_title}
+        description={magazine.seo_description}
+        keywords={magazine.seo_keywords}
+        ogImage={magazine.og_image}
+        ogUrl={`/magazines/${slug}`}
+      />
 
       {/* 1. IMMERSIVE HERO TOP BANNER WITH BLUR OVERLAY */}
       <div className="relative h-80 sm:h-96 w-full overflow-hidden bg-zinc-950">
@@ -206,7 +189,7 @@ export default function MagazineShell() {
               >
                 <div className="flex items-center space-x-2.5">
                   <FileText className="w-4 h-4 shrink-0" />
-                  <span>Articles & Submissions</span>
+                  <span>Table of Contents</span>
                 </div>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -259,106 +242,14 @@ export default function MagazineShell() {
                 </div>
               )}
 
-              {/* SECTION 2: ARTICLES CATALOGUE */}
+              {/* SECTION 2: TABLE OF CONTENTS */}
               {activeSection === 'articles' && (
-                <div className="space-y-6 animate-in fade-in duration-200">
-                  <div className="border-b border-zinc-100 dark:border-zinc-850 pb-4 flex items-center justify-between">
-                    <h2 className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">
-                      Articles Feed
-                    </h2>
-                  </div>
-
-                  {loadingArticles ? (
-                    <div className="flex justify-center py-20">
-                      <Loader2 className="w-8 h-8 animate-spin text-[var(--accent)]" />
-                    </div>
-                  ) : articles.length === 0 ? (
-                    <div className="text-center py-20 text-zinc-400">
-                      <FileText className="w-12 h-12 mx-auto text-zinc-200 dark:text-zinc-800 mb-3" />
-                      <p className="text-sm font-semibold">No approved papers have been cataloged in this issue.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {articles.map((art) => (
-                        <div 
-                          key={art.id}
-                          className="group relative border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/60 p-5 rounded-xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-premium shadow-sm"
-                        >
-                          <div className="space-y-3">
-                            {/* Metadata */}
-                            <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-[var(--muted)] font-mono uppercase tracking-wider">
-                              <span className="flex items-center text-zinc-500">
-                                <User className="w-3.5 h-3.5 mr-1" />
-                                {art.user?.name}
-                              </span>
-                              <span>•</span>
-                              <span className="flex items-center text-zinc-500">
-                                <Calendar className="w-3.5 h-3.5 mr-1" />
-                                {new Date(art.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                              </span>
-                            </div>
-
-                            <h3 className="font-serif text-lg font-bold text-zinc-900 dark:text-white group-hover:text-[var(--accent)] transition-colors leading-snug">
-                              <Link 
-                                href={`/magazines/${slug}/articles/${art.slug}`} 
-                                className="cursor-pointer"
-                                onClick={() => handleTrackClick(art.id)}
-                              >
-                                {art.title}
-                              </Link>
-                            </h3>
-
-                            {/* Abstract short render */}
-                            <div 
-                              className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed line-clamp-3"
-                              dangerouslySetInnerHTML={{ __html: art.abstract }}
-                            />
-
-                            {/* Link Trigger */}
-                            <div className="pt-2 flex justify-between items-center">
-                              {art.pdf_path && (
-                                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-450 font-bold bg-emerald-500/5 px-2 py-0.5 rounded border border-emerald-500/10">
-                                  PDF Archive Loaded
-                                </span>
-                              )}
-                              <Link
-                                href={`/magazines/${slug}/articles/${art.slug}`}
-                                className="inline-flex items-center space-x-1.5 text-xs font-bold uppercase tracking-wider text-[var(--accent)] group-hover:text-[var(--accent-gold)] transition-colors cursor-pointer"
-                                onClick={() => handleTrackClick(art.id)}
-                              >
-                                <span>Read Full Paper</span>
-                                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                              </Link>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-
-                      {/* Pagination Controls */}
-                      {articlesTotalPages > 1 && (
-                        <div className="flex items-center justify-between pt-6 border-t border-zinc-100 dark:border-zinc-850">
-                          <button
-                            onClick={() => fetchArticlesPage(articlesPage - 1)}
-                            disabled={articlesPage === 1}
-                            className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 disabled:opacity-50 cursor-pointer"
-                          >
-                            Previous
-                          </button>
-                          <span className="text-xs font-mono font-bold text-[var(--muted)]">
-                            Page {articlesPage} of {articlesTotalPages}
-                          </span>
-                          <button
-                            onClick={() => fetchArticlesPage(articlesPage + 1)}
-                            disabled={articlesPage === articlesTotalPages}
-                            className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 disabled:opacity-50 cursor-pointer"
-                          >
-                            Next
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                <TableOfContents
+                  groupedArticles={magazine.grouped_articles || {}}
+                  coverImage={magazine.cover_image}
+                  magazineSlug={slug}
+                  onArticleClick={handleTrackClick}
+                />
               )}
 
               {/* SECTION 3: DYNAMIC PAGE CONTENT */}

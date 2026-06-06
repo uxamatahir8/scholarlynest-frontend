@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import api from '../../../../../utils/api';
 import { useToast } from '../../../../../context/ToastContext';
+import ArticlePagination from '../../../../../components/article/ArticlePagination';
+import SeoHead from '../../../../../components/SeoHead';
 
 export default function ArticleDetail() {
   const params = useParams();
@@ -20,6 +22,10 @@ export default function ArticleDetail() {
 
   const [article, setArticle] = useState(null);
   const [authorMetrics, setAuthorMetrics] = useState(null);
+  const [previousArticleSlug, setPreviousArticleSlug] = useState(null);
+  const [nextArticleSlug, setNextArticleSlug] = useState(null);
+  const [previousArticleTitle, setPreviousArticleTitle] = useState(null);
+  const [nextArticleTitle, setNextArticleTitle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -90,6 +96,10 @@ export default function ArticleDetail() {
         const response = await api.get(`/articles/${articleSlug}`);
         setArticle(response.data.article);
         setAuthorMetrics(response.data.author_metrics);
+        setPreviousArticleSlug(response.data.previous_article_slug);
+        setNextArticleSlug(response.data.next_article_slug);
+        setPreviousArticleTitle(response.data.previous_article_title);
+        setNextArticleTitle(response.data.next_article_title);
       } catch (err) {
         console.error('Failed to load article details', err);
         setError('The specified research manuscript could not be found or loaded.');
@@ -247,7 +257,14 @@ export default function ArticleDetail() {
 
   return (
     <div className="min-h-screen bg-[var(--background)] pb-24 font-sans px-4 sm:px-6 lg:px-8">
-      <title>{`${article.title}  - ScholarlyNest`}</title>
+      <SeoHead
+        title={article.seo_title}
+        description={article.seo_description}
+        keywords={article.seo_keywords}
+        ogImage={article.og_image}
+        ogUrl={`/magazines/${slug}/articles/${articleSlug}`}
+        ogType="article"
+      />
 
       <div className="max-w-4xl mx-auto space-y-8">
         
@@ -385,6 +402,15 @@ export default function ArticleDetail() {
           </button>
 
         </div>
+
+        {/* Sequential Reader Pagination */}
+        <ArticlePagination
+          previousArticleSlug={previousArticleSlug}
+          nextArticleSlug={nextArticleSlug}
+          previousArticleTitle={previousArticleTitle}
+          nextArticleTitle={nextArticleTitle}
+          magazineSlug={slug}
+        />
 
       </div>
 

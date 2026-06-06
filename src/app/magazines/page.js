@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { BookOpen, ArrowRight, FileText, Loader2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../utils/api';
 import MagazineCard from '../../components/magazine/MagazineCard';
+import Pagination from '../../components/ui/Pagination';
 
 export default function MagazinesRegistry() {
   const [magazines, setMagazines] = useState([]);
@@ -99,36 +100,12 @@ export default function MagazinesRegistry() {
 
         {/* Centered Pagination Controls with appropriate spacing */}
         {!loading && !error && totalPages > 1 && (
-          <div className="flex justify-center items-center space-x-2 pt-12 pb-6 animate-in fade-in duration-300">
-            <button
-              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-              disabled={page === 1}
-              className="inline-flex items-center justify-center p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-white dark:disabled:hover:bg-zinc-900 transition-all cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
-            </button>
-            
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPage(p)}
-                className={`inline-flex items-center justify-center w-10 h-10 rounded-xl border font-mono text-xs font-bold transition-all cursor-pointer ${
-                  page === p
-                    ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-md'
-                    : 'border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-              disabled={page === totalPages}
-              className="inline-flex items-center justify-center p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-white dark:disabled:hover:bg-zinc-900 transition-all cursor-pointer"
-            >
-              <ChevronRight className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
-            </button>
+          <div className="pt-12 pb-6 flex justify-center">
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
           </div>
         )}
 

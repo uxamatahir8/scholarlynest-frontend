@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import api from '../../../../utils/api';
 import { useToast } from '../../../../context/ToastContext';
+import Pagination from '../../../../components/ui/Pagination';
 
 export default function AdminMagazineTags() {
   const { toast } = useToast();
@@ -317,26 +318,15 @@ export default function AdminMagazineTags() {
 
       {/* Pagination Controls */}
       {!loadingTags && !error && totalPages > 1 && (
-        <div className="flex items-center justify-between pt-6 border-t border-zinc-200 mt-6">
-          <button
-            type="button"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-white border border-zinc-200 disabled:opacity-50 hover:bg-zinc-50 cursor-pointer transition-colors"
-          >
-            Previous
-          </button>
-          <span className="text-xs font-mono font-bold text-zinc-500">
-            Page {currentPage} of {totalPages} (Total {totalResults} tags)
+        <div className="flex flex-col items-center gap-2 pt-6 border-t border-zinc-200 mt-6">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 font-mono">
+            Page {currentPage} of {totalPages} &bull; Total {totalResults} tags
           </span>
-          <button
-            type="button"
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-white border border-zinc-200 disabled:opacity-50 hover:bg-zinc-50 cursor-pointer transition-colors"
-          >
-            Next
-          </button>
         </div>
       )}
 

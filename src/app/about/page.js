@@ -3,11 +3,16 @@
 import React from 'react';
 import { BookOpen, ShieldCheck, Globe, Star, Users, Award, Landmark } from 'lucide-react';
 import PageBanner from '../../components/PageBanner';
+import SeoHead from '../../components/SeoHead';
 
 export default function AboutPage() {
   return (
     <div className="bg-[var(--background)] min-height-screen transition-premium">
-      <title>About Us  - ScholarlyNest</title>
+      <SeoHead
+        title="About Us — ScholarlyNest"
+        description="ScholarlyNest is a state-of-the-art academic publishing platform designed to bridge the gap between rigorous peer-reviewed research and rapid interdisciplinary collaboration."
+        ogUrl="/about"
+      />
       <PageBanner 
         title="Institutional Charter" 
         description="ScholarlyNest is a state-of-the-art academic publishing platform designed to bridge the gap between rigorous peer-reviewed research and rapid interdisciplinary collaboration."

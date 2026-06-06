@@ -6,10 +6,11 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { 
   ArrowLeft, FileText, Check, Loader2, AlertCircle, 
-  Code, Edit3, Save, ChevronRight, BookOpen, Upload, Tag as TagIcon, X 
+  Code, Edit3, Save, ChevronRight, BookOpen, Upload, Tag as TagIcon, X, Eye
 } from 'lucide-react';
 import api from '../../../../../utils/api';
 import { useToast } from '../../../../../context/ToastContext';
+import { useAuth } from '../../../../../context/AuthContext';
 
 const RichEditor = dynamic(() => import('../../../../../components/ui/RichEditor'), {
   ssr: false,
@@ -26,6 +27,7 @@ export default function AdminEditArticle() {
   const id = params ? params.id : null;
   const router = useRouter();
   const { toast } = useToast();
+  const { user, hasRole, hasPermission } = useAuth();
 
   const [magazines, setMagazines] = useState([]);
   const [loadingMagazines, setLoadingMagazines] = useState(true);
@@ -41,6 +43,23 @@ export default function AdminEditArticle() {
   const [pdfFileName, setPdfFileName] = useState('');
   const [existingPdfPath, setExistingPdfPath] = useState('');
   const [status, setStatus] = useState('pending');
+  const [articleOwnerId, setArticleOwnerId] = useState(null);
+
+  const [seoTitle, setSeoTitle] = useState('');
+  const [seoDescription, setSeoDescription] = useState('');
+  const [seoKeywords, setSeoKeywords] = useState('');
+  const [seoExpanded, setSeoExpanded] = useState(false);
+  const [savingSeo, setSavingSeo] = useState(false);
+
+  const canEditAll = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || (user && articleOwnerId === user.id && hasPermission('articles.edit-own'));
+  const canEditSeo = hasPermission('seo.articles');
+
+  // Expand SEO settings by default if user is SEO-only
+  useEffect(() => {
+    if (!canEditAll && canEditSeo) {
+      setSeoExpanded(true);
+    }
+  }, [canEditAll, canEditSeo]);
 
   // Editor modes ('visual' | 'html')
   const [abstractMode, setAbstractMode] = useState('visual');
@@ -88,6 +107,11 @@ export default function AdminEditArticle() {
         setFullText(article.full_text);
         setExistingPdfPath(article.pdf_path || '');
         setStatus(article.status);
+        setArticleOwnerId(article.user_id);
+
+        setSeoTitle(article.seo_title || '');
+        setSeoDescription(article.seo_description || '');
+        setSeoKeywords(article.seo_keywords || '');
 
         // Prepopulate tags (IDs and name strings if any mismatch)
         if (article.tags && Array.isArray(article.tags)) {
@@ -202,6 +226,11 @@ export default function AdminEditArticle() {
         formData.append('pdf_file', pdfFile);
       }
       formData.append('tags', JSON.stringify(selectedTags));
+      if (canEditSeo) {
+        formData.append('seo_title', seoTitle);
+        formData.append('seo_description', seoDescription);
+        formData.append('seo_keywords', seoKeywords);
+      }
 
       await api.post(`/admin/articles/${id}`, formData, {
         headers: {
@@ -220,6 +249,26 @@ export default function AdminEditArticle() {
     }
   };
 
+  const handleSaveSeoOnly = async (e) => {
+    e.preventDefault();
+    try {
+      setSavingSeo(true);
+      await api.patch(`/admin/articles/${id}/seo`, {
+        seo_title: seoTitle,
+        seo_description: seoDescription,
+        seo_keywords: seoKeywords,
+      });
+      toast('Article SEO metadata updated successfully.', 'success');
+      router.push('/admin/articles');
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || 'Failed to update SEO metadata.';
+      toast(msg, 'error');
+    } finally {
+      setSavingSeo(false);
+    }
+  };
+
   if (loadingArticle) {
     return (
       <div className="flex flex-col items-center justify-center py-32 space-y-4">
@@ -229,17 +278,16 @@ export default function AdminEditArticle() {
     );
   }
 
-  if (error) {
+  if (!user || (!canEditAll && !canEditSeo)) {
     return (
-      <div className="space-y-4 max-w-xl mx-auto py-12">
-        <div className="flex items-center space-x-3 p-4 bg-red-50 border border-red-150 rounded-xl text-red-700 text-xs">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span className="font-semibold text-xs leading-none">{error}</span>
+      <div className="p-6 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl flex items-start space-x-4 max-w-xl mx-auto mt-12 animate-in fade-in slide-in-from-bottom-4">
+        <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
+        <div>
+          <h3 className="text-sm font-bold text-red-750 dark:text-red-400">Access Restricted</h3>
+          <p className="text-xs text-red-600 dark:text-red-300 mt-1">
+            You must possess administrative, editing, or SEO privileges to access this article's workspace.
+          </p>
         </div>
-        <Link href="/admin/articles" className="inline-flex items-center text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-[var(--accent)]">
-          <ArrowLeft className="w-4 h-4 mr-1.5" />
-          Back to Articles
-        </Link>
       </div>
     );
   }
@@ -267,339 +315,487 @@ export default function AdminEditArticle() {
         <p className="text-xs text-zinc-500 font-medium leading-relaxed">Modify publication details, update visual/HTML abstracts, compile documents, and manage metadata categories.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Row Grid: Magazine, Status & Title */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="space-y-1 md:col-span-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">Target Magazine *</label>
-            {loadingMagazines ? (
-              <div className="flex items-center space-x-2 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-xs text-zinc-450 font-semibold">
-                <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />
-                <span>Loading issues...</span>
-              </div>
-            ) : (
+      {canEditAll ? (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Row Grid: Magazine, Status & Title */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="space-y-1 md:col-span-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">Target Magazine *</label>
+              {loadingMagazines ? (
+                <div className="flex items-center space-x-2 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-xs text-zinc-450 font-semibold">
+                  <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />
+                  <span>Loading issues...</span>
+                </div>
+              ) : (
+                <select
+                  value={magazineId}
+                  onChange={(e) => {
+                    setMagazineId(e.target.value);
+                    setSelectedTags([]); // Clear tags if issue changed
+                  }}
+                  className="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                >
+                  {magazines.map((m) => (
+                    <option key={m.id} value={m.id}>{m.title}</option>
+                  ))}
+                </select>
+              )}
+              {validationErrors.magazineId && (
+                <p className="text-[10px] font-semibold text-red-500">{validationErrors.magazineId}</p>
+              )}
+            </div>
+
+            <div className="space-y-1 md:col-span-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">Article Status</label>
               <select
-                value={magazineId}
-                onChange={(e) => {
-                  setMagazineId(e.target.value);
-                  setSelectedTags([]); // Clear tags if issue changed
-                }}
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
                 className="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
               >
-                {magazines.map((m) => (
-                  <option key={m.id} value={m.id}>{m.title}</option>
-                ))}
+                <option value="pending">Pending Review</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
               </select>
-            )}
-            {validationErrors.magazineId && (
-              <p className="text-[10px] font-semibold text-red-500">{validationErrors.magazineId}</p>
-            )}
-          </div>
-
-          <div className="space-y-1 md:col-span-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">Article Status</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
-            >
-              <option value="pending">Pending Review</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </div>
-
-          <div className="space-y-1 md:col-span-2">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">Article Title *</label>
-            <input 
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Advancements in Deep Neural Network Optimizations"
-              className="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
-            />
-            {validationErrors.title && (
-              <p className="text-[10px] font-semibold text-red-500">{validationErrors.title}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Keywords & Tags Selection Panel */}
-        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Article Keywords & Tags</label>
-            <span className="text-[10px] text-zinc-400 font-medium">Select tags associated with this magazine or enter new ones below.</span>
-          </div>
-
-          {loadingTags ? (
-            <div className="flex items-center space-x-2 text-xs text-zinc-450 font-semibold py-1">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent)]" />
-              <span>Loading magazine tags...</span>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {availableTags.length > 0 && (
+
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">Article Title *</label>
+              <input 
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Advancements in Deep Neural Network Optimizations"
+                className="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+              />
+              {validationErrors.title && (
+                <p className="text-[10px] font-semibold text-red-500">{validationErrors.title}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Keywords & Tags Selection Panel */}
+          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Article Keywords & Tags</label>
+              <span className="text-[10px] text-zinc-400 font-medium">Select tags associated with this magazine or enter new ones below.</span>
+            </div>
+
+            {loadingTags ? (
+              <div className="flex items-center space-x-2 text-xs text-zinc-450 font-semibold py-1">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent)]" />
+                <span>Loading magazine tags...</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {availableTags.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider block font-mono">Available Tags (Click to toggle)</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {availableTags.map((tag) => {
+                        const isSelected = selectedTags.includes(tag.id);
+                        return (
+                          <button
+                            key={tag.id}
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                setSelectedTags(selectedTags.filter(id => id !== tag.id));
+                              } else {
+                                setSelectedTags([...selectedTags, tag.id]);
+                              }
+                            }}
+                            className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
+                              isSelected 
+                                ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30' 
+                                : 'bg-zinc-50 text-zinc-650 border-zinc-200 hover:border-zinc-350'
+                            }`}
+                          >
+                            {tag.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Add Custom keyword input */}
                 <div className="space-y-1.5">
-                  <span className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider block font-mono">Available Tags (Click to toggle)</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {availableTags.map((tag) => {
-                      const isSelected = selectedTags.includes(tag.id);
-                      return (
-                        <button
-                          key={tag.id}
-                          type="button"
-                          onClick={() => {
-                            if (isSelected) {
-                              setSelectedTags(selectedTags.filter(id => id !== tag.id));
-                            } else {
-                              setSelectedTags([...selectedTags, tag.id]);
-                            }
-                          }}
-                          className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
-                            isSelected 
-                              ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30' 
-                              : 'bg-zinc-50 text-zinc-650 border-zinc-200 hover:border-zinc-350'
-                          }`}
-                        >
-                          {tag.name}
-                        </button>
-                      );
-                    })}
+                  <span className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider block font-mono">Add Custom Keyword</span>
+                  <div className="flex items-center space-x-2 max-w-md">
+                    <input
+                      type="text"
+                      value={newKeyword}
+                      onChange={(e) => setNewKeyword(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addCustomKeyword();
+                        }
+                      }}
+                      placeholder="Type keyword and press Enter..."
+                      className="flex-grow text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={addCustomKeyword}
+                      className="px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-white bg-zinc-800 hover:bg-zinc-950 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Add
+                    </button>
                   </div>
                 </div>
-              )}
 
-              {/* Add Custom keyword input */}
-              <div className="space-y-1.5">
-                <span className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider block font-mono">Add Custom Keyword</span>
-                <div className="flex items-center space-x-2 max-w-md">
-                  <input
-                    type="text"
-                    value={newKeyword}
-                    onChange={(e) => setNewKeyword(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addCustomKeyword();
-                      }
-                    }}
-                    placeholder="Type keyword and press Enter..."
-                    className="flex-grow text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={addCustomKeyword}
-                    className="px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-white bg-zinc-800 hover:bg-zinc-950 rounded-lg transition-colors cursor-pointer"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
-
-              {/* Selected custom keyword tags list */}
-              {selectedTags.some(t => typeof t === 'string') && (
-                <div className="space-y-1.5">
-                  <span className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider block font-mono">Custom Keywords</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedTags.filter(t => typeof t === 'string').map((keyword, index) => (
-                      <span 
-                        key={index}
-                        className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-[10px] font-bold rounded-lg bg-[var(--accent-gold)]/10 text-amber-800 border border-[var(--accent-gold)]/30"
-                      >
-                        <span>{keyword}</span>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTags(selectedTags.filter(t => t !== keyword))}
-                          className="hover:text-red-750 transition-colors cursor-pointer"
+                {/* Selected custom keyword tags list */}
+                {selectedTags.some(t => typeof t === 'string') && (
+                  <div className="space-y-1.5">
+                    <span className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider block font-mono">Custom Keywords</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedTags.filter(t => typeof t === 'string').map((keyword, index) => (
+                        <span 
+                          key={index}
+                          className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-[10px] font-bold rounded-lg bg-[var(--accent-gold)]/10 text-amber-800 border border-[var(--accent-gold)]/30"
                         >
-                          <X className="w-3 h-3" />
-                        </button>
+                          <span>{keyword}</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTags(selectedTags.filter(t => t !== keyword))}
+                            className="hover:text-red-750 transition-colors cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Abstract Box */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                Abstract Synopsis *
+              </label>
+
+              {/* Abstract Toggler */}
+              <div className="flex items-center space-x-3 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setAbstractMode('visual')}
+                  className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                    abstractMode === 'visual'
+                      ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
+                      : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300'
+                  }`}
+                >
+                  Visual Editor
+                </button>
+                <span className="text-zinc-300 dark:text-zinc-700">|</span>
+                <button
+                  type="button"
+                  onClick={() => setAbstractMode('html')}
+                  className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                    abstractMode === 'html'
+                      ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
+                      : 'text-zinc-400 hover:text-zinc-655 dark:hover:text-zinc-300'
+                  }`}
+                >
+                  Raw HTML Body
+                </button>
+              </div>
+            </div>
+
+            <div className="min-h-[200px] flex flex-col relative">
+              {abstractMode === 'visual' ? (
+                <div className="flex-grow flex flex-col relative">
+                  <RichEditor
+                    value={abstract}
+                    onChange={(content) => setAbstract(content)}
+                    placeholder="Enter abstract text..."
+                  />
+                </div>
+              ) : (
+                <div className="flex-grow flex flex-col relative">
+                  <textarea
+                    value={abstract}
+                    onChange={(e) => setAbstract(e.target.value)}
+                    placeholder="<!-- Abstract HTML content -->"
+                    rows={6}
+                    style={{ color: '#ffffff' }}
+                    className="w-full flex-grow font-mono text-xs p-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                  />
+                </div>
+              )}
+              {validationErrors.abstract && (
+                <p className="text-[10px] font-semibold text-red-500 mt-1">{validationErrors.abstract}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Full Text Box */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                Full Text Content *
+              </label>
+
+              {/* Full Text Toggler */}
+              <div className="flex items-center space-x-3 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setFullTextMode('visual')}
+                  className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                    fullTextMode === 'visual'
+                      ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
+                      : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300'
+                  }`}
+                >
+                  Visual Editor
+                </button>
+                <span className="text-zinc-300 dark:text-zinc-700">|</span>
+                <button
+                  type="button"
+                  onClick={() => setFullTextMode('html')}
+                  className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                    fullTextMode === 'html'
+                      ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
+                      : 'text-zinc-400 hover:text-zinc-655 dark:hover:text-zinc-300'
+                  }`}
+                >
+                  Raw HTML Body
+                </button>
+              </div>
+            </div>
+
+            <div className="min-h-[300px] flex flex-col relative">
+              {fullTextMode === 'visual' ? (
+                <div className="flex-grow flex flex-col relative">
+                  <RichEditor
+                    value={fullText}
+                    onChange={(content) => setFullText(content)}
+                    placeholder="Enter full text content..."
+                  />
+                </div>
+              ) : (
+                <div className="flex-grow flex flex-col relative">
+                  <textarea
+                    value={fullText}
+                    onChange={(e) => setFullText(e.target.value)}
+                    placeholder="<!-- Full Text HTML content -->"
+                    rows={12}
+                    style={{ color: '#ffffff' }}
+                    className="w-full flex-grow font-mono text-xs p-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                  />
+                </div>
+              )}
+              {validationErrors.fullText && (
+                <p className="text-[10px] font-semibold text-red-500 mt-1">{validationErrors.fullText}</p>
+              )}
+            </div>
+          </div>
+
+          {/* PDF File upload & Auto Approve */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-200">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Replace PDF Document (Optional)</label>
+              <div className="flex items-center space-x-3">
+                <label className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer border border-zinc-300">
+                  <Upload className="w-4 h-4" />
+                  <span>Choose PDF</span>
+                  <input 
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-xs text-zinc-500 font-mono font-medium truncate max-w-xs">{pdfFileName || 'No file selected'}</span>
+              </div>
+              {existingPdfPath && (
+                <p className="text-[10px] text-emerald-600 font-bold font-mono">✓ Active PDF Link: {existingPdfPath}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Collapsible SEO Panel */}
+          {canEditSeo && (
+            <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+              <button
+                type="button"
+                onClick={() => setSeoExpanded(!seoExpanded)}
+                className="w-full flex items-center justify-between font-bold text-zinc-900 focus:outline-none"
+              >
+                <span className="flex items-center space-x-2 text-xs uppercase tracking-wider text-zinc-500 font-mono">
+                  <Eye className="w-4 h-4 text-[var(--accent-gold)]" />
+                  <span>SEO & Metadata Settings</span>
+                </span>
+                <span className="text-xs font-semibold text-[var(--accent)] font-mono uppercase tracking-wider">
+                  {seoExpanded ? 'Collapse' : 'Expand'}
+                </span>
+              </button>
+
+              {seoExpanded && (
+                <div className="pt-4 border-t border-zinc-100 space-y-4 animate-in fade-in duration-300">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">SEO Title</label>
+                    <input
+                      type="text"
+                      value={seoTitle}
+                      onChange={(e) => setSeoTitle(e.target.value)}
+                      placeholder="Leave blank to auto-generate (Article Title | Magazine Title)"
+                      maxLength={255}
+                      className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block font-mono">Meta Description</label>
+                      <span className="text-[10px] font-semibold text-zinc-400 font-mono">
+                        {seoDescription.length}/500
                       </span>
-                    ))}
+                    </div>
+                    <textarea
+                      value={seoDescription}
+                      onChange={(e) => setSeoDescription(e.target.value.slice(0, 500))}
+                      placeholder="Summarize the article content for search engines..."
+                      rows={3}
+                      className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Meta Keywords</label>
+                    <input
+                      type="text"
+                      value={seoKeywords}
+                      onChange={(e) => setSeoKeywords(e.target.value)}
+                      placeholder="e.g. deep learning, optimizers, neural networks"
+                      maxLength={500}
+                      className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                    />
                   </div>
                 </div>
               )}
             </div>
           )}
-        </div>
 
-        {/* Abstract Box */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Abstract Synopsis *
-            </label>
+          {/* Submit workspace buttons */}
+          <div className="flex items-center justify-end space-x-3 pt-6 border-t border-zinc-200">
+            <Link 
+              href="/admin/articles"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[var(--accent)] hover:bg-[var(--accent)]/95 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Updating Article...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Update Article</span>
+                </>
+              )}
+            </button>
+          </div>
 
-            {/* Abstract Toggler */}
-            <div className="inline-flex rounded-xl p-1 bg-zinc-100 border border-zinc-200/50">
-              <button
-                type="button"
-                onClick={() => setAbstractMode('visual')}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
-                  abstractMode === 'visual'
-                    ? 'bg-white shadow text-[var(--accent)]'
-                    : 'text-zinc-500 hover:text-zinc-800'
-                }`}
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Visual</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setAbstractMode('html')}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
-                  abstractMode === 'html'
-                    ? 'bg-white shadow text-[var(--accent)]'
-                    : 'text-zinc-500 hover:text-zinc-800'
-                }`}
-              >
-                <Code className="w-3.5 h-3.5" />
-                <span>HTML</span>
-              </button>
+        </form>
+      ) : (
+        <div className="space-y-6">
+          {canEditSeo && (
+            <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between font-bold text-zinc-900 border-b border-zinc-105 pb-3">
+                <span className="flex items-center space-x-2 text-xs uppercase tracking-wider text-zinc-500 font-mono">
+                  <Eye className="w-4 h-4 text-[var(--accent-gold)]" />
+                  <span>SEO & Metadata Settings</span>
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">SEO Title</label>
+                  <input
+                    type="text"
+                    value={seoTitle}
+                    onChange={(e) => setSeoTitle(e.target.value)}
+                    placeholder="Leave blank to auto-generate (Article Title | Magazine Title)"
+                    maxLength={255}
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Meta Description</label>
+                    <span className="text-[10px] font-semibold text-zinc-400 font-mono">
+                      {seoDescription.length}/500
+                    </span>
+                  </div>
+                  <textarea
+                    value={seoDescription}
+                    onChange={(e) => setSeoDescription(e.target.value.slice(0, 500))}
+                    placeholder="Summarize the article content for search engines..."
+                    rows={4}
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Meta Keywords</label>
+                  <input
+                    type="text"
+                    value={seoKeywords}
+                    onChange={(e) => setSeoKeywords(e.target.value)}
+                    placeholder="e.g. deep learning, optimizers, neural networks"
+                    maxLength={500}
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                  />
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveSeoOnly}
+                    disabled={savingSeo}
+                    className="inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-white bg-[var(--accent)] hover:bg-[var(--accent)]/95 shadow-sm transition-colors cursor-pointer"
+                  >
+                    {savingSeo ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Updating SEO...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>Update SEO Metadata</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="min-h-[200px] flex flex-col relative">
-            {abstractMode === 'visual' ? (
-              <div className="flex-grow flex flex-col relative">
-                <RichEditor
-                  value={abstract}
-                  onChange={(content) => setAbstract(content)}
-                  placeholder="Enter abstract text..."
-                />
-              </div>
-            ) : (
-              <div className="flex-grow flex flex-col relative">
-                <textarea
-                  value={abstract}
-                  onChange={(e) => setAbstract(e.target.value)}
-                  placeholder="<!-- Abstract HTML content -->"
-                  rows={6}
-                  style={{ color: '#ffffff' }}
-                  className="w-full flex-grow font-mono text-xs p-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                />
-              </div>
-            )}
-            {validationErrors.abstract && (
-              <p className="text-[10px] font-semibold text-red-500 mt-1">{validationErrors.abstract}</p>
-            )}
+          <div className="flex items-center justify-between pt-4 border-t border-zinc-100">
+            <Link 
+              href="/admin/articles"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer"
+            >
+              Back to Articles
+            </Link>
           </div>
         </div>
-
-        {/* Full Text Box */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Full Text Content *
-            </label>
-
-            {/* Full Text Toggler */}
-            <div className="inline-flex rounded-xl p-1 bg-zinc-100 border border-zinc-200/50">
-              <button
-                type="button"
-                onClick={() => setFullTextMode('visual')}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
-                  fullTextMode === 'visual'
-                    ? 'bg-white shadow text-[var(--accent)]'
-                    : 'text-zinc-500 hover:text-zinc-800'
-                }`}
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Visual</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFullTextMode('html')}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
-                  fullTextMode === 'html'
-                    ? 'bg-white shadow text-[var(--accent)]'
-                    : 'text-zinc-500 hover:text-zinc-800'
-                }`}
-              >
-                <Code className="w-3.5 h-3.5" />
-                <span>HTML</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="min-h-[300px] flex flex-col relative">
-            {fullTextMode === 'visual' ? (
-              <div className="flex-grow flex flex-col relative">
-                <RichEditor
-                  value={fullText}
-                  onChange={(content) => setFullText(content)}
-                  placeholder="Enter full text content..."
-                />
-              </div>
-            ) : (
-              <div className="flex-grow flex flex-col relative">
-                <textarea
-                  value={fullText}
-                  onChange={(e) => setFullText(e.target.value)}
-                  placeholder="<!-- Full Text HTML content -->"
-                  rows={12}
-                  style={{ color: '#ffffff' }}
-                  className="w-full flex-grow font-mono text-xs p-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                />
-              </div>
-            )}
-            {validationErrors.fullText && (
-              <p className="text-[10px] font-semibold text-red-500 mt-1">{validationErrors.fullText}</p>
-            )}
-          </div>
-        </div>
-
-        {/* PDF File upload & Auto Approve */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-200">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Replace PDF Document (Optional)</label>
-            <div className="flex items-center space-x-3">
-              <label className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer border border-zinc-300">
-                <Upload className="w-4 h-4" />
-                <span>Choose PDF</span>
-                <input 
-                  type="file"
-                  accept="application/pdf"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </label>
-              <span className="text-xs text-zinc-500 font-mono font-medium truncate max-w-xs">{pdfFileName || 'No file selected'}</span>
-            </div>
-            {existingPdfPath && (
-              <p className="text-[10px] text-emerald-600 font-bold font-mono">✓ Active PDF Link: {existingPdfPath}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Submit workspace buttons */}
-        <div className="flex items-center justify-end space-x-3 pt-6 border-t border-zinc-200">
-          <Link 
-            href="/admin/articles"
-            className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[var(--accent)] hover:bg-[var(--accent)]/95 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Updating Article...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Update Article</span>
-              </>
-            )}
-          </button>
-        </div>
-
-      </form>
+      )}
     </div>
   );
 }

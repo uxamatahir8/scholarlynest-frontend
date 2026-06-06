@@ -4,17 +4,30 @@ import React, { useState, useEffect } from 'react';
 import { Database, FileCode, CheckCircle, HelpCircle, Layers, Code } from 'lucide-react';
 import PageBanner from '../../components/PageBanner';
 import api from '../../utils/api';
+import SeoHead from '../../components/SeoHead';
 
 export default function ManifestsPage() {
   const [activeSchema, setActiveSchema] = useState('highwire');
   const [dynamicHtml, setDynamicHtml] = useState(null);
+  const [seoData, setSeoData] = useState({
+    title: 'Metadata Manifests | ScholarlyNest',
+    description: 'Dynamic schema injection engines configured for global international academic indexation and open search compliance.',
+    keywords: 'manifests, oai-pmh, metadata, indexation, scholarlynest'
+  });
 
   useEffect(() => {
     let active = true;
     api.get('/cms/manifests')
       .then(res => {
-        if (active && res.data && res.data.content_html) {
-          setDynamicHtml(res.data.content_html);
+        if (active && res.data) {
+          if (res.data.content_html) {
+            setDynamicHtml(res.data.content_html);
+          }
+          setSeoData({
+            title: res.data.seo_title,
+            description: res.data.seo_description,
+            keywords: res.data.seo_keywords
+          });
         }
       })
       .catch(err => {
@@ -88,7 +101,12 @@ export default function ManifestsPage() {
 
   return (
     <div className="bg-[var(--background)] min-height-screen pb-12 transition-premium">
-      <title>Metadata Manifests  - ScholarlyNest</title>
+      <SeoHead
+        title={seoData.title}
+        description={seoData.description}
+        keywords={seoData.keywords}
+        ogUrl="/manifests"
+      />
       <PageBanner 
         title="Metadata Manifests" 
         description="Dynamic schema injection engines configured for global international academic indexation and open search compliance."

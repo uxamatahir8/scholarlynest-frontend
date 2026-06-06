@@ -49,6 +49,12 @@ export default function RbacManager() {
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleDisplayName, setNewRoleDisplayName] = useState('');
 
+  const [validationErrors, setValidationErrors] = useState({});
+
+  useEffect(() => {
+    setValidationErrors({});
+  }, [showCreateModal, showCreateRoleModal]);
+
   // Fetch all RBAC records from the backend
   const fetchData = async () => {
     setLoading(true);
@@ -116,8 +122,17 @@ export default function RbacManager() {
   // Create custom Role
   const handleCreateRole = async (e) => {
     e.preventDefault();
-    if (!newRoleName.trim() || !newRoleDisplayName.trim()) {
-      toast('All role fields are required.', 'error');
+    setValidationErrors({});
+    const errors = {};
+    if (!newRoleDisplayName.trim()) {
+      errors.newRoleDisplayName = 'Role Display Name is required.';
+    }
+    if (!newRoleName.trim()) {
+      errors.newRoleName = 'Role Identifier is required.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
       return;
     }
     setUpdating(true);
@@ -224,12 +239,22 @@ export default function RbacManager() {
   // Create User Handler (assign single role_id)
   const handleCreateUser = async (e) => {
     e.preventDefault();
-    if (!newUserName.trim() || !newUserEmail.trim()) {
-      toast('Name and email are required.', 'error');
-      return;
+    setValidationErrors({});
+    const errors = {};
+    if (!newUserName.trim()) {
+      errors.newUserName = 'Name is required.';
+    }
+    if (!newUserEmail.trim()) {
+      errors.newUserEmail = 'Email is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newUserEmail.trim())) {
+      errors.newUserEmail = 'A valid email address is required.';
     }
     if (!newUserRoleId) {
-      toast('Please assign a default role to the user.', 'error');
+      errors.newUserRoleId = 'Role assignment is required.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
       return;
     }
     setUpdating(true);
@@ -921,39 +946,75 @@ export default function RbacManager() {
                 <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Name</label>
                 <input
                   type="text"
-                  required
                   value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
+                  onChange={(e) => {
+                    setNewUserName(e.target.value);
+                    if (validationErrors.newUserName) {
+                      setValidationErrors(prev => {
+                        const copy = { ...prev };
+                        delete copy.newUserName;
+                        return copy;
+                      });
+                    }
+                  }}
                   placeholder="John Doe"
-                  className="w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border border-[var(--muted-border)] rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)]"
+                  className={`w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)] ${validationErrors.newUserName ? 'border-red-500 focus:border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-[var(--muted-border)]'
+                    }`}
                 />
+                {validationErrors.newUserName && (
+                  <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newUserName}</span>
+                )}
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Academic Email</label>
                 <input
                   type="email"
-                  required
                   value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  onChange={(e) => {
+                    setNewUserEmail(e.target.value);
+                    if (validationErrors.newUserEmail) {
+                      setValidationErrors(prev => {
+                        const copy = { ...prev };
+                        delete copy.newUserEmail;
+                        return copy;
+                      });
+                    }
+                  }}
                   placeholder="johndoe@university.edu"
-                  className="w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border border-[var(--muted-border)] rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)]"
+                  className={`w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)] ${validationErrors.newUserEmail ? 'border-red-500 focus:border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-[var(--muted-border)]'
+                    }`}
                 />
+                {validationErrors.newUserEmail && (
+                  <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newUserEmail}</span>
+                )}
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] block">Assign Role</label>
                 <select
                   value={newUserRoleId}
-                  onChange={(e) => setNewUserRoleId(e.target.value)}
-                  required
-                  className="w-full text-xs font-semibold px-3 py-2 bg-[var(--foreground)]/5 border border-[var(--muted-border)] rounded-md focus:outline-none text-[var(--foreground)] cursor-pointer"
+                  onChange={(e) => {
+                    setNewUserRoleId(e.target.value);
+                    if (validationErrors.newUserRoleId) {
+                      setValidationErrors(prev => {
+                        const copy = { ...prev };
+                        delete copy.newUserRoleId;
+                        return copy;
+                      });
+                    }
+                  }}
+                  className={`w-full text-xs font-semibold px-3 py-2 bg-[var(--foreground)]/5 border rounded-md focus:outline-none text-[var(--foreground)] cursor-pointer ${validationErrors.newUserRoleId ? 'border-red-500 focus:border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-[var(--muted-border)]'
+                    }`}
                 >
                   <option value="">Select access level...</option>
                   {roles.map(r => (
                     <option key={r.id} value={r.id}>{r.display_name}</option>
                   ))}
                 </select>
+                {validationErrors.newUserRoleId && (
+                  <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newUserRoleId}</span>
+                )}
               </div>
             </div>
 
@@ -1009,29 +1070,48 @@ export default function RbacManager() {
                 <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Role Display Name</label>
                 <input
                   type="text"
-                  required
                   value={newRoleDisplayName}
                   onChange={(e) => {
                     setNewRoleDisplayName(e.target.value);
-                    if (!newRoleName) {
-                      setNewRoleName(e.target.value.toLowerCase().replace(/\s+/g, '-'));
+                    if (validationErrors.newRoleDisplayName) {
+                      setValidationErrors(prev => {
+                        const copy = { ...prev };
+                        delete copy.newRoleDisplayName;
+                        return copy;
+                      });
                     }
                   }}
                   placeholder="Senior Reviewer"
-                  className="w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border border-[var(--muted-border)] rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)]"
+                  className={`w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)] ${validationErrors.newRoleDisplayName ? 'border-red-500 focus:border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-[var(--muted-border)]'
+                    }`}
                 />
+                {validationErrors.newRoleDisplayName && (
+                  <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newRoleDisplayName}</span>
+                )}
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Role Identifier</label>
                 <input
                   type="text"
-                  required
                   value={newRoleName}
-                  onChange={(e) => setNewRoleName(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                  onChange={(e) => {
+                    setNewRoleName(e.target.value.toLowerCase().replace(/\s+/g, '-'));
+                    if (validationErrors.newRoleName) {
+                      setValidationErrors(prev => {
+                        const copy = { ...prev };
+                        delete copy.newRoleName;
+                        return copy;
+                      });
+                    }
+                  }}
                   placeholder="senior-reviewer"
-                  className="w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border border-[var(--muted-border)] rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)]"
+                  className={`w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)] ${validationErrors.newRoleName ? 'border-red-500 focus:border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-[var(--muted-border)]'
+                    }`}
                 />
+                {validationErrors.newRoleName && (
+                  <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newRoleName}</span>
+                )}
               </div>
             </div>
 

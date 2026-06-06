@@ -8,6 +8,7 @@ import { useToast } from '../../context/ToastContext';
 import { Lock, Mail, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import Breadcrumbs from '../../components/Breadcrumbs';
 import api from '../../utils/api';
+import SeoHead from '../../components/SeoHead';
 
 export default function Login() {
   const { user, login, loginWithPayload, loading: authLoading } = useAuth();
@@ -152,7 +153,11 @@ export default function Login() {
 
   return (
     <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
-      <title>Login  - ScholarlyNest</title>
+      <SeoHead
+        title="Login — ScholarlyNest"
+        description="Sign in to your ScholarlyNest account to access your publishing workspace, write articles, or review submissions."
+        ogUrl="/login"
+      />
       {/* <Breadcrumbs customLabels={{ login: 'Session Login' }} /> */}
 
       <div className="bg-white dark:bg-[#1c1c1b] border border-zinc-200/80 dark:border-zinc-800/60 rounded-lg p-8 shadow-sm space-y-6">

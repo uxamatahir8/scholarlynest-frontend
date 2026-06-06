@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import api from '../../utils/api';
 import GlobalSearchInput from '../../components/home/GlobalSearchInput';
+import SeoHead from '../../components/SeoHead';
+import Pagination from '../../components/ui/Pagination';
 
 function SearchResultsContent() {
   const searchParams = useSearchParams();
@@ -188,6 +190,11 @@ function SearchResultsContent() {
 
   return (
     <div className="min-h-screen bg-[var(--background)] pb-24 font-sans text-left">
+      <SeoHead
+        title="Search — ScholarlyNest"
+        description="Search articles, magazines, and pages on ScholarlyNest scientific dissemination platform."
+        ogUrl="/search"
+      />
       {/* 1. Page Header Banner */}
       <div className="relative pt-32 pb-16 bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-900 z-20">
         <div className="absolute inset-0 bg-mesh opacity-20 pointer-events-none" />
@@ -273,26 +280,15 @@ function SearchResultsContent() {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between pt-6 border-t border-zinc-200 dark:border-zinc-850">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 disabled:opacity-50 cursor-pointer"
-                >
-                  Previous
-                </button>
-                <span className="text-xs font-mono font-bold text-[var(--muted)]">
+              <div className="flex flex-col items-center gap-2 pt-6 border-t border-zinc-200 dark:border-zinc-850">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-550 font-mono">
                   Page {currentPage} of {totalPages}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 disabled:opacity-50 cursor-pointer"
-                >
-                  Next
-                </button>
               </div>
             )}
           </div>

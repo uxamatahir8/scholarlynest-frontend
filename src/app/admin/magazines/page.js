@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import Pagination from '../../../components/ui/Pagination';
 
 const QuillEditor = dynamic(() => import('../../../components/ui/QuillEditor'), { 
   ssr: false,
@@ -46,6 +47,14 @@ export default function AdminMagazines() {
   const [description, setDescription] = useState('');
   const [aboutText, setAboutText] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // SEO-only states
+  const [seoTitle, setSeoTitle] = useState('');
+  const [seoDescription, setSeoDescription] = useState('');
+  const [seoKeywords, setSeoKeywords] = useState('');
+  const [isSeoModalOpen, setIsSeoModalOpen] = useState(false);
+  const [selectedMagazineSlug, setSelectedMagazineSlug] = useState(null);
+  const [savingSeo, setSavingSeo] = useState(false);
 
   // Confirmation modal states
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -84,6 +93,9 @@ export default function AdminMagazines() {
     setCoverImageFileName('');
     setDescription('');
     setAboutText('');
+    setSeoTitle('');
+    setSeoDescription('');
+    setSeoKeywords('');
     setIsModalOpen(true);
   };
 
@@ -96,7 +108,18 @@ export default function AdminMagazines() {
     setCoverImageFileName('');
     setDescription(mag.description || '');
     setAboutText(mag.about_text || '');
+    setSeoTitle(mag.seo_title || '');
+    setSeoDescription(mag.seo_description || '');
+    setSeoKeywords(mag.seo_keywords || '');
     setIsModalOpen(true);
+  };
+
+  const openSeoModal = (mag) => {
+    setSelectedMagazineSlug(mag.slug);
+    setSeoTitle(mag.seo_title || '');
+    setSeoDescription(mag.seo_description || '');
+    setSeoKeywords(mag.seo_keywords || '');
+    setIsSeoModalOpen(true);
   };
 
   // Submit create or edit form
@@ -118,6 +141,12 @@ export default function AdminMagazines() {
         formData.append('cover_image', coverImageFile);
       } else {
         formData.append('cover_image', coverImage || '');
+      }
+
+      if (hasPermission('seo.magazines')) {
+        formData.append('seo_title', seoTitle || '');
+        formData.append('seo_description', seoDescription || '');
+        formData.append('seo_keywords', seoKeywords || '');
       }
 
       if (modalMode === 'create') {
@@ -142,6 +171,26 @@ export default function AdminMagazines() {
       toast('Failed to save magazine modifications.', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSeoSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setSavingSeo(true);
+      await api.patch(`/admin/magazines/${selectedMagazineSlug}/seo`, {
+        seo_title: seoTitle,
+        seo_description: seoDescription,
+        seo_keywords: seoKeywords,
+      });
+      toast('Magazine SEO metadata updated successfully.', 'success');
+      setIsSeoModalOpen(false);
+      fetchMagazines();
+    } catch (err) {
+      console.error(err);
+      toast('Failed to update SEO metadata.', 'error');
+    } finally {
+      setSavingSeo(false);
     }
   };
 
@@ -289,7 +338,7 @@ export default function AdminMagazines() {
                 </div>
 
                 {/* Footer controls */}
-                {(hasPermission('magazines.edit') || hasPermission('magazines.delete')) && (
+                {(hasPermission('magazines.edit') || hasPermission('magazines.delete') || hasPermission('seo.magazines')) && (
                   <div className="px-5 py-3.5 bg-black/5 dark:bg-white/5 border-t border-[var(--muted-border)]/60 flex items-center justify-between">
                     {hasPermission('magazines.edit') ? (
                       <button
@@ -299,7 +348,15 @@ export default function AdminMagazines() {
                         <Edit2 className="w-3 h-3" />
                         <span>Edit</span>
                       </button>
-                    ) : <div />}
+                    ) : (hasPermission('seo.magazines') ? (
+                      <button
+                        onClick={() => openSeoModal(mag)}
+                        className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>Edit SEO</span>
+                      </button>
+                    ) : <div />)}
                     
                     {hasPermission('magazines.delete') && (
                       <button
@@ -317,51 +374,16 @@ export default function AdminMagazines() {
           </div>
 
           {/* Centered Pagination Controls with appropriate spacing */}
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center space-x-2 pt-12 pb-6 animate-in fade-in duration-300">
-              <button
-                type="button"
-                onClick={() => {
-                  setPage((prev) => Math.max(prev - 1, 1));
-                  if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                disabled={page === 1}
-                className="inline-flex items-center justify-center p-2.5 rounded-xl border border-[var(--muted-border)] bg-[var(--card-bg)] hover:bg-[var(--foreground)]/5 disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer text-[var(--foreground)]"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => {
-                    setPage(p);
-                    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className={`inline-flex items-center justify-center w-10 h-10 rounded-xl border font-mono text-xs font-bold transition-all cursor-pointer ${
-                    page === p
-                      ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-md'
-                      : 'border-[var(--muted-border)] bg-[var(--card-bg)] hover:bg-[var(--foreground)]/5 text-[var(--foreground)]'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => {
-                  setPage((prev) => Math.min(prev + 1, totalPages));
-                  if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                disabled={page === totalPages}
-                className="inline-flex items-center justify-center p-2.5 rounded-xl border border-[var(--muted-border)] bg-[var(--card-bg)] hover:bg-[var(--foreground)]/5 disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer text-[var(--foreground)]"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          )}
+          <div className="pt-12 pb-6 flex justify-center">
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={(p) => {
+                setPage(p);
+                if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
+          </div>
         </>
       )}
 
@@ -452,6 +474,42 @@ export default function AdminMagazines() {
                 </div>
               </div>
 
+              {hasPermission('seo.magazines') && (
+                <div className="space-y-3 p-3 bg-black/5 dark:bg-white/5 border border-[var(--muted-border)]/50 rounded-xl">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] font-mono block">SEO Settings</span>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-[var(--muted)] font-mono block">SEO Title</label>
+                    <input 
+                      type="text"
+                      value={seoTitle}
+                      onChange={(e) => setSeoTitle(e.target.value)}
+                      placeholder="Leave blank to auto-generate"
+                      className="w-full text-xs font-semibold px-3 py-2 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-[var(--muted)] font-mono block font-mono">Meta Description</label>
+                    <textarea 
+                      value={seoDescription}
+                      onChange={(e) => setSeoDescription(e.target.value)}
+                      placeholder="Enter meta description..."
+                      rows={2}
+                      className="w-full text-xs font-semibold px-3 py-2 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-[var(--muted)] font-mono block font-mono">Meta Keywords</label>
+                    <input 
+                      type="text"
+                      value={seoKeywords}
+                      onChange={(e) => setSeoKeywords(e.target.value)}
+                      placeholder="e.g. computing, telemetry, registry"
+                      className="w-full text-xs font-semibold px-3 py-2 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Submit panel */}
               <div className="pt-4 border-t border-[var(--muted-border)]/65 flex items-center justify-end space-x-3">
                 <Button
@@ -476,6 +534,88 @@ export default function AdminMagazines() {
                     <Save className="w-4 h-4" />
                   )}
                   <span>{modalMode === 'create' ? 'Catalog Issue' : 'Save Changes'}</span>
+                </Button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SEO ONLY MODAL OVERLAY */}
+      {isSeoModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="glass-panel bg-[var(--card-bg)] text-[var(--foreground)] rounded-2xl border border-[var(--muted-border)] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[var(--muted-border)]/60 flex items-center justify-between bg-black/5 dark:bg-white/5">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--foreground)]">
+                Edit Magazine SEO Metadata
+              </h3>
+              <button 
+                onClick={() => setIsSeoModalOpen(false)} 
+                className="p-1.5 rounded-lg text-[var(--muted)] hover:bg-[var(--foreground)]/5 hover:text-[var(--foreground)] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSeoSubmit} className="p-6 space-y-4 overflow-y-auto flex-grow text-xs">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] font-mono block">SEO Title</label>
+                <input 
+                  type="text"
+                  value={seoTitle}
+                  onChange={(e) => setSeoTitle(e.target.value)}
+                  placeholder="Leave blank to auto-generate"
+                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] font-mono block">Meta Description</label>
+                <textarea 
+                  value={seoDescription}
+                  onChange={(e) => setSeoDescription(e.target.value)}
+                  placeholder="Enter meta description..."
+                  rows={4}
+                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] font-mono block">Meta Keywords</label>
+                <input 
+                  type="text"
+                  value={seoKeywords}
+                  onChange={(e) => setSeoKeywords(e.target.value)}
+                  placeholder="e.g. computing, telemetry, registry"
+                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                />
+              </div>
+
+              {/* Submit panel */}
+              <div className="pt-4 border-t border-[var(--muted-border)]/65 flex items-center justify-end space-x-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsSeoModalOpen(false)}
+                  className="text-xs border border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={savingSeo}
+                  variant="primary"
+                  size="sm"
+                  className="inline-flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
+                >
+                  {savingSeo ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  <span>Save SEO</span>
                 </Button>
               </div>
 

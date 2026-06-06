@@ -5,6 +5,7 @@ import { Mail, Phone, MapPin, Send, HelpCircle, Building } from 'lucide-react';
 
 import PageBanner from '../../components/PageBanner';
 import { Input, Textarea, Select as CustomSelect, Label } from '../../components/ui/Input';
+import SeoHead from '../../components/SeoHead';
 import api from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 
@@ -78,7 +79,11 @@ export default function ContactPage() {
 
   return (
     <div className="bg-[var(--background)] min-height-screen transition-premium">
-      <title>Contact Us  - ScholarlyNest</title>
+      <SeoHead
+        title="Contact Us — ScholarlyNest"
+        description="Have questions about manuscript submissions, review status, open-access licensing models, or institutional partnership integrations? Send us an inquiry."
+        ogUrl="/contact"
+      />
       
       <PageBanner 
         title="Connect with our Editorial Board" 

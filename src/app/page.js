@@ -12,6 +12,7 @@ import MagazineCarousel from '../components/ui/MagazineCarousel';
 import RecentArticles from '../components/ui/RecentArticles';
 import GlobalSearchInput from '../components/home/GlobalSearchInput';
 import api from '../utils/api';
+import SeoHead from '../components/SeoHead';
 
 export default function Home() {
   const [activeFaq, setActiveFaq] = useState(null);
@@ -53,7 +54,11 @@ export default function Home() {
 
   return (
     <div className="flex flex-col w-full min-h-screen">
-      <title>Home - ScholarlyNest</title>
+      <SeoHead
+        title="ScholarlyNest — Academic Publishing Platform"
+        description="ScholarlyNest connects researchers, editors, and institutions in a high-velocity, open-access publication pipeline. Secure, pristine, and optimized for immediate global indexation."
+        ogUrl="/"
+      />
 
       {/* 1. IMMERSIVE HERO WITH MESH GRADIENT */}
       <section className="relative w-full min-h-screen pt-40 pb-24 flex items-center justify-center z-20">

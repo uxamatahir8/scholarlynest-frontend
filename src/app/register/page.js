@@ -8,6 +8,7 @@ import { useToast } from '../../context/ToastContext';
 import { Lock, Mail, User as UserIcon, Loader2, AlertCircle, Eye, EyeOff, Check, X } from 'lucide-react';
 import Breadcrumbs from '../../components/Breadcrumbs';
 import api from '../../utils/api';
+import SeoHead from '../../components/SeoHead';
 
 export default function Register() {
   const { user, register: registerUser, loginWithPayload, loading: authLoading } = useAuth();
@@ -193,7 +194,11 @@ export default function Register() {
 
   return (
     <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
-      <title>Register  - ScholarlyNest</title>
+      <SeoHead
+        title="Register — ScholarlyNest"
+        description="Create your academic profile to write papers, submit manuscripts, and join the ScholarlyNest research community."
+        ogUrl="/register"
+      />
       {/* <Breadcrumbs customLabels={{ register: 'Scholar Registration' }} /> */}
 
       <div className="bg-white dark:bg-[#1c1c1b] border border-zinc-200/80 dark:border-zinc-800/60 rounded-lg p-8 shadow-sm space-y-6">

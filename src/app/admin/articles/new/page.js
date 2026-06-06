@@ -6,10 +6,11 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { 
   ArrowLeft, FileText, Check, Loader2, AlertCircle, 
-  Code, Edit3, Save, ChevronRight, BookOpen, Upload, Tag as TagIcon, X 
+  Code, Edit3, Save, ChevronRight, BookOpen, Upload, Tag as TagIcon, X, Eye
 } from 'lucide-react';
 import api from '../../../../utils/api';
 import { useToast } from '../../../../context/ToastContext';
+import { useAuth } from '../../../../context/AuthContext';
 
 const RichEditor = dynamic(() => import('../../../../components/ui/RichEditor'), {
   ssr: false,
@@ -24,6 +25,8 @@ const RichEditor = dynamic(() => import('../../../../components/ui/RichEditor'),
 export default function AdminNewArticle() {
   const router = useRouter();
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
+  const canEditSeo = hasPermission ? hasPermission('seo.articles') : false;
 
   const [magazines, setMagazines] = useState([]);
   const [loadingMagazines, setLoadingMagazines] = useState(true);
@@ -36,6 +39,11 @@ export default function AdminNewArticle() {
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfFileName, setPdfFileName] = useState('');
   const [autoApprove, setAutoApprove] = useState(true);
+
+  const [seoTitle, setSeoTitle] = useState('');
+  const [seoDescription, setSeoDescription] = useState('');
+  const [seoKeywords, setSeoKeywords] = useState('');
+  const [seoExpanded, setSeoExpanded] = useState(false);
 
   // Editor modes ('visual' | 'html')
   const [abstractMode, setAbstractMode] = useState('visual');
@@ -165,6 +173,11 @@ export default function AdminNewArticle() {
         formData.append('pdf_file', pdfFile);
       }
       formData.append('tags', JSON.stringify(selectedTags));
+      if (canEditSeo) {
+        formData.append('seo_title', seoTitle);
+        formData.append('seo_description', seoDescription);
+        formData.append('seo_keywords', seoKeywords);
+      }
 
       const response = await api.post('/articles', formData, {
         headers: {
@@ -365,30 +378,29 @@ export default function AdminNewArticle() {
             </label>
 
             {/* Abstract Toggler */}
-            <div className="inline-flex rounded-xl p-1 bg-zinc-100 border border-zinc-200/50">
+            <div className="flex items-center space-x-3 text-xs">
               <button
                 type="button"
                 onClick={() => setAbstractMode('visual')}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
+                className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
                   abstractMode === 'visual'
-                    ? 'bg-white shadow text-[var(--accent)]'
-                    : 'text-zinc-500 hover:text-zinc-800'
+                    ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
+                    : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300'
                 }`}
               >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Visual</span>
+                Visual Editor
               </button>
+              <span className="text-zinc-300 dark:text-zinc-700">|</span>
               <button
                 type="button"
                 onClick={() => setAbstractMode('html')}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
+                className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
                   abstractMode === 'html'
-                    ? 'bg-white shadow text-[var(--accent)]'
-                    : 'text-zinc-500 hover:text-zinc-800'
+                    ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
+                    : 'text-zinc-400 hover:text-zinc-655 dark:hover:text-zinc-300'
                 }`}
               >
-                <Code className="w-3.5 h-3.5" />
-                <span>HTML</span>
+                Raw HTML Body
               </button>
             </div>
           </div>
@@ -428,30 +440,29 @@ export default function AdminNewArticle() {
             </label>
 
             {/* Full Text Toggler */}
-            <div className="inline-flex rounded-xl p-1 bg-zinc-100 border border-zinc-200/50">
+            <div className="flex items-center space-x-3 text-xs">
               <button
                 type="button"
                 onClick={() => setFullTextMode('visual')}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
+                className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
                   fullTextMode === 'visual'
-                    ? 'bg-white shadow text-[var(--accent)]'
-                    : 'text-zinc-500 hover:text-zinc-800'
+                    ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
+                    : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300'
                 }`}
               >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Visual</span>
+                Visual Editor
               </button>
+              <span className="text-zinc-300 dark:text-zinc-700">|</span>
               <button
                 type="button"
                 onClick={() => setFullTextMode('html')}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
+                className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
                   fullTextMode === 'html'
-                    ? 'bg-white shadow text-[var(--accent)]'
-                    : 'text-zinc-500 hover:text-zinc-800'
+                    ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
+                    : 'text-zinc-400 hover:text-zinc-655 dark:hover:text-zinc-300'
                 }`}
               >
-                <Code className="w-3.5 h-3.5" />
-                <span>HTML</span>
+                Raw HTML Body
               </button>
             </div>
           </div>
@@ -517,6 +528,69 @@ export default function AdminNewArticle() {
             </div>
           </div>
         </div>
+
+        {/* Collapsible SEO Panel */}
+        {canEditSeo && (
+          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+            <button
+              type="button"
+              onClick={() => setSeoExpanded(!seoExpanded)}
+              className="w-full flex items-center justify-between font-bold text-zinc-900 focus:outline-none"
+            >
+              <span className="flex items-center space-x-2 text-xs uppercase tracking-wider text-zinc-500 font-mono">
+                <Eye className="w-4 h-4 text-[var(--accent-gold)]" />
+                <span>SEO & Metadata Settings</span>
+              </span>
+              <span className="text-xs font-semibold text-[var(--accent)] font-mono uppercase tracking-wider">
+                {seoExpanded ? 'Collapse' : 'Expand'}
+              </span>
+            </button>
+
+            {seoExpanded && (
+              <div className="pt-4 border-t border-zinc-100 space-y-4 animate-in fade-in duration-300">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">SEO Title</label>
+                  <input
+                    type="text"
+                    value={seoTitle}
+                    onChange={(e) => setSeoTitle(e.target.value)}
+                    placeholder="Leave blank to auto-generate (Article Title | Magazine Title)"
+                    maxLength={255}
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Meta Description</label>
+                    <span className="text-[10px] font-semibold text-zinc-400 font-mono">
+                      {seoDescription.length}/500
+                    </span>
+                  </div>
+                  <textarea
+                    value={seoDescription}
+                    onChange={(e) => setSeoDescription(e.target.value.slice(0, 500))}
+                    placeholder="Summarize the article content for search engines..."
+                    rows={3}
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Meta Keywords</label>
+                  <input
+                    type="text"
+                    value={seoKeywords}
+                    onChange={(e) => setSeoKeywords(e.target.value)}
+                    placeholder="e.g. deep learning, optimizers, neural networks"
+                    maxLength={500}
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Submit workspace buttons */}
         <div className="flex items-center justify-end space-x-3 pt-6 border-t border-zinc-200">

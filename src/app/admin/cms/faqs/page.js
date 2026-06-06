@@ -42,6 +42,12 @@ export default function FaqManagementWorkspace() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmFaqId, setConfirmFaqId] = useState(null);
 
+  const [validationErrors, setValidationErrors] = useState({});
+
+  useEffect(() => {
+    setValidationErrors({});
+  }, [isCreateOpen, editingId]);
+
   // Fetch FAQs
   const fetchFaqs = async () => {
     try {
@@ -84,7 +90,21 @@ export default function FaqManagementWorkspace() {
   // Handle Create
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    if (!validateFaq(newQuestion, newAnswer)) return;
+    setValidationErrors({});
+    const errors = {};
+    if (!newQuestion.trim()) {
+      errors.newQuestion = 'Question is required.';
+    } else if (newQuestion.length > 500) {
+      errors.newQuestion = 'Question must be under 500 characters.';
+    }
+    if (!newAnswer.trim()) {
+      errors.newAnswer = 'Answer is required.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
 
     try {
       setCreating(true);
@@ -129,7 +149,21 @@ export default function FaqManagementWorkspace() {
   // Handle Update
   const handleUpdateSubmit = async (e, id) => {
     e.preventDefault();
-    if (!validateFaq(editQuestion, editAnswer)) return;
+    setValidationErrors({});
+    const errors = {};
+    if (!editQuestion.trim()) {
+      errors.editQuestion = 'Question is required.';
+    } else if (editQuestion.length > 500) {
+      errors.editQuestion = 'Question must be under 500 characters.';
+    }
+    if (!editAnswer.trim()) {
+      errors.editAnswer = 'Answer is required.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
 
     try {
       setSavingId(id);
@@ -287,24 +321,50 @@ export default function FaqManagementWorkspace() {
               <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Question Text</label>
               <input
                 type="text"
-                required
                 value={newQuestion}
-                onChange={(e) => setNewQuestion(e.target.value)}
+                onChange={(e) => {
+                  setNewQuestion(e.target.value);
+                  if (validationErrors.newQuestion) {
+                    setValidationErrors(prev => {
+                      const copy = { ...prev };
+                      delete copy.newQuestion;
+                      return copy;
+                    });
+                  }
+                }}
                 placeholder="e.g. How can I submit a peer review report?"
-                className="w-full px-4 py-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-sm font-medium focus:ring-2 focus:ring-[var(--accent)]/20 transition-all outline-none"
+                className={`w-full px-4 py-3 rounded-xl border bg-white dark:bg-zinc-950 text-sm font-medium focus:ring-2 focus:ring-[var(--accent)]/20 transition-all outline-none ${
+                  validationErrors.newQuestion ? 'border-red-500 focus:border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-zinc-200/80 dark:border-zinc-800'
+                }`}
               />
+              {validationErrors.newQuestion && (
+                <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newQuestion}</span>
+              )}
             </div>
 
             <div className="space-y-2">
               <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Answer Explanation</label>
               <textarea
-                required
                 rows={4}
                 value={newAnswer}
-                onChange={(e) => setNewAnswer(e.target.value)}
+                onChange={(e) => {
+                  setNewAnswer(e.target.value);
+                  if (validationErrors.newAnswer) {
+                    setValidationErrors(prev => {
+                      const copy = { ...prev };
+                      delete copy.newAnswer;
+                      return copy;
+                    });
+                  }
+                }}
                 placeholder="Provide a clear, detailed answer..."
-                className="w-full px-4 py-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-sm font-medium focus:ring-2 focus:ring-[var(--accent)]/20 transition-all outline-none"
+                className={`w-full px-4 py-3 rounded-xl border bg-white dark:bg-zinc-950 text-sm font-medium focus:ring-2 focus:ring-[var(--accent)]/20 transition-all outline-none ${
+                  validationErrors.newAnswer ? 'border-red-500 focus:border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-zinc-200/80 dark:border-zinc-800'
+                }`}
               />
+              {validationErrors.newAnswer && (
+                <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newAnswer}</span>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -390,22 +450,48 @@ export default function FaqManagementWorkspace() {
                       <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">Question text</label>
                       <input
                         type="text"
-                        required
                         value={editQuestion}
-                        onChange={(e) => setEditQuestion(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 bg-white dark:bg-zinc-950 text-xs font-semibold outline-none"
+                        onChange={(e) => {
+                          setEditQuestion(e.target.value);
+                          if (validationErrors.editQuestion) {
+                            setValidationErrors(prev => {
+                              const copy = { ...prev };
+                              delete copy.editQuestion;
+                              return copy;
+                            });
+                          }
+                        }}
+                        className={`w-full px-4 py-2.5 rounded-xl border bg-white dark:bg-zinc-950 text-xs font-semibold outline-none ${
+                          validationErrors.editQuestion ? 'border-red-500 focus:border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-zinc-200 dark:border-zinc-800'
+                        }`}
                       />
+                      {validationErrors.editQuestion && (
+                        <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.editQuestion}</span>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">Answer text</label>
                       <textarea
-                        required
                         rows={4}
                         value={editAnswer}
-                        onChange={(e) => setEditAnswer(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 bg-white dark:bg-zinc-950 text-xs font-medium outline-none"
+                        onChange={(e) => {
+                          setEditAnswer(e.target.value);
+                          if (validationErrors.editAnswer) {
+                            setValidationErrors(prev => {
+                              const copy = { ...prev };
+                              delete copy.editAnswer;
+                              return copy;
+                            });
+                          }
+                        }}
+                        className={`w-full px-4 py-2.5 rounded-xl border bg-white dark:bg-zinc-950 text-xs font-medium outline-none ${
+                          validationErrors.editAnswer ? 'border-red-500 focus:border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-zinc-200 dark:border-zinc-800'
+                        }`}
                       />
+                      {validationErrors.editAnswer && (
+                        <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.editAnswer}</span>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
