@@ -11,6 +11,7 @@ import {
 import api from '../../../../utils/api';
 import { useToast } from '../../../../context/ToastContext';
 import { useAuth } from '../../../../context/AuthContext';
+import CoAuthorRepeater from '../../../../components/article/CoAuthorRepeater';
 
 const RichEditor = dynamic(() => import('../../../../components/ui/RichEditor'), {
   ssr: false,
@@ -25,8 +26,12 @@ const RichEditor = dynamic(() => import('../../../../components/ui/RichEditor'),
 export default function AdminNewArticle() {
   const router = useRouter();
   const { toast } = useToast();
-  const { hasPermission } = useAuth();
+  const { user, hasPermission, hasRole } = useAuth();
+  const isSuperAdmin = hasRole ? hasRole('super_admin') : false;
   const canEditSeo = hasPermission ? hasPermission('seo.articles') : false;
+  const canAutoApprove = hasPermission ? hasPermission('articles.auto-approve') : false;
+
+  const [coAuthors, setCoAuthors] = useState([]);
 
   const [magazines, setMagazines] = useState([]);
   const [loadingMagazines, setLoadingMagazines] = useState(true);
@@ -38,7 +43,15 @@ export default function AdminNewArticle() {
   const [fullText, setFullText] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfFileName, setPdfFileName] = useState('');
-  const [autoApprove, setAutoApprove] = useState(true);
+  const [autoApprove, setAutoApprove] = useState(false);
+
+  useEffect(() => {
+    if (canAutoApprove) {
+      setAutoApprove(true);
+    } else {
+      setAutoApprove(false);
+    }
+  }, [canAutoApprove]);
 
   const [seoTitle, setSeoTitle] = useState('');
   const [seoDescription, setSeoDescription] = useState('');
@@ -149,6 +162,24 @@ export default function AdminNewArticle() {
       errors.fullText = 'Article full text is required.';
     }
 
+    // Super admin must assign at least one author
+    if (isSuperAdmin) {
+      const validAuthors = coAuthors.filter(
+        a => a.name.trim() && a.email.trim()
+      );
+      if (validAuthors.length === 0) {
+        errors.coAuthors = 'As a super admin, you must add at least one author with name and email.';
+      }
+    }
+
+    const hasSelfEmail = coAuthors.some(
+      author => author.email.trim().toLowerCase() === user?.email?.trim().toLowerCase()
+    );
+    if (hasSelfEmail) {
+      toast('You cannot list yourself as a co-author.', 'error');
+      errors.coAuthors = 'Primary author cannot be listed as a co-author.';
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -173,6 +204,7 @@ export default function AdminNewArticle() {
         formData.append('pdf_file', pdfFile);
       }
       formData.append('tags', JSON.stringify(selectedTags));
+      formData.append('co_authors', JSON.stringify(coAuthors));
       if (canEditSeo) {
         formData.append('seo_title', seoTitle);
         formData.append('seo_description', seoDescription);
@@ -269,6 +301,25 @@ export default function AdminNewArticle() {
               <p className="text-[10px] font-semibold text-red-500">{validationErrors.title}</p>
             )}
           </div>
+        </div>
+
+        {/* Author Metadata & Collaborators */}
+        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+          <div className="border-b border-zinc-100 pb-3">
+            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-serif">Author Metadata & Collaborators</h3>
+            <p className="text-[10px] text-zinc-400 font-medium">Add secondary contributors with customizable edit permissions and account provisioning gates.</p>
+          </div>
+          <CoAuthorRepeater 
+            coAuthors={coAuthors}
+            setCoAuthors={setCoAuthors}
+            currentUserEmail={user?.email}
+            required={isSuperAdmin}
+          />
+          {validationErrors.coAuthors && (
+            <p className="text-[10px] font-semibold text-red-500 flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5" />{validationErrors.coAuthors}
+            </p>
+          )}
         </div>
 
         {/* Keywords & Tags Selection Panel */}
@@ -514,19 +565,21 @@ export default function AdminNewArticle() {
             <p className="text-[10px] text-zinc-400 font-medium">If no pre-compiled PDF is uploaded, a custom, beautifully formatted PDF document will be dynamically compiled upon approval.</p>
           </div>
 
-          <div className="flex items-center space-x-3 bg-zinc-50 p-4 rounded-2xl border border-zinc-200/60 self-start">
-            <input 
-              type="checkbox"
-              id="autoApprove"
-              checked={autoApprove}
-              onChange={(e) => setAutoApprove(e.target.checked)}
-              className="w-4 h-4 rounded border-zinc-300 text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
-            />
-            <div className="space-y-0.5 select-none cursor-pointer" onClick={() => setAutoApprove(!autoApprove)}>
-              <label htmlFor="autoApprove" className="text-xs font-bold text-zinc-950 uppercase tracking-wider block cursor-pointer">Auto-Approve & Compile PDF</label>
-              <span className="text-[10px] text-zinc-400 font-medium block">Publish the article immediately to the public catalog and compile PDF layout assets.</span>
+          {canAutoApprove && (
+            <div className="flex items-center space-x-3 bg-zinc-50 p-4 rounded-2xl border border-zinc-200/60 self-start">
+              <input 
+                type="checkbox"
+                id="autoApprove"
+                checked={autoApprove}
+                onChange={(e) => setAutoApprove(e.target.checked)}
+                className="w-4 h-4 rounded border-zinc-300 text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
+              />
+              <div className="space-y-0.5 select-none cursor-pointer" onClick={() => setAutoApprove(!autoApprove)}>
+                <label htmlFor="autoApprove" className="text-xs font-bold text-zinc-950 uppercase tracking-wider block cursor-pointer">Auto-Approve & Compile PDF</label>
+                <span className="text-[10px] text-zinc-400 font-medium block">Publish the article immediately to the public catalog and compile PDF layout assets.</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Collapsible SEO Panel */}

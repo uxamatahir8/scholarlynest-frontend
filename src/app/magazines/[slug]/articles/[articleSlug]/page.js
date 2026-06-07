@@ -9,8 +9,10 @@ import {
 } from 'lucide-react';
 import api from '../../../../../utils/api';
 import { useToast } from '../../../../../context/ToastContext';
+import { useAuth } from '../../../../../context/AuthContext';
 import ArticlePagination from '../../../../../components/article/ArticlePagination';
 import SeoHead from '../../../../../components/SeoHead';
+import AuthorHeaderBlock from '../../../../../components/article/AuthorHeaderBlock';
 
 export default function ArticleDetail() {
   const params = useParams();
@@ -19,6 +21,7 @@ export default function ArticleDetail() {
   const articleSlug = params ? params.articleSlug : null;
   
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [article, setArticle] = useState(null);
   const [authorMetrics, setAuthorMetrics] = useState(null);
@@ -28,6 +31,12 @@ export default function ArticleDetail() {
   const [nextArticleTitle, setNextArticleTitle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const isPrimaryAuthor = user && article && article.user_id === user.id;
+  const isCoAuthorEditor = user && article && article.article_authors?.some(
+    author => author.user_id === user.id && author.can_edit
+  );
+  const showEditButton = isPrimaryAuthor || isCoAuthorEditor;
   
   const [activeTab, setActiveTab] = useState('abstract');
   const [downloading, setDownloading] = useState(false);
@@ -297,12 +306,7 @@ export default function ArticleDetail() {
                 <User className="w-5 h-5" />
               </div>
               <div className="space-y-0.5">
-                <h4 className="text-sm font-bold text-zinc-900 dark:text-white leading-none">
-                  {article.user?.name}
-                </h4>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-                  {article.user?.email}
-                </p>
+                <AuthorHeaderBlock article={article} authorMetrics={authorMetrics} />
               </div>
             </div>
 
@@ -390,6 +394,16 @@ export default function ArticleDetail() {
             )}
             <span>Download Official PDF</span>
           </button>
+
+          {showEditButton && (
+            <Link
+              href={`/admin/articles/${article.id}/edit`}
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-900 bg-amber-400 hover:bg-amber-500 shadow-sm transition-colors cursor-pointer border border-amber-500/30 font-semibold"
+            >
+              <FileText className="w-4 h-4 text-zinc-900" />
+              <span>Edit Article</span>
+            </Link>
+          )}
 
           {/* Single Share Button */}
           <button

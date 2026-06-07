@@ -48,11 +48,15 @@ export default function RbacManager() {
   const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleDisplayName, setNewRoleDisplayName] = useState('');
+  const [isRoleNameManuallyEdited, setIsRoleNameManuallyEdited] = useState(false);
 
   const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
     setValidationErrors({});
+    if (!showCreateRoleModal) {
+      setIsRoleNameManuallyEdited(false);
+    }
   }, [showCreateModal, showCreateRoleModal]);
 
   // Fetch all RBAC records from the backend
@@ -590,6 +594,16 @@ export default function RbacManager() {
                                   />
                                   <span className="text-xs font-semibold text-[var(--foreground)]">Allow Approving / Reviewing Articles</span>
                                 </label>
+
+                                <label className="flex items-center space-x-2.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedRole.permissions.some(p => p.name === 'articles.auto-approve')}
+                                    onChange={(e) => handleToggleCheckboxPermission('articles.auto-approve', e.target.checked)}
+                                    className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                                  />
+                                  <span className="text-xs font-semibold text-[var(--foreground)]">Auto-Approve & Compile PDF</span>
+                                </label>
                               </div>
                             </div>
                           </div>
@@ -652,6 +666,51 @@ export default function RbacManager() {
                                     className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)]"
                                   />
                                   <span className="text-xs font-semibold text-[var(--foreground)]">Allow Deleting Magazines</span>
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Search Engine Optimization (SEO) Group */}
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between pb-2 border-b border-[var(--muted-border)]/30">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">Search Engine Optimization (SEO)</h4>
+                            <span className="text-[10px] text-[var(--muted)] font-medium">SEO Parameters</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-3">
+                              <label className="text-[11px] font-bold text-[var(--foreground)] block">Metadata Management</label>
+                              <div className="space-y-2">
+                                <label className="flex items-center space-x-2.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedRole.permissions.some(p => p.name === 'seo.articles')}
+                                    onChange={(e) => handleToggleCheckboxPermission('seo.articles', e.target.checked)}
+                                    className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                                  />
+                                  <span className="text-xs font-semibold text-[var(--foreground)]">Manage Article SEO</span>
+                                </label>
+
+                                <label className="flex items-center space-x-2.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedRole.permissions.some(p => p.name === 'seo.magazines')}
+                                    onChange={(e) => handleToggleCheckboxPermission('seo.magazines', e.target.checked)}
+                                    className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                                  />
+                                  <span className="text-xs font-semibold text-[var(--foreground)]">Manage Magazine SEO</span>
+                                </label>
+
+                                <label className="flex items-center space-x-2.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedRole.permissions.some(p => p.name === 'seo.cms-pages')}
+                                    onChange={(e) => handleToggleCheckboxPermission('seo.cms-pages', e.target.checked)}
+                                    className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                                  />
+                                  <span className="text-xs font-semibold text-[var(--foreground)]">Manage CMS Page SEO</span>
                                 </label>
                               </div>
                             </div>
@@ -744,6 +803,15 @@ export default function RbacManager() {
                                     className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)]"
                                   />
                                   <span className="text-xs font-semibold text-[var(--foreground)]">Manage Settings</span>
+                                </label>
+                                <label className="flex items-center space-x-2.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedRole.permissions.some(p => p.name === 'footer.manage')}
+                                    onChange={(e) => handleToggleCheckboxPermission('footer.manage', e.target.checked)}
+                                    className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                                  />
+                                  <span className="text-xs font-semibold text-[var(--foreground)]">Manage Footer CMS</span>
                                 </label>
                               </div>
                             </div>
@@ -1072,7 +1140,11 @@ export default function RbacManager() {
                   type="text"
                   value={newRoleDisplayName}
                   onChange={(e) => {
-                    setNewRoleDisplayName(e.target.value);
+                    const val = e.target.value;
+                    setNewRoleDisplayName(val);
+                    if (!isRoleNameManuallyEdited) {
+                      setNewRoleName(val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, ''));
+                    }
                     if (validationErrors.newRoleDisplayName) {
                       setValidationErrors(prev => {
                         const copy = { ...prev };
@@ -1096,7 +1168,14 @@ export default function RbacManager() {
                   type="text"
                   value={newRoleName}
                   onChange={(e) => {
-                    setNewRoleName(e.target.value.toLowerCase().replace(/\s+/g, '-'));
+                    const val = e.target.value;
+                    const formatted = val.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
+                    setNewRoleName(formatted);
+                    if (formatted === '') {
+                      setIsRoleNameManuallyEdited(false);
+                    } else {
+                      setIsRoleNameManuallyEdited(true);
+                    }
                     if (validationErrors.newRoleName) {
                       setValidationErrors(prev => {
                         const copy = { ...prev };

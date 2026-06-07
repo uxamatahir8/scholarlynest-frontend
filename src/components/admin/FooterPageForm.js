@@ -1,0 +1,286 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { useToast } from '../../context/ToastContext';
+import api from '../../utils/api';
+import { Loader2, Save, X, Edit3, Code } from 'lucide-react';
+
+const RichEditor = dynamic(() => import('../ui/RichEditor'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center p-12 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+      <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+      <span className="ml-3 text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono">Loading Editor Workspace...</span>
+    </div>
+  )
+});
+
+export default function FooterPageForm({ categories, initialData, onSave, onCancel }) {
+  const { toast } = useToast();
+  const [title, setTitle] = useState('');
+  const [slug, setSlug] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [content, setContent] = useState('');
+  const [isVisible, setIsVisible] = useState(true);
+  const [sortOrder, setSortOrder] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'html'
+  const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (initialData) {
+      setTitle(initialData.title || '');
+      setSlug(initialData.slug || '');
+      setCategoryId(initialData.footer_category_id || '');
+      setContent(initialData.content || '');
+      setIsVisible(initialData.is_visible !== false);
+      setSortOrder(initialData.sort_order || 0);
+    } else {
+      setTitle('');
+      setSlug('');
+      setCategoryId(categories[0]?.id || '');
+      setContent('');
+      setIsVisible(true);
+      setSortOrder(0);
+    }
+    setErrors({});
+  }, [initialData, categories]);
+
+  // Auto-generate slug from title if it's a new page
+  const handleTitleChange = (e) => {
+    const val = e.target.value;
+    setTitle(val);
+    if (!initialData) {
+      const generatedSlug = val
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '');
+      setSlug(generatedSlug);
+    }
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    if (!title.trim()) newErrors.title = 'Title is required';
+    if (!slug.trim()) {
+      newErrors.slug = 'Slug is required';
+    } else if (!/^[a-z0-9-]+$/.test(slug)) {
+      newErrors.slug = 'Slug must only contain lowercase alphanumeric characters and hyphens';
+    }
+    if (!categoryId) newErrors.footer_category_id = 'Category assignment is required';
+    if (!content.trim() || content === '<p><br></p>') {
+      newErrors.content = 'Page content is required';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setIsSubmitting(true);
+    const payload = {
+      footer_category_id: Number(categoryId),
+      title: title.trim(),
+      slug: slug.trim(),
+      content: content.trim(),
+      is_visible: isVisible,
+      sort_order: Number(sortOrder)
+    };
+
+    try {
+      if (initialData?.id) {
+        await api.put(`/admin/footer/pages/${initialData.id}`, payload);
+        toast(`Page "${title}" updated successfully!`, 'success');
+      } else {
+        await api.post('/admin/footer/pages', payload);
+        toast(`Page "${title}" created successfully!`, 'success');
+      }
+      onSave();
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || 'Failed to save footer page.';
+      toast(msg, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6 text-left">
+      <div className="bg-white dark:bg-[#121211] p-6 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/60 shadow-sm space-y-4 animate-in fade-in">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-800 dark:text-zinc-200 flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/40">
+          <span>{initialData ? 'Edit Footer Page' : 'Create Custom Page'}</span>
+          <button type="button" onClick={onCancel} className="p-1 rounded-md text-zinc-400 hover:text-zinc-650 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 mb-1.5">Page Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={handleTitleChange}
+              placeholder="e.g., Editorial Board"
+              className={`w-full px-3.5 py-2 bg-zinc-50 dark:bg-zinc-900/50 border ${errors.title ? 'border-red-500 focus:border-red-500' : 'border-zinc-200 dark:border-zinc-800/65 focus:border-[var(--accent)]'} rounded-xl text-xs font-semibold focus:outline-none transition-colors text-zinc-855 dark:text-zinc-250`}
+            />
+            {errors.title && <p className="text-[10px] text-red-500 mt-1 font-semibold">{errors.title}</p>}
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 mb-1.5">URL Slug</label>
+            <input
+              type="text"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="e.g., editorial-board"
+              className={`w-full px-3.5 py-2 bg-zinc-50 dark:bg-zinc-900/50 border ${errors.slug ? 'border-red-500 focus:border-red-500' : 'border-zinc-200 dark:border-zinc-800/65 focus:border-[var(--accent)]'} rounded-xl text-xs font-semibold focus:outline-none transition-colors text-zinc-855 dark:text-zinc-250`}
+            />
+            {errors.slug && <p className="text-[10px] text-red-500 mt-1 font-semibold">{errors.slug}</p>}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 mb-1.5">Footer Column Category</label>
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className="w-full px-3.5 py-2 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/65 rounded-xl text-xs font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-800 dark:text-zinc-200"
+            >
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+            {errors.footer_category_id && <p className="text-[10px] text-red-500 mt-1 font-semibold">{errors.footer_category_id}</p>}
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 mb-1.5">Sort Order</label>
+            <input
+              type="number"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="w-full px-3.5 py-2 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/65 rounded-xl text-xs font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-800 dark:text-zinc-200"
+            />
+          </div>
+
+          <div className="flex items-center pt-5">
+            <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isVisible}
+                onChange={(e) => setIsVisible(e.target.checked)}
+                className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-800 text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
+              />
+              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Visible in Global Footer</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Toolbar with Editor Mode Toggler */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400">Page Content</label>
+          <div className="inline-flex rounded-xl p-1 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/50 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setEditorMode('visual')}
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
+                editorMode === 'visual'
+                  ? 'bg-white shadow text-[var(--accent)]'
+                  : 'text-zinc-550 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+              }`}
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Visual Editor</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditorMode('html')}
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
+                editorMode === 'html'
+                  ? 'bg-white shadow text-[var(--accent)]'
+                  : 'text-zinc-550 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+              }`}
+            >
+              <Code className="w-3.5 h-3.5" />
+              <span>Raw HTML Markup</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Dynamic Editor Area */}
+        <div>
+          {editorMode === 'visual' ? (
+            <div className="animate-in fade-in duration-200 bg-white border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+              <RichEditor
+                value={content}
+                onChange={(contentVal) => {
+                  setContent(contentVal);
+                  if (errors.content) {
+                    setErrors(prev => ({ ...prev, content: '' }));
+                  }
+                }}
+                placeholder="Start drafting your dynamic footer page content..."
+              />
+            </div>
+          ) : (
+            <div className="animate-in fade-in duration-200">
+              <textarea
+                value={content}
+                onChange={(e) => {
+                  setContent(e.target.value);
+                  if (errors.content) {
+                    setErrors(prev => ({ ...prev, content: '' }));
+                  }
+                }}
+                placeholder="<!-- Add custom HTML blocks here -->"
+                rows={12}
+                style={{ color: '#ffffff' }}
+                className={`w-full p-4 bg-zinc-900 border ${errors.content ? 'border-red-500 focus:border-red-500' : 'border-zinc-800 focus:border-[var(--accent)]'} rounded-xl font-mono text-xs text-white focus:outline-none focus:ring-1 focus:ring-[var(--accent)] transition-colors`}
+              />
+            </div>
+          )}
+          <p className="text-[10px] text-zinc-450 dark:text-zinc-500 mt-1 font-semibold">
+            HTML layout blocks are fully supported. Script tags are automatically stripped on output for security.
+          </p>
+          {errors.content && <p className="text-[10px] text-red-500 mt-1 font-semibold">{errors.content}</p>}
+        </div>
+
+        <div className="flex justify-end space-x-2 pt-3 border-t border-zinc-100 dark:border-zinc-800/40">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-150 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-350 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="inline-flex items-center space-x-2 px-5 py-2 bg-[var(--accent)] hover:opacity-90 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-3.5 h-3.5" />
+                <span>Save Changes</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}

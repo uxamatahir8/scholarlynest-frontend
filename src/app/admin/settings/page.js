@@ -1,14 +1,38 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
-import { ShieldCheck, ShieldAlert, KeyRound, Check, X, Loader2, Mail, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, KeyRound, Check, X, Loader2, Mail, Eye, EyeOff, User, Camera } from 'lucide-react';
 import api from '../../../utils/api';
 
 export default function SecuritySettings() {
   const { user, refreshUser } = useAuth();
   const { toast } = useToast();
+
+  // Profile settings states
+  const [profileName, setProfileName] = useState(user?.name || '');
+  const [profileEmail, setProfileEmail] = useState(user?.email || '');
+  const [profileImage, setProfileImage] = useState(user?.profile_image || '');
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Email Change Wizard states
+  const [showEmailWizard, setShowEmailWizard] = useState(false);
+  const [emailStep, setEmailStep] = useState(1); // 1 = verify current, 2 = input & verify new
+  const [currentEmailCode, setCurrentEmailCode] = useState('');
+  const [newEmailAddress, setNewEmailAddress] = useState('');
+  const [newEmailCode, setNewEmailCode] = useState('');
+  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
+  const [isCurrentVerified, setIsCurrentVerified] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setProfileName(user.name || '');
+      setProfileEmail(user.email || '');
+      setProfileImage(user.profile_image || '');
+    }
+  }, [user]);
 
   // 2FA states
   const [toggleLoading, setToggleLoading] = useState(false);
@@ -171,15 +195,416 @@ export default function SecuritySettings() {
     }
   };
 
+  const handleUploadImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast('Please upload an image file.', 'error');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast('Image must be smaller than 10MB.', 'error');
+      return;
+    }
+
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await api.post('/media', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setProfileImage(res.data.url);
+      toast('Profile picture uploaded successfully. Save profile to apply changes.', 'success');
+    } catch (err) {
+      console.error('Failed to upload image:', err);
+      const msg = err.response?.data?.message || 'Failed to upload image.';
+      toast(msg, 'error');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+
+    if (!profileName.trim()) {
+      toast('Name field is required.', 'error');
+      return;
+    }
+
+    if (profileName.trim().length < 2) {
+      toast('Name must be at least 2 characters long.', 'error');
+      return;
+    }
+
+    if (profileName.trim().length > 100) {
+      toast('Name cannot exceed 100 characters.', 'error');
+      return;
+    }
+
+    setProfileLoading(true);
+    try {
+      const res = await api.put('/profile', {
+        name: profileName,
+        profile_image: profileImage || null,
+      });
+      await refreshUser();
+      toast(res.data.message || 'Profile updated successfully.', 'success');
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      const msg = err.response?.data?.message || 'Failed to update profile.';
+      toast(msg, 'error');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleRequestCurrentCode = async () => {
+    setEmailChangeLoading(true);
+    try {
+      await api.post('/profile/email/request-current-code');
+      toast('Verification code sent to your current email address.', 'info');
+    } catch (err) {
+      console.error(err);
+      toast('Failed to send verification code.', 'error');
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
+  const handleVerifyCurrentCode = async () => {
+    if (currentEmailCode.length !== 6 || !/^\d{6}$/.test(currentEmailCode)) {
+      toast('Please enter a valid 6-digit verification code.', 'error');
+      return;
+    }
+
+    setEmailChangeLoading(true);
+    try {
+      const res = await api.post('/profile/email/verify-current-code', { code: currentEmailCode });
+      setIsCurrentVerified(true);
+      setEmailStep(2);
+      toast(res.data.message || 'Current email verified. Now submit your new email.', 'success');
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || 'Invalid or expired code.';
+      toast(msg, 'error');
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
+  const handleRequestNewCode = async () => {
+    if (!newEmailAddress.trim()) {
+      toast('Please specify the new email address.', 'error');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmailAddress.trim())) {
+      toast('Please enter a valid email address.', 'error');
+      return;
+    }
+
+    if (newEmailAddress.trim().toLowerCase() === user.email.toLowerCase()) {
+      toast('New email address must be different from your current email.', 'error');
+      return;
+    }
+
+    setEmailChangeLoading(true);
+    try {
+      await api.post('/profile/email/request-new-code', { email: newEmailAddress.trim() });
+      toast('Verification code sent to your new email address.', 'info');
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || 'Failed to request verification code.';
+      toast(msg, 'error');
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
+  const handleVerifyNewCode = async () => {
+    if (newEmailCode.length !== 6 || !/^\d{6}$/.test(newEmailCode)) {
+      toast('Please enter a valid 6-digit confirmation code.', 'error');
+      return;
+    }
+
+    setEmailChangeLoading(true);
+    try {
+      const res = await api.post('/profile/email/verify-new-code', { code: newEmailCode });
+      await refreshUser();
+      setProfileEmail(newEmailAddress);
+      setShowEmailWizard(false);
+      resetEmailWizard();
+      toast(res.data.message || 'Email address updated successfully.', 'success');
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || 'Invalid or expired code.';
+      toast(msg, 'error');
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
+  const resetEmailWizard = () => {
+    setEmailStep(1);
+    setCurrentEmailCode('');
+    setNewEmailAddress('');
+    setNewEmailCode('');
+    setIsCurrentVerified(false);
+  };
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="space-y-1">
         <h1 className="font-serif text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-          Security Settings
+          Account Settings & Profile
         </h1>
         <p className="text-xs text-zinc-400 dark:text-zinc-500">
-          Configure multi-factor authentication and update authorization credentials.
+          Manage your scholar credentials, academic profile details, and security keys.
         </p>
+      </div>
+
+      {/* Profile Information Section */}
+      <div className="bg-white dark:bg-[#1c1c1b] border border-zinc-200/80 dark:border-zinc-800/60 rounded-xl p-6 shadow-sm space-y-6">
+        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+              <User className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Profile Information</h3>
+              <p className="text-[10px] text-zinc-400 dark:text-zinc-500">Update your scholar directory name, academic email, and profile avatar</p>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleUpdateProfile} className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {/* Avatar Upload Column */}
+          <div className="md:col-span-1 flex flex-col items-center justify-center space-y-3">
+            <div className="relative group w-24 h-24 rounded-full overflow-hidden border-2 border-zinc-200 dark:border-zinc-800 shadow-md">
+              {profileImage ? (
+                <img
+                  src={profileImage}
+                  alt="Profile Preview"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-[var(--accent)] to-blue-900 flex items-center justify-center font-serif text-3xl font-bold text-white uppercase select-none">
+                  {profileName ? profileName.charAt(0) : user.name.charAt(0)}
+                </div>
+              )}
+
+              {/* Upload Overlay */}
+              <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer text-white">
+                <Camera className="w-5 h-5 mb-1" />
+                <span className="text-[9px] uppercase font-bold tracking-wider">Upload</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleUploadImage}
+                  className="hidden"
+                  disabled={uploadingImage}
+                />
+              </label>
+
+              {uploadingImage && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              )}
+            </div>
+            <p className="text-[9px] text-zinc-400 dark:text-zinc-500 text-center">
+              Allowed: JPG, PNG, GIF.<br/>Max size: 10MB.
+            </p>
+          </div>
+
+          {/* Form Fields Column */}
+          <div className="md:col-span-3 space-y-4 flex flex-col justify-between">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  placeholder="Enter full name"
+                  className="w-full text-xs font-medium px-3 py-2 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-400"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  Academic Email
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="email"
+                    value={profileEmail}
+                    disabled
+                    className="min-w-0 flex-1 text-xs font-medium px-3 py-2 bg-zinc-100/80 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-400 text-zinc-500 cursor-not-allowed"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetEmailWizard();
+                      setShowEmailWizard(!showEmailWizard);
+                    }}
+                    className="shrink-0 px-4 py-2 bg-zinc-800 hover:bg-zinc-950 text-white dark:bg-zinc-200 dark:hover:bg-white dark:text-zinc-950 text-xs font-bold uppercase tracking-wider rounded-md transition-colors"
+                  >
+                    {showEmailWizard ? 'Close' : 'Change'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {showEmailWizard && (
+              <div className="mt-4 p-4 bg-zinc-50 dark:bg-zinc-900/30 border border-zinc-150 dark:border-zinc-800/60 rounded-lg space-y-4 animate-in slide-in-from-top-1 duration-200">
+                <div className="flex justify-between items-center border-b border-zinc-150 dark:border-zinc-800 pb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
+                    Secure Email Change Wizard
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEmailWizard(false);
+                      resetEmailWizard();
+                    }}
+                    className="p-1 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {emailStep === 1 ? (
+                  <div className="space-y-3">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                      To begin, you must verify ownership of your current email address (<strong>{user.email}</strong>). Click "Send Verification Code", then enter the 6-digit code received.
+                    </p>
+                    <div className="flex space-x-3 items-end">
+                      <div className="space-y-1 flex-1">
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">
+                          Current Email Code
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={currentEmailCode}
+                          onChange={(e) => setCurrentEmailCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="••••••"
+                          className="w-full text-center tracking-[0.5em] font-mono text-xs font-bold py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRequestCurrentCode}
+                        disabled={emailChangeLoading}
+                        className="px-4 py-2 text-xs font-bold uppercase border border-zinc-200 dark:border-zinc-800 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-400 disabled:opacity-50"
+                      >
+                        Send Code
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleVerifyCurrentCode}
+                        disabled={emailChangeLoading || currentEmailCode.length !== 6}
+                        className="px-4 py-2 text-xs font-bold uppercase bg-zinc-800 hover:bg-zinc-955 text-white dark:bg-zinc-200 dark:hover:bg-white dark:text-zinc-950 rounded-md disabled:opacity-50"
+                      >
+                        {emailChangeLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Verify Code'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                      Current email ownership verified successfully. Enter your new academic email address, click "Send Code", and enter the confirmation code sent to the new inbox to finalize changes.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1 flex-1">
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">
+                          New Email Address
+                        </label>
+                        <input
+                          type="email"
+                          value={newEmailAddress}
+                          onChange={(e) => setNewEmailAddress(e.target.value)}
+                          placeholder="new-email@scholarlynest.com"
+                          className="w-full text-xs font-medium px-3 py-1.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1 flex-1 flex items-end space-x-2">
+                        <div className="flex-1 space-y-1">
+                          <label className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">
+                            New Email Code
+                          </label>
+                          <input
+                            type="text"
+                            maxLength={6}
+                            value={newEmailCode}
+                            onChange={(e) => setNewEmailCode(e.target.value.replace(/\D/g, ''))}
+                            placeholder="••••••"
+                            className="w-full text-center tracking-[0.5em] font-mono text-xs font-bold py-1.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRequestNewCode}
+                          disabled={emailChangeLoading || !newEmailAddress}
+                          className="px-3 py-1.5 text-xs font-bold uppercase border border-zinc-200 dark:border-zinc-800 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-400 disabled:opacity-50"
+                        >
+                          Send
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex justify-end space-x-2">
+                      <button
+                        type="button"
+                        onClick={resetEmailWizard}
+                        className="text-xs font-semibold text-zinc-450 hover:text-zinc-650 hover:underline px-2"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleVerifyNewCode}
+                        disabled={emailChangeLoading || newEmailCode.length !== 6}
+                        className="px-4 py-2 text-xs font-bold uppercase bg-zinc-800 hover:bg-zinc-955 text-white dark:bg-zinc-200 dark:hover:bg-white dark:text-zinc-950 rounded-md disabled:opacity-50"
+                      >
+                        {emailChangeLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Confirm Change'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="pt-4 flex justify-end">
+              <button
+                type="submit"
+                disabled={profileLoading || uploadingImage}
+                className="flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-zinc-800 hover:bg-zinc-950 text-white dark:bg-zinc-200 dark:hover:bg-white dark:text-zinc-950 px-6 py-2.5 rounded-lg border border-transparent transition-premium disabled:opacity-50"
+              >
+                {profileLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                    Saving Profile...
+                  </>
+                ) : (
+                  'Save Profile Details'
+                )}
+              </button>
+            </div>
+          </div>
+        </form>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

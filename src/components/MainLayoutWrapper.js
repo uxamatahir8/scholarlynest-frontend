@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Header from './Header';
-import Footer from './Footer';
+import Footer from './global/Footer';
 import NewsletterRibbon from './global/NewsletterRibbon';
 import { Suspense } from 'react';
 

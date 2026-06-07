@@ -2,6 +2,7 @@ import { AuthProvider } from '../context/AuthContext';
 import { ToastProvider } from '../context/ToastContext';
 import TransitionWrapper from '../components/TransitionWrapper';
 import MainLayoutWrapper from '../components/MainLayoutWrapper';
+import AuthCheck from '../components/auth/AuthCheck';
 import './globals.css';
 
 export const metadata = {
@@ -38,11 +39,13 @@ export default function RootLayout({ children }) {
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-305">
         <AuthProvider>
           <ToastProvider>
-            <MainLayoutWrapper>
-              <TransitionWrapper>
-                {children}
-              </TransitionWrapper>
-            </MainLayoutWrapper>
+            <AuthCheck>
+              <MainLayoutWrapper>
+                <TransitionWrapper>
+                  {children}
+                </TransitionWrapper>
+              </MainLayoutWrapper>
+            </AuthCheck>
           </ToastProvider>
         </AuthProvider>
       </body>

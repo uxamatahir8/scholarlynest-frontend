@@ -183,16 +183,16 @@ export default function AdminLayout({ children }) {
   // Active path logic
   const isOverviewActive = pathname === '/admin';
   const isRbacActive = pathname ? pathname.startsWith('/admin/rbac') : false;
-  const isCmsActive = pathname ? pathname.startsWith('/admin/cms') : false;
+  const isCmsActive = pathname ? (pathname.startsWith('/admin/cms') || pathname.startsWith('/admin/footer-cms')) : false;
   const isMagazineActive = pathname ? (pathname.startsWith('/admin/magazines') || pathname.startsWith('/admin/articles')) : false;
 
   // Hiding empty categories and pages dynamically
   const showMagazinePortal = hasPermission('magazines.view-any') || hasPermission('magazines.view-own') || hasPermission('articles.view-any') || hasPermission('articles.view-own');
   const showRbac = hasPermission('roles.view-any');
-  const showContactSettings = hasPermission('settings.view-any') || hasPermission('settings.manage');
-  const showContactMessages = hasPermission('settings.view-any') || hasPermission('settings.manage');
+  const showContactSettings = hasPermission('settings.view-any') || hasPermission('settings.manage') || hasPermission('footer.manage');
+  const showContactMessages = hasPermission('settings.view-any') || hasPermission('settings.manage') || hasPermission('footer.manage');
   const showNewsletter = hasPermission('newsletters.view-any');
-  const showCms = hasPermission('settings.view-any') || hasPermission('settings.manage');
+  const showCms = hasPermission('settings.view-any') || hasPermission('settings.manage') || hasPermission('footer.manage');
 
   return (
     <div className="h-screen w-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col md:flex-row transition-all duration-300 font-sans relative overflow-hidden">
@@ -245,9 +245,17 @@ export default function AdminLayout({ children }) {
 
           {/* User Profile Summary */}
           <div className="p-5 border-b border-[var(--muted-border)] flex items-center space-x-4 bg-white/5 dark:bg-black/10 relative z-10">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-blue-900 flex items-center justify-center font-bold text-sm text-white shadow-[0_0_10px_rgba(30,58,138,0.4)] border border-blue-400/30 select-none">
-              {user.name.charAt(0)}
-            </div>
+            {user.profile_image ? (
+              <img
+                src={user.profile_image}
+                alt={user.name}
+                className="w-10 h-10 rounded-xl object-cover border border-blue-400/30 shadow-[0_0_10px_rgba(30,58,138,0.4)] select-none"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-blue-900 flex items-center justify-center font-bold text-sm text-white shadow-[0_0_10px_rgba(30,58,138,0.4)] border border-blue-400/30 select-none">
+                {user.name.charAt(0)}
+              </div>
+            )}
             <div className="overflow-hidden">
               <h4 className="text-sm font-bold truncate text-[var(--foreground)]">{user.name}</h4>
               <span className="text-[9px] font-bold text-[var(--accent-gold)] flex items-center mt-0.5 uppercase tracking-widest">
@@ -265,14 +273,6 @@ export default function AdminLayout({ children }) {
             >
               <LayoutDashboard className="w-4 h-4" />
               <span>Console Overview</span>
-            </Link>
-
-            <Link
-              href="/admin/settings"
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-premium ${pathname === '/admin/settings' ? 'bg-[var(--accent)] text-white shadow-[0_0_15px_rgba(30,58,138,0.4)]' : 'text-[var(--muted)] hover:bg-white/10 hover:text-[var(--foreground)]'}`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>Security Settings</span>
             </Link>
 
             {/* My Articles for standard Authors who cannot view all magazine articles */}
@@ -391,44 +391,33 @@ export default function AdminLayout({ children }) {
                 {cmsDropdownOpen && (
                   <div className="pl-4 pr-2 py-1.5 space-y-1.5 bg-black/5 dark:bg-white/5 rounded-xl border border-[var(--muted-border)]/40 animate-in slide-in-from-top-1 duration-200">
                     <Link
-                      href="/admin/cms/terms"
-                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/cms/terms' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
-                      <span>Terms of Service</span>
-                    </Link>
-                    <Link
-                      href="/admin/cms/privacy"
-                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/cms/privacy' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
-                      <span>Privacy Policy</span>
-                    </Link>
-                    <Link
-                      href="/admin/cms/manifests"
-                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/cms/manifests' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
-                      <span>Metadata Manifests</span>
-                    </Link>
-                    <Link
-                      href="/admin/cms/editorial-board"
-                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/cms/editorial-board' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
-                      <span>Editorial Board</span>
-                    </Link>
-                    <Link
                       href="/admin/cms/faqs"
                       className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/cms/faqs' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
                       <span>Manage FAQs</span>
                     </Link>
+                    {(hasPermission('footer.manage') || hasPermission('settings.manage')) && (
+                      <Link
+                        href="/admin/footer-cms"
+                        className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/footer-cms' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
+                        <span>Footer Menu Builder</span>
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>
             )}
+
+            <Link
+              href="/admin/settings"
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-premium ${pathname === '/admin/settings' ? 'bg-[var(--accent)] text-white shadow-[0_0_15px_rgba(30,58,138,0.4)]' : 'text-[var(--muted)] hover:bg-white/10 hover:text-[var(--foreground)]'}`}
+            >
+              <Settings className="w-4 h-4" />
+              <span>Security Settings</span>
+            </Link>
           </nav>
         </div>
 

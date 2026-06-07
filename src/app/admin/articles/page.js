@@ -18,7 +18,7 @@ export default function AdminArticlesBoard() {
   const { toast } = useToast();
   const { user, hasPermission, loading: authLoading } = useAuth();
 
-  const isAdminOrEditor = hasPermission('articles.approve');
+  const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || hasPermission('articles.auto-approve')) : false;
 
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
