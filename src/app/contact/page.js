@@ -28,6 +28,8 @@ export default function ContactPage() {
     address: 'ScholarlyNest Press\n750 University Research Boulevard, Suite 400\nCambridge, MA 02138, United States'
   });
 
+  const [subjects, setSubjects] = useState([]);
+
   useEffect(() => {
     const fetchContactSettings = async () => {
       try {
@@ -37,7 +39,16 @@ export default function ContactPage() {
         console.error('Failed to load contact settings:', err);
       }
     };
+    const fetchSubjects = async () => {
+      try {
+        const res = await api.get('/contact-subjects');
+        setSubjects(res.data || []);
+      } catch (err) {
+        console.error('Failed to load contact subjects:', err);
+      }
+    };
     fetchContactSettings();
+    fetchSubjects();
   }, []);
 
   const handleSubmit = async (e) => {
@@ -209,11 +220,13 @@ export default function ContactPage() {
                       value={formData.subject}
                       onChange={handleChange}
                     >
-                      <option value="general">General Inquiry</option>
-                      <option value="manuscript">Manuscript Submission Question</option>
-                      <option value="review">Peer Review Process</option>
-                      <option value="partnership">Institutional Partnership</option>
-                      <option value="indexing">Abstract Indexing Status</option>
+                      {subjects.length > 0 ? (
+                        subjects.map((s) => (
+                          <option key={s.id} value={s.value}>{s.label}</option>
+                        ))
+                      ) : (
+                        <option value="general">General Inquiry</option>
+                      )}
                     </CustomSelect>
                   </div>
 

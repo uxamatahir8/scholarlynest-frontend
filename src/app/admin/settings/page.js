@@ -14,6 +14,7 @@ export default function SecuritySettings() {
   const [profileName, setProfileName] = useState(user?.name || '');
   const [profileEmail, setProfileEmail] = useState(user?.email || '');
   const [profileImage, setProfileImage] = useState(user?.profile_image || '');
+  const [universityName, setUniversityName] = useState(user?.university_name || '');
   const [profileLoading, setProfileLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -31,6 +32,7 @@ export default function SecuritySettings() {
       setProfileName(user.name || '');
       setProfileEmail(user.email || '');
       setProfileImage(user.profile_image || '');
+      setUniversityName(user.university_name || '');
     }
   }, [user]);
 
@@ -253,6 +255,7 @@ export default function SecuritySettings() {
       const res = await api.put('/profile', {
         name: profileName,
         profile_image: profileImage || null,
+        university_name: universityName || null,
       });
       await refreshUser();
       toast(res.data.message || 'Profile updated successfully.', 'success');
@@ -465,6 +468,20 @@ export default function SecuritySettings() {
                     {showEmailWizard ? 'Close' : 'Change'}
                   </button>
                 </div>
+              </div>
+
+              {/* University Name Field */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  University / Institution
+                </label>
+                <input
+                  type="text"
+                  value={universityName}
+                  onChange={(e) => setUniversityName(e.target.value)}
+                  placeholder="e.g. Massachusetts Institute of Technology"
+                  className="w-full text-xs font-medium px-3 py-2 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-400"
+                />
               </div>
             </div>
 

@@ -12,6 +12,20 @@ import GlobalSearchInput from '../../components/home/GlobalSearchInput';
 import SeoHead from '../../components/SeoHead';
 import Pagination from '../../components/ui/Pagination';
 
+const getFullImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  if (path.startsWith('/images/') || path.startsWith('images/')) {
+    return path.startsWith('/') ? path : '/' + path;
+  }
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  const domain = apiBase.replace(/\/api$/, '');
+  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  return `${domain}${cleanPath}`;
+};
+
 function SearchResultsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -80,7 +94,7 @@ function SearchResultsContent() {
           <div key={`mag-${item.id}`} className="glass-panel p-6 border border-zinc-200 dark:border-zinc-800 bg-white/40 dark:bg-zinc-900/30 rounded-2xl flex flex-col md:flex-row gap-6 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 relative overflow-hidden group">
             {item.additional?.cover_image && (
               <div className="w-full md:w-28 h-36 rounded-xl overflow-hidden shrink-0 border border-zinc-200 dark:border-zinc-800 shadow-md">
-                <img src={item.additional.cover_image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <img src={getFullImageUrl(item.additional.cover_image)} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
             )}
             <div className="flex-grow space-y-3">

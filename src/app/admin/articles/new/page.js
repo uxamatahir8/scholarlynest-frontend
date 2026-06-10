@@ -43,6 +43,9 @@ export default function AdminNewArticle() {
   const [fullText, setFullText] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfFileName, setPdfFileName] = useState('');
+  const [featuredImage, setFeaturedImage] = useState(null);
+  const [featuredImageFileName, setFeaturedImageFileName] = useState('');
+  const [featuredImagePreview, setFeaturedImagePreview] = useState('');
   const [autoApprove, setAutoApprove] = useState(false);
 
   useEffect(() => {
@@ -147,6 +150,29 @@ export default function AdminNewArticle() {
     }
   };
 
+  const handleFeaturedImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (!file.type.startsWith('image/')) {
+        toast('Please upload a valid image file (PNG, JPG, WebP, etc.).', 'error');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast('Image file size must be less than 5MB.', 'error');
+        return;
+      }
+      setFeaturedImage(file);
+      setFeaturedImageFileName(file.name);
+      setFeaturedImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveFeaturedImage = () => {
+    setFeaturedImage(null);
+    setFeaturedImageFileName('');
+    setFeaturedImagePreview('');
+  };
+
   const validateForm = () => {
     const errors = {};
     if (!magazineId) {
@@ -202,6 +228,9 @@ export default function AdminNewArticle() {
       formData.append('full_text', fullText);
       if (pdfFile) {
         formData.append('pdf_file', pdfFile);
+      }
+      if (featuredImage) {
+        formData.append('featured_image', featuredImage);
       }
       formData.append('tags', JSON.stringify(selectedTags));
       formData.append('co_authors', JSON.stringify(coAuthors));
@@ -545,7 +574,7 @@ export default function AdminNewArticle() {
           </div>
         </div>
 
-        {/* PDF File upload & Auto Approve */}
+        {/* PDF File upload & Auto Approve & Featured Image */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-200">
           <div className="space-y-2">
             <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Pre-compiled PDF Document (Optional)</label>
@@ -565,8 +594,40 @@ export default function AdminNewArticle() {
             <p className="text-[10px] text-zinc-400 font-medium">If no pre-compiled PDF is uploaded, a custom, beautifully formatted PDF document will be dynamically compiled upon approval.</p>
           </div>
 
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Featured Image (Optional)</label>
+            <div className="flex flex-col space-y-3">
+              <div className="flex items-center space-x-3">
+                <label className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer border border-zinc-300">
+                  <Upload className="w-4 h-4" />
+                  <span>Choose Image</span>
+                  <input 
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFeaturedImageChange}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-xs text-zinc-500 font-mono font-medium truncate max-w-xs">{featuredImageFileName || 'No image selected'}</span>
+              </div>
+              {featuredImagePreview && (
+                <div className="relative w-full max-w-[200px] h-32 rounded-xl overflow-hidden border border-zinc-250/50 shadow-sm bg-zinc-50">
+                  <img src={featuredImagePreview} alt="Featured Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={handleRemoveFeaturedImage}
+                    className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+            <p className="text-[10px] text-zinc-400 font-medium">Add a cover or header image for this article. Falls back to the magazine cover image if not provided.</p>
+          </div>
+
           {canAutoApprove && (
-            <div className="flex items-center space-x-3 bg-zinc-50 p-4 rounded-2xl border border-zinc-200/60 self-start">
+            <div className="md:col-span-2 flex items-center space-x-3 bg-zinc-50 p-4 rounded-2xl border border-zinc-200/60 self-start">
               <input 
                 type="checkbox"
                 id="autoApprove"

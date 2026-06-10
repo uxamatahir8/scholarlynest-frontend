@@ -11,6 +11,20 @@ import api from '../../../utils/api';
 import TableOfContents from '../../../components/magazine/TableOfContents';
 import SeoHead from '../../../components/SeoHead';
 
+const getFullImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  if (path.startsWith('/images/') || path.startsWith('images/')) {
+    return path.startsWith('/') ? path : '/' + path;
+  }
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  const domain = apiBase.replace(/\/api$/, '');
+  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  return `${domain}${cleanPath}`;
+};
+
 export default function MagazineShell() {
   const params = useParams();
   const router = useRouter();
@@ -109,7 +123,7 @@ export default function MagazineShell() {
         {magazine.cover_image && (
           <div 
             className="absolute inset-0 bg-cover bg-center scale-105 blur-md opacity-30 pointer-events-none"
-            style={{ backgroundImage: `url(${magazine.cover_image})` }}
+            style={{ backgroundImage: `url(${getFullImageUrl(magazine.cover_image)})` }}
           />
         )}
         
@@ -141,7 +155,7 @@ export default function MagazineShell() {
             {magazine.cover_image && (
               <div className="shrink-0 w-32 h-44 rounded-lg overflow-hidden border border-white/20 shadow-2xl hidden md:block">
                 <img 
-                  src={magazine.cover_image} 
+                  src={getFullImageUrl(magazine.cover_image)} 
                   alt={magazine.title} 
                   className="w-full h-full object-cover"
                 />

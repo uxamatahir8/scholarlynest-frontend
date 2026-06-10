@@ -2,6 +2,20 @@ import React from 'react';
 import Link from 'next/link';
 import { BookOpen, FileText, ArrowRight } from 'lucide-react';
 
+const getFullImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  if (path.startsWith('/images/') || path.startsWith('images/')) {
+    return path.startsWith('/') ? path : '/' + path;
+  }
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  const domain = apiBase.replace(/\/api$/, '');
+  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  return `${domain}${cleanPath}`;
+};
+
 export default function MagazineCard({ id, title, slug, cover_image, description, articles_count }) {
   return (
     <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-900/40 backdrop-blur-md shadow-sm hover:shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1.5 w-full">
@@ -12,7 +26,7 @@ export default function MagazineCard({ id, title, slug, cover_image, description
       >
         {cover_image ? (
           <img 
-            src={cover_image} 
+            src={getFullImageUrl(cover_image)} 
             alt={title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             loading="lazy"

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Mail, Phone, MapPin, Save, Loader2, ShieldCheck, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Mail, Phone, MapPin, Save, Loader2, ShieldCheck, ArrowLeft, ChevronRight, Plus, Edit, Trash2, Tag, X } from 'lucide-react';
 import Link from 'next/link';
 import api from '../../../utils/api';
 import { useToast } from '../../../context/ToastContext';
@@ -18,6 +18,17 @@ export default function AdminContactSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+
+  // Contact Subjects State
+  const [subjects, setSubjects] = useState([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(true);
+  const [showSubjectForm, setShowSubjectForm] = useState(false);
+  const [editingSubject, setEditingSubject] = useState(null);
+  const [subjectLabel, setSubjectLabel] = useState('');
+  const [subjectValue, setSubjectValue] = useState('');
+  const [subjectSortOrder, setSubjectSortOrder] = useState(0);
+  const [subjectSaving, setSubjectSaving] = useState(false);
+  const [deletingSubjectId, setDeletingSubjectId] = useState(null);
 
   useEffect(() => {
     const fetchContactSettings = async () => {
@@ -37,8 +48,21 @@ export default function AdminContactSettings() {
     };
     if (!authLoading && user) {
       fetchContactSettings();
+      fetchSubjects();
     }
   }, [user, authLoading]);
+
+  const fetchSubjects = async () => {
+    setSubjectsLoading(true);
+    try {
+      const res = await api.get('/contact-subjects');
+      setSubjects(res.data || []);
+    } catch (err) {
+      console.error('Failed to load contact subjects:', err);
+    } finally {
+      setSubjectsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -75,6 +99,67 @@ export default function AdminContactSettings() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSaveSubject = async (e) => {
+    e.preventDefault();
+    if (!subjectLabel.trim() || !subjectValue.trim()) {
+      toast('Label and value are both required.', 'error');
+      return;
+    }
+
+    setSubjectSaving(true);
+    const payload = {
+      label: subjectLabel.trim(),
+      value: subjectValue.trim().toLowerCase().replace(/\s+/g, '_'),
+      sort_order: Number(subjectSortOrder),
+    };
+
+    try {
+      if (editingSubject) {
+        await api.put(`/admin/contact-subjects/${editingSubject.id}`, payload);
+        toast(`Subject "${subjectLabel}" updated.`, 'success');
+      } else {
+        await api.post('/admin/contact-subjects', payload);
+        toast(`Subject "${subjectLabel}" created.`, 'success');
+      }
+      resetSubjectForm();
+      await fetchSubjects();
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to save subject.';
+      toast(msg, 'error');
+    } finally {
+      setSubjectSaving(false);
+    }
+  };
+
+  const handleDeleteSubject = async (id, label) => {
+    setDeletingSubjectId(id);
+    try {
+      await api.delete(`/admin/contact-subjects/${id}`);
+      toast(`Subject "${label}" deleted.`, 'success');
+      await fetchSubjects();
+    } catch (err) {
+      toast(err.response?.data?.message || 'Failed to delete subject.', 'error');
+    } finally {
+      setDeletingSubjectId(null);
+    }
+  };
+
+  const handleEditSubjectClick = (subject) => {
+    setEditingSubject(subject);
+    setSubjectLabel(subject.label);
+    setSubjectValue(subject.value);
+    setSubjectSortOrder(subject.sort_order);
+    setShowSubjectForm(true);
+  };
+
+  const resetSubjectForm = () => {
+    setShowSubjectForm(false);
+    setEditingSubject(null);
+    setSubjectLabel('');
+    setSubjectValue('');
+    setSubjectSortOrder(0);
   };
 
   if (authLoading) {
@@ -185,7 +270,7 @@ export default function AdminContactSettings() {
               <textarea
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="ScholarlyNest Press&#10;750 University Research Boulevard, Suite 400&#10;Cambridge, MA 02138, United States"
+                placeholder={"ScholarlyNest Press\n750 University Research Boulevard, Suite 400\nCambridge, MA 02138, United States"}
                 rows={4}
                 className="w-full text-xs font-semibold pl-8 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-400 transition-all leading-relaxed"
               />
@@ -225,6 +310,142 @@ export default function AdminContactSettings() {
           </button>
         </div>
       </form>
+
+      {/* Contact Subject Matter Management */}
+      <div className="bg-white dark:bg-[#121211] p-6 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/60 shadow-sm space-y-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <Tag className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Contact Subject Options</h3>
+              <p className="text-[10px] text-zinc-400 dark:text-zinc-500">Manage the subject matter dropdown options displayed on the public contact form.</p>
+            </div>
+          </div>
+          {!showSubjectForm && (
+            <button
+              onClick={() => {
+                resetSubjectForm();
+                setShowSubjectForm(true);
+              }}
+              className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-2 border border-zinc-200 dark:border-zinc-800/60 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer text-zinc-700 dark:text-zinc-300"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Add Subject</span>
+            </button>
+          )}
+        </div>
+
+        {/* Subject Form */}
+        {showSubjectForm && (
+          <form onSubmit={handleSaveSubject} className="bg-zinc-50 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-800/50 p-4 rounded-xl space-y-3.5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between">
+              <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-450">
+                {editingSubject ? 'Edit Subject' : 'Create Subject'}
+              </h4>
+              <button type="button" onClick={resetSubjectForm} className="p-1 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200 cursor-pointer">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[9px] font-bold uppercase tracking-wider text-zinc-450 mb-1">Display Label</label>
+                <input
+                  type="text"
+                  required
+                  value={subjectLabel}
+                  onChange={(e) => {
+                    setSubjectLabel(e.target.value);
+                    if (!editingSubject) {
+                      setSubjectValue(e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''));
+                    }
+                  }}
+                  placeholder="e.g., Technical Support"
+                  className="w-full px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-850 dark:text-zinc-200"
+                />
+              </div>
+              <div>
+                <label className="block text-[9px] font-bold uppercase tracking-wider text-zinc-450 mb-1">Value Key</label>
+                <input
+                  type="text"
+                  required
+                  value={subjectValue}
+                  onChange={(e) => setSubjectValue(e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''))}
+                  placeholder="e.g., technical_support"
+                  className="w-full px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-mono font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-850 dark:text-zinc-200"
+                />
+              </div>
+              <div>
+                <label className="block text-[9px] font-bold uppercase tracking-wider text-zinc-450 mb-1">Sort Order</label>
+                <input
+                  type="number"
+                  value={subjectSortOrder}
+                  onChange={(e) => setSubjectSortOrder(e.target.value)}
+                  className="w-full px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/60 rounded-lg text-xs font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-800 dark:text-zinc-250"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-1.5 pt-2">
+              <button
+                type="button"
+                onClick={resetSubjectForm}
+                className="px-2.5 py-1.5 border border-zinc-200 dark:border-zinc-800/60 rounded-lg text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={subjectSaving}
+                className="px-3 py-1.5 bg-[var(--accent)] text-white hover:opacity-90 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {subjectSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Subjects List */}
+        <div className="space-y-2">
+          {subjectsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+            </div>
+          ) : subjects.length > 0 ? (
+            subjects.map((s) => (
+              <div key={s.id} className="flex items-center justify-between p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-800/40 bg-zinc-50/50 dark:bg-zinc-950">
+                <div>
+                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">{s.label}</span>
+                  <span className="block text-[9px] text-zinc-400 font-semibold font-mono">value: {s.value} · order: {s.sort_order}</span>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    onClick={() => handleEditSubjectClick(s)}
+                    className="p-1.5 text-zinc-400 hover:text-[var(--accent)] hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Edit className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteSubject(s.id, s.label)}
+                    disabled={deletingSubjectId === s.id}
+                    className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {deletingSubjectId === s.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-zinc-455">
+              <p className="text-xs">No contact subjects configured yet.</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

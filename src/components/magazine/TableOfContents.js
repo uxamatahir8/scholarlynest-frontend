@@ -4,6 +4,20 @@ import { User, Calendar, FileText, ArrowRight, ArrowLeft } from 'lucide-react';
 import MonthVolumeCard from './MonthVolumeCard';
 import DOMPurify from 'dompurify';
 
+const getFullImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  if (path.startsWith('/images/') || path.startsWith('images/')) {
+    return path.startsWith('/') ? path : '/' + path;
+  }
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  const domain = apiBase.replace(/\/api$/, '');
+  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  return `${domain}${cleanPath}`;
+};
+
 export default function TableOfContents({ groupedArticles, coverImage, magazineSlug, onArticleClick }) {
   const months = Object.keys(groupedArticles || {});
   const [selectedYear, setSelectedYear] = useState(null);
@@ -78,12 +92,24 @@ export default function TableOfContents({ groupedArticles, coverImage, magazineS
           {groupedArticles[selectedMonth]?.map((art) => {
             const cleanAbstract = typeof window !== 'undefined' ? DOMPurify.sanitize(art.abstract) : art.abstract;
             
+            const imageSrc = getFullImageUrl(art.featured_image || coverImage);
+            
             return (
               <div
                 key={art.id}
-                className="group relative border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/60 p-5 rounded-xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 shadow-sm"
+                className="group relative border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/60 p-5 rounded-xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 shadow-sm flex flex-col md:flex-row gap-5 items-start md:items-center"
               >
-                <div className="space-y-3">
+                {imageSrc && (
+                  <div className="shrink-0 w-full md:w-32 h-24 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-50 relative">
+                    <img 
+                      src={imageSrc} 
+                      alt="" 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102" 
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+                <div className="flex-grow space-y-3 min-w-0 w-full">
                   {/* Metadata */}
                   <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-[var(--muted)] font-mono uppercase tracking-wider">
                     <span className="flex items-center text-zinc-550 dark:text-zinc-450">
@@ -103,7 +129,7 @@ export default function TableOfContents({ groupedArticles, coverImage, magazineS
 
                   <h4 className="font-serif text-base sm:text-lg font-bold text-zinc-900 dark:text-white group-hover:text-[var(--accent)] transition-colors leading-snug">
                     <Link
-                      href={`/magazines/${magazineSlug}/articles/${art.slug}`}
+                      href={`/magazines/${magazineSlug}/articles/${art.id}/${art.slug}`}
                       className="cursor-pointer hover:underline"
                       onClick={() => onArticleClick && onArticleClick(art.id)}
                     >
@@ -125,7 +151,7 @@ export default function TableOfContents({ groupedArticles, coverImage, magazineS
                       </span>
                     )}
                     <Link
-                      href={`/magazines/${magazineSlug}/articles/${art.slug}`}
+                      href={`/magazines/${magazineSlug}/articles/${art.id}/${art.slug}`}
                       className="inline-flex items-center space-x-1.5 text-xs font-bold uppercase tracking-wider text-[var(--accent)] group-hover:text-[var(--accent-gold)] transition-colors cursor-pointer"
                       onClick={() => onArticleClick && onArticleClick(art.id)}
                     >

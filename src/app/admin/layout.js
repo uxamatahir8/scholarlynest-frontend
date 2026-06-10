@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
+import UniversityGateModal from '../../components/dashboard/UniversityGateModal';
 import Image from 'next/image';
 import {
   LayoutDashboard,
@@ -561,6 +562,8 @@ export default function AdminLayout({ children }) {
           </div>
         </div>
       )}
+
+      <UniversityGateModal />
 
     </div>
   );

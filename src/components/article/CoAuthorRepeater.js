@@ -8,7 +8,7 @@ export default function CoAuthorRepeater({ coAuthors, setCoAuthors, currentUserE
   const addCoAuthor = () => {
     setCoAuthors([
       ...coAuthors,
-      { name: '', email: '', can_edit: false, create_account: false }
+      { name: '', email: '', university_name: '', can_edit: false, create_account: false }
     ]);
   };
 
@@ -19,13 +19,19 @@ export default function CoAuthorRepeater({ coAuthors, setCoAuthors, currentUserE
   const updateCoAuthor = (index, field, value) => {
     const updated = coAuthors.map((author, idx) => {
       if (idx === index) {
-        return { ...author, [field]: value };
+        const newAuthor = { ...author, [field]: value };
+        if (field === 'can_edit' && value === true) {
+          newAuthor.create_account = true;
+        }
+        return newAuthor;
       }
       return author;
     });
     setCoAuthors(updated);
   };
-
+  const canAddRow = coAuthors.every(
+    (author) => author.name?.trim() && author.email?.trim() && author.university_name?.trim()
+  );
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -47,7 +53,8 @@ export default function CoAuthorRepeater({ coAuthors, setCoAuthors, currentUserE
         <button
           type="button"
           onClick={addCoAuthor}
-          className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white bg-[var(--accent)] hover:bg-[var(--accent)]/90 rounded-lg shadow-sm transition-all cursor-pointer"
+          disabled={!canAddRow}
+          className="inline-flex items-center space-x-1 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white bg-[var(--accent)] hover:bg-[var(--accent)]/90 rounded-lg shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[var(--accent)]"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Add Author</span>
@@ -83,7 +90,7 @@ export default function CoAuthorRepeater({ coAuthors, setCoAuthors, currentUserE
                 className="p-4 bg-zinc-50 rounded-xl border border-zinc-200/60 shadow-sm flex flex-col md:flex-row md:items-center gap-4 transition-all duration-200 animate-in fade-in slide-in-from-bottom-2"
               >
                 {/* Inputs Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-grow">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-grow">
                   <div className="space-y-1">
                     <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 font-mono">Full Name</label>
                     <input
@@ -115,6 +122,17 @@ export default function CoAuthorRepeater({ coAuthors, setCoAuthors, currentUserE
                       </p>
                     )}
                   </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 font-mono">University / Affiliation Name</label>
+                    <input
+                      type="text"
+                      value={author.university_name || ''}
+                      onChange={(e) => updateCoAuthor(index, 'university_name', e.target.value)}
+                      placeholder="e.g. Stanford University"
+                      className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                    />
+                  </div>
                 </div>
 
                 {/* Checkboxes Wrapper */}
@@ -134,12 +152,13 @@ export default function CoAuthorRepeater({ coAuthors, setCoAuthors, currentUserE
                   </label>
 
                   {/* Create Account Gate */}
-                  <label className="inline-flex items-center space-x-2 select-none cursor-pointer">
+                  <label className={`inline-flex items-center space-x-2 select-none cursor-pointer ${author.can_edit ? 'opacity-70 cursor-not-allowed' : ''}`}>
                     <input
                       type="checkbox"
                       checked={author.create_account}
+                      disabled={author.can_edit}
                       onChange={(e) => updateCoAuthor(index, 'create_account', e.target.checked)}
-                      className="w-4 h-4 rounded border-zinc-300 text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
+                      className="w-4 h-4 rounded border-zinc-300 text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer disabled:cursor-not-allowed"
                     />
                     <span className="text-[10px] font-bold text-zinc-650 uppercase tracking-wider flex items-center">
                       <UserPlus className="w-3.5 h-3.5 mr-1 text-zinc-400" />

@@ -5,6 +5,20 @@ import Link from 'next/link';
 import { Loader2, AlertCircle, ArrowRight, Eye, Sparkles, BookOpenText } from 'lucide-react';
 import api from '../../utils/api';
 
+const getFullImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  if (path.startsWith('/images/') || path.startsWith('images/')) {
+    return path.startsWith('/') ? path : '/' + path;
+  }
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  const domain = apiBase.replace(/\/api$/, '');
+  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  return `${domain}${cleanPath}`;
+};
+
 export default function RecentArticles() {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -120,14 +134,27 @@ export default function RecentArticles() {
           {articles.map((article) => {
             const magSlug = article.magazine?.slug || '';
             const artSlug = article.slug || '';
-            const articleLink = `/magazines/${magSlug}/articles/${artSlug}`;
+            const articleLink = `/magazines/${magSlug}/articles/${article.id}/${artSlug}`;
+            
+            const imageSrc = getFullImageUrl(article.featured_image || article.magazine?.cover_image);
             
             return (
               <article 
                 key={article.id}
-                className="glass-panel rounded-2xl p-6 transition-all duration-300 hover:scale-[1.005] border border-[var(--muted-border)] hover:border-[var(--accent)]/20 hover:bg-[var(--card-bg)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 hover-glow w-full"
+                className="glass-panel rounded-2xl p-6 transition-all duration-300 hover:scale-[1.005] border border-[var(--muted-border)] hover:border-[var(--accent)]/20 hover:bg-[var(--card-bg)] flex flex-col md:flex-row md:items-center gap-6 hover-glow w-full"
               >
-                <div className="flex-grow space-y-2 text-left w-full sm:max-w-[80%]">
+                {imageSrc && (
+                  <div className="shrink-0 w-full md:w-36 h-28 rounded-xl overflow-hidden border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50 relative">
+                    <img 
+                      src={imageSrc} 
+                      alt="" 
+                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" 
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+                
+                <div className="flex-grow space-y-2 text-left w-full md:max-w-[70%]">
                   {/* Magazine Badge */}
                   {article.magazine && (
                     <Link 

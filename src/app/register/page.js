@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { Lock, Mail, User as UserIcon, Loader2, AlertCircle, Eye, EyeOff, Check, X } from 'lucide-react';
+import { Lock, Mail, User as UserIcon, Loader2, AlertCircle, Eye, EyeOff, Check, X, School } from 'lucide-react';
 import Breadcrumbs from '../../components/Breadcrumbs';
 import api from '../../utils/api';
 import SeoHead from '../../components/SeoHead';
@@ -17,6 +17,7 @@ export default function Register() {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [universityName, setUniversityName] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -151,6 +152,10 @@ export default function Register() {
       errors.email = 'Please enter a valid email address (e.g. fleming@university.edu).';
     }
 
+    if (!universityName.trim()) {
+      errors.university_name = 'University or Institutional Affiliation is required.';
+    }
+
     if (!password) {
       errors.password = 'Password is required.';
     } else if (password.length < 8) {
@@ -174,7 +179,7 @@ export default function Register() {
 
     setLoading(true);
 
-    const result = await registerUser(name, email, password, passwordConfirmation, subscribeNewsletter);
+    const result = await registerUser(name, email, password, passwordConfirmation, subscribeNewsletter, universityName);
 
     if (result.success && result.verificationRequired) {
       toast('Profile registered. Please check your email for the verification code!', 'success');
@@ -246,6 +251,33 @@ export default function Register() {
             {fieldErrors.name && (
               <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block animate-in fade-in duration-200">
                 {Array.isArray(fieldErrors.name) ? fieldErrors.name[0] : fieldErrors.name}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+              University / Institutional Affiliation
+            </label>
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                value={universityName}
+                onChange={(e) => {
+                  setUniversityName(e.target.value);
+                  if (fieldErrors.university_name) {
+                    setFieldErrors(prev => ({ ...prev, university_name: '' }));
+                  }
+                }}
+                placeholder="Harvard University"
+                required
+                className={`w-full text-xs font-medium pl-8 pr-3 py-2 bg-zinc-50 dark:bg-zinc-900/50 border rounded-md focus:outline-none placeholder-zinc-400 transition-all ${fieldErrors.university_name ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-zinc-200 dark:border-zinc-800/80 focus:border-zinc-400 dark:focus:border-zinc-700'}`}
+              />
+              <School className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
+            </div>
+            {fieldErrors.university_name && (
+              <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block animate-in fade-in duration-200">
+                {Array.isArray(fieldErrors.university_name) ? fieldErrors.university_name[0] : fieldErrors.university_name}
               </span>
             )}
           </div>

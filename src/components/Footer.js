@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { BookOpen, GraduationCap, FileText, Send, Check } from 'lucide-react';
@@ -9,6 +9,23 @@ import api from '../utils/api';
 const Footer = () => {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    api.get('/public/footer')
+      .then((res) => {
+        if (active && res.data) {
+          setCategories(res.data);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load footer dynamic links:', err);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleSubscribeSubmit = async (e) => {
     e.preventDefault();
@@ -25,6 +42,11 @@ const Footer = () => {
       }
     }
   };
+
+  const institutionalCategory = categories.find(
+    (cat) => cat.name.toLowerCase() === 'institutional'
+  );
+  const institutionalPages = institutionalCategory ? institutionalCategory.pages : [];
 
   return (
     <footer className="bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-200/80 dark:border-zinc-800/60 mt-auto py-12 transition-premium">
@@ -46,49 +68,26 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Column 2: Platform Links */}
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-4">
-              Resources
-            </h3>
-            <ul className="space-y-2.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-
-              <li>
-                <Link className="hover:text-[var(--accent)] transition-colors" href="/editorial-board">
-                  Editorial Board
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
-                  Contact Us
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Column 3: Institutional Scope */}
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-4">
-              Institutional
-            </h3>
-            <ul className="space-y-2.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-              <li>
-                <Link href="/privacy" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
-                  Privacy Statement
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link href="/manifests" className="hover:text-zinc-900 dark:hover:text-white transition-colors">
-                  Metadata Manifests
-                </Link>
-              </li>
-            </ul>
-          </div>
+          {/* Columns 2 & 3: Dynamic Categories & Pages from Database */}
+          {categories.map((category) => (
+            <div key={category.id}>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-4">
+                {category.name}
+              </h3>
+              <ul className="space-y-2.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                {(category.pages || []).map((page) => (
+                  <li key={page.id}>
+                    <Link 
+                      href={`/${page.slug}`} 
+                      className="hover:text-zinc-900 dark:hover:text-white transition-colors"
+                    >
+                      {page.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
 
           {/* Column 4: Newsletter Subscriber */}
           <div className="flex flex-col space-y-4">
@@ -132,9 +131,15 @@ const Footer = () => {
             © {new Date().getFullYear()} ScholarlyNest Platform Inc. All rights reserved.
           </span>
           <div className="flex space-x-4 mt-2 md:mt-0">
-            <Link href="/privacy" className="hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">Privacy Statement</Link>
-            <Link href="/terms" className="hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">Terms of Service</Link>
-            <Link href="/manifests" className="hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">Metadata Manifests</Link>
+            {institutionalPages.map((page) => (
+              <Link 
+                key={page.id} 
+                href={`/${page.slug}`} 
+                className="hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+              >
+                {page.title}
+              </Link>
+            ))}
           </div>
         </div>
 

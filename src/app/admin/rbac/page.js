@@ -43,6 +43,7 @@ export default function RbacManager() {
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRoleId, setNewUserRoleId] = useState('');
+  const [newUserUniversityName, setNewUserUniversityName] = useState('');
 
   // Create Role states
   const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
@@ -256,6 +257,9 @@ export default function RbacManager() {
     if (!newUserRoleId) {
       errors.newUserRoleId = 'Role assignment is required.';
     }
+    if (!newUserUniversityName.trim()) {
+      errors.newUserUniversityName = 'University or Institutional Affiliation is required.';
+    }
 
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
@@ -266,13 +270,15 @@ export default function RbacManager() {
       await api.post('/admin/rbac/users', {
         name: newUserName,
         email: newUserEmail,
-        role_id: Number(newUserRoleId)
+        role_id: Number(newUserRoleId),
+        university_name: newUserUniversityName,
       });
       toast(`User ${newUserName} created successfully. Welcome credentials email dispatched.`, 'success');
       setShowCreateModal(false);
       setNewUserName('');
       setNewUserEmail('');
       setNewUserRoleId('');
+      setNewUserUniversityName('');
       await fetchData();
     } catch (err) {
       const errMsg = err.response?.data?.message || 'Failed to create user.';
@@ -419,7 +425,7 @@ export default function RbacManager() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--muted-border)]/50 text-xs">
-                    {users.map(u => (
+                    {users.filter(u => u.id !== authUser?.id).map(u => (
                       <tr key={u.id} className="hover:bg-[var(--foreground)]/5 transition-colors">
                         <td className="px-6 py-4 font-bold text-[var(--foreground)] flex items-center space-x-3">
                           <div className="w-8 h-8 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center font-bold text-xs uppercase">
@@ -1055,6 +1061,30 @@ export default function RbacManager() {
                 />
                 {validationErrors.newUserEmail && (
                   <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newUserEmail}</span>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">University / Institutional Affiliation</label>
+                <input
+                  type="text"
+                  value={newUserUniversityName}
+                  onChange={(e) => {
+                    setNewUserUniversityName(e.target.value);
+                    if (validationErrors.newUserUniversityName) {
+                      setValidationErrors(prev => {
+                        const copy = { ...prev };
+                        delete copy.newUserUniversityName;
+                        return copy;
+                      });
+                    }
+                  }}
+                  placeholder="Harvard University"
+                  className={`w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)] ${validationErrors.newUserUniversityName ? 'border-red-500 focus:border-red-500 focus:ring-red-500 dark:border-red-500' : 'border-[var(--muted-border)]'
+                    }`}
+                />
+                {validationErrors.newUserUniversityName && (
+                  <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newUserUniversityName}</span>
                 )}
               </div>
 

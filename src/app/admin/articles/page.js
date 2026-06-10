@@ -14,6 +14,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { useAuth } from '../../../context/AuthContext';
 import Pagination from '../../../components/ui/Pagination';
 
+const getFullImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  if (path.startsWith('/images/') || path.startsWith('images/')) {
+    return path.startsWith('/') ? path : '/' + path;
+  }
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  const domain = apiBase.replace(/\/api$/, '');
+  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  return `${domain}${cleanPath}`;
+};
+
 export default function AdminArticlesBoard() {
   const { toast } = useToast();
   const { user, hasPermission, loading: authLoading } = useAuth();
@@ -341,11 +355,28 @@ export default function AdminArticlesBoard() {
               <tbody className="divide-y divide-[var(--muted-border)]/50 text-xs font-semibold text-[var(--foreground)]">
                 {paginatedArticles.map((art) => (
                   <tr key={art.id} className="hover:bg-[var(--foreground)]/5 transition-colors">
-                    <td className="px-6 py-4 space-y-1 max-w-[280px]">
-                      <h4 className="text-sm font-bold text-[var(--foreground)] line-clamp-1">{art.title}</h4>
-                      <div className="flex items-center space-x-2 text-[10px] text-[var(--muted)] font-medium">
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>Submitted on {new Date(art.created_at).toLocaleDateString()}</span>
+                    <td className="px-6 py-4 max-w-[340px]">
+                      <div className="flex items-center space-x-3 text-left">
+                        {/* Thumbnail */}
+                        <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50 flex items-center justify-center">
+                          {(art.featured_image || art.magazine?.cover_image) ? (
+                            <img 
+                              src={getFullImageUrl(art.featured_image || art.magazine?.cover_image)} 
+                              alt="" 
+                              className="w-full h-full object-cover" 
+                            />
+                          ) : (
+                            <FileText className="w-5 h-5 text-zinc-400" />
+                          )}
+                        </div>
+                        {/* Title details */}
+                        <div className="space-y-1 min-w-0 flex-grow">
+                          <h4 className="text-sm font-bold text-[var(--foreground)] line-clamp-1" title={art.title}>{art.title}</h4>
+                          <div className="flex items-center space-x-2 text-[10px] text-[var(--muted)] font-medium">
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span>Submitted on {new Date(art.created_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -503,7 +534,18 @@ export default function AdminArticlesBoard() {
               {/* Reader Panel */}
               <div className="flex-grow p-5 rounded-xl border border-[var(--muted-border)]/65 bg-[var(--background)]/40 text-left overflow-y-auto max-h-[320px]">
                 {activeReviewTab === 'abstract' ? (
-                  <div className="prose prose-sm max-w-none text-[var(--foreground)]/80 italic leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedArticle.abstract }} />
+                  <div className="space-y-4">
+                    {(selectedArticle.featured_image || selectedArticle.magazine?.cover_image) && (
+                      <div className="w-full max-w-sm h-48 rounded-xl overflow-hidden border border-zinc-250/50 bg-zinc-50/50 shadow-sm mb-4">
+                        <img 
+                          src={getFullImageUrl(selectedArticle.featured_image || selectedArticle.magazine?.cover_image)} 
+                          alt="Article Featured Image" 
+                          className="w-full h-full object-cover" 
+                        />
+                      </div>
+                    )}
+                    <div className="prose prose-sm max-w-none text-[var(--foreground)]/80 italic leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedArticle.abstract }} />
+                  </div>
                 ) : activeReviewTab === 'fulltext' ? (
                   <div className="prose prose-sm max-w-none text-[var(--foreground)] leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedArticle.full_text }} />
                 ) : (

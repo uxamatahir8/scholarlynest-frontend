@@ -12,6 +12,21 @@ import api from '../../../../../utils/api';
 import { useToast } from '../../../../../context/ToastContext';
 import { useAuth } from '../../../../../context/AuthContext';
 import CoAuthorRepeater from '../../../../../components/article/CoAuthorRepeater';
+import ArticleAssetDropzone from '../../../../../components/article/ArticleAssetDropzone';
+
+const getFullImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+    return path;
+  }
+  if (path.startsWith('/images/') || path.startsWith('images/')) {
+    return path.startsWith('/') ? path : '/' + path;
+  }
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  const domain = apiBase.replace(/\/api$/, '');
+  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  return `${domain}${cleanPath}`;
+};
 
 const RichEditor = dynamic(() => import('../../../../../components/ui/RichEditor'), {
   ssr: false,
@@ -44,6 +59,11 @@ export default function AdminEditArticle() {
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfFileName, setPdfFileName] = useState('');
   const [existingPdfPath, setExistingPdfPath] = useState('');
+  const [featuredImage, setFeaturedImage] = useState(null);
+  const [featuredImageFileName, setFeaturedImageFileName] = useState('');
+  const [featuredImagePreview, setFeaturedImagePreview] = useState('');
+  const [existingFeaturedImage, setExistingFeaturedImage] = useState('');
+  const [deleteFeaturedImage, setDeleteFeaturedImage] = useState(false);
   const [status, setStatus] = useState('pending');
   const [articleOwnerId, setArticleOwnerId] = useState(null);
 
@@ -74,6 +94,7 @@ export default function AdminEditArticle() {
   const [loadingTags, setLoadingTags] = useState(false);
 
   const [saving, setSaving] = useState(false);
+  const [assets, setAssets] = useState([]);
   const [validationErrors, setValidationErrors] = useState({});
   const [coAuthors, setCoAuthors] = useState([]);
 
@@ -109,8 +130,10 @@ export default function AdminEditArticle() {
         setAbstract(article.abstract);
         setFullText(article.full_text);
         setExistingPdfPath(article.pdf_path || '');
+        setExistingFeaturedImage(article.featured_image || '');
         setStatus(article.status);
         setArticleOwnerId(article.user_id);
+        setAssets(article.assets || []);
 
         setSeoTitle(article.seo_title || '');
         setSeoDescription(article.seo_description || '');
@@ -126,8 +149,9 @@ export default function AdminEditArticle() {
           setCoAuthors(article.article_authors.map(author => ({
             name: author.co_author_name,
             email: author.co_author_email,
+            university_name: author.university_name || '',
             can_edit: !!author.can_edit,
-            create_account: !!author.account_provisioned
+            create_account: !!author.account_provisioned || !!author.user_id
           })));
         }
       } catch (err) {
@@ -169,6 +193,31 @@ export default function AdminEditArticle() {
       setPdfFile(file);
       setPdfFileName(file.name);
     }
+  };
+
+  const handleFeaturedImageChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (!file.type.startsWith('image/')) {
+        toast('Please upload a valid image file (PNG, JPG, WebP, etc.).', 'error');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast('Image file size must be less than 5MB.', 'error');
+        return;
+      }
+      setFeaturedImage(file);
+      setFeaturedImageFileName(file.name);
+      setFeaturedImagePreview(URL.createObjectURL(file));
+      setDeleteFeaturedImage(false);
+    }
+  };
+
+  const handleRemoveFeaturedImage = () => {
+    setFeaturedImage(null);
+    setFeaturedImageFileName('');
+    setFeaturedImagePreview('');
+    setDeleteFeaturedImage(true);
   };
 
   const addCustomKeyword = () => {
@@ -255,6 +304,12 @@ export default function AdminEditArticle() {
       formData.append('status', status);
       if (pdfFile) {
         formData.append('pdf_file', pdfFile);
+      }
+      if (featuredImage) {
+        formData.append('featured_image', featuredImage);
+      }
+      if (deleteFeaturedImage) {
+        formData.append('delete_featured_image', 'true');
       }
       formData.append('tags', JSON.stringify(selectedTags));
       formData.append('co_authors', JSON.stringify(coAuthors));
@@ -647,7 +702,7 @@ export default function AdminEditArticle() {
             </div>
           </div>
 
-          {/* PDF File upload & Auto Approve */}
+          {/* PDF File upload & Featured Image */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-200">
             <div className="space-y-2">
               <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Replace PDF Document (Optional)</label>
@@ -668,6 +723,61 @@ export default function AdminEditArticle() {
                 <p className="text-[10px] text-emerald-600 font-bold font-mono">✓ Active PDF Link: {existingPdfPath}</p>
               )}
             </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Featured Image (Optional)</label>
+              <div className="flex flex-col space-y-3">
+                <div className="flex items-center space-x-3">
+                  <label className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer border border-zinc-300">
+                    <Upload className="w-4 h-4" />
+                    <span>Choose Image</span>
+                    <input 
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFeaturedImageChange}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-xs text-zinc-500 font-mono font-medium truncate max-w-xs">{featuredImageFileName || 'No image selected'}</span>
+                </div>
+
+                {/* Preview active featured image or new image preview */}
+                {featuredImagePreview ? (
+                  <div className="relative w-full max-w-[200px] h-32 rounded-xl overflow-hidden border border-zinc-250/50 shadow-sm bg-zinc-50 animate-in fade-in duration-300">
+                    <img src={featuredImagePreview} alt="New Featured Image Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={handleRemoveFeaturedImage}
+                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (existingFeaturedImage && !deleteFeaturedImage) ? (
+                  <div className="relative w-full max-w-[200px] h-32 rounded-xl overflow-hidden border border-zinc-250/50 shadow-sm bg-zinc-50">
+                    <img src={getFullImageUrl(existingFeaturedImage)} alt="Existing Featured" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={handleRemoveFeaturedImage}
+                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-red-650 hover:bg-red-700 text-white transition-colors"
+                      title="Remove Featured Image"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <p className="text-[10px] text-zinc-400 font-medium">Add or replace the article cover image. Falls back to the magazine cover image if not provided.</p>
+            </div>
+          </div>
+
+          {/* Article Assets Manager */}
+          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+            <ArticleAssetDropzone
+              articleId={id}
+              assets={assets}
+              onAssetsChanged={setAssets}
+            />
           </div>
 
           {/* Collapsible SEO Panel */}

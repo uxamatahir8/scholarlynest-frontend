@@ -65,14 +65,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Registration handler
-  const register = async (name, email, password, passwordConfirmation, subscribeNewsletter = false) => {
+  const register = async (name, email, password, passwordConfirmation, subscribeNewsletter = false, universityName) => {
     try {
       const res = await api.post('/register', {
         name,
         email,
         password,
         password_confirmation: passwordConfirmation,
-        subscribe_newsletter: subscribeNewsletter
+        subscribe_newsletter: subscribeNewsletter,
+        university_name: universityName
       });
       return { success: true, verificationRequired: true, email };
     } catch (err) {
