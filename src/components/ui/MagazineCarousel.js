@@ -145,7 +145,7 @@ export default function MagazineCarousel() {
       <div className="absolute top-1/2 left-0 -translate-y-1/2 w-72 h-72 bg-[var(--accent)]/5 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute top-1/2 right-0 -translate-y-1/2 w-80 h-80 bg-[var(--accent-gold)]/5 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="w-full px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header and navigation buttons */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
           <div className="space-y-3 text-left">

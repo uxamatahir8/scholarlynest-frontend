@@ -195,7 +195,7 @@ export default function AdminContactSettings() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="space-y-6 w-full">
       {/* Navigation Headers */}
       <div className="flex items-center justify-between pb-4 border-b border-zinc-200 dark:border-zinc-800/60">
         <Link href="/admin" className="inline-flex items-center text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-[var(--accent)] transition-colors">
@@ -218,232 +218,240 @@ export default function AdminContactSettings() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white dark:bg-[#121211] p-6 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/60 shadow-sm space-y-5">
-          
-          {/* Contact Email */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Contact Email Address
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="contact@scholarlynest.com"
-                className="w-full text-xs font-semibold pl-8 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-400 transition-all"
-              />
-              <Mail className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
-            </div>
-            {fieldErrors.email && (
-              <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block">{fieldErrors.email}</span>
-            )}
-          </div>
-
-          {/* Contact Phone */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Communications Phone
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+1 (617) 555-0198"
-                className="w-full text-xs font-semibold pl-8 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-400 transition-all"
-              />
-              <Phone className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
-            </div>
-            {fieldErrors.phone && (
-              <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block">{fieldErrors.phone}</span>
-            )}
-          </div>
-
-          {/* Mailing Address */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Mailing Address / Headquarters location
-            </label>
-            <div className="relative flex items-start">
-              <textarea
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder={"ScholarlyNest Press\n750 University Research Boulevard, Suite 400\nCambridge, MA 02138, United States"}
-                rows={4}
-                className="w-full text-xs font-semibold pl-8 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-400 transition-all leading-relaxed"
-              />
-              <MapPin className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-3" />
-            </div>
-            {fieldErrors.address && (
-              <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block">{fieldErrors.address}</span>
-            )}
-          </div>
-
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end space-x-3">
-          <Link 
-            href="/admin"
-            className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-400 transition-colors cursor-pointer"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[var(--accent)] hover:opacity-90 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Saving Details...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Save Contact Details</span>
-              </>
-            )}
-          </button>
-        </div>
-      </form>
-
-      {/* Contact Subject Matter Management */}
-      <div className="bg-white dark:bg-[#121211] p-6 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/60 shadow-sm space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <Tag className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Contact Subject Options</h3>
-              <p className="text-[10px] text-zinc-400 dark:text-zinc-500">Manage the subject matter dropdown options displayed on the public contact form.</p>
-            </div>
-          </div>
-          {!showSubjectForm && (
-            <button
-              onClick={() => {
-                resetSubjectForm();
-                setShowSubjectForm(true);
-              }}
-              className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-2 border border-zinc-200 dark:border-zinc-800/60 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer text-zinc-700 dark:text-zinc-300"
-            >
-              <Plus className="w-3 h-3" />
-              <span>Add Subject</span>
-            </button>
-          )}
-        </div>
-
-        {/* Subject Form */}
-        {showSubjectForm && (
-          <form onSubmit={handleSaveSubject} className="bg-zinc-50 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-800/50 p-4 rounded-xl space-y-3.5 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-450">
-                {editingSubject ? 'Edit Subject' : 'Create Subject'}
-              </h4>
-              <button type="button" onClick={resetSubjectForm} className="p-1 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200 cursor-pointer">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[9px] font-bold uppercase tracking-wider text-zinc-450 mb-1">Display Label</label>
-                <input
-                  type="text"
-                  required
-                  value={subjectLabel}
-                  onChange={(e) => {
-                    setSubjectLabel(e.target.value);
-                    if (!editingSubject) {
-                      setSubjectValue(e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''));
-                    }
-                  }}
-                  placeholder="e.g., Technical Support"
-                  className="w-full px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-850 dark:text-zinc-200"
-                />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Side: General Details Form (5 columns) */}
+        <div className="lg:col-span-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="bg-white dark:bg-[#121211] p-6 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/60 shadow-sm space-y-5">
+              
+              {/* Contact Email */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  Contact Email Address
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="contact@scholarlynest.com"
+                    className="w-full text-xs font-semibold pl-8 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-400 transition-all"
+                  />
+                  <Mail className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
+                </div>
+                {fieldErrors.email && (
+                  <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block">{fieldErrors.email}</span>
+                )}
               </div>
-              <div>
-                <label className="block text-[9px] font-bold uppercase tracking-wider text-zinc-450 mb-1">Value Key</label>
-                <input
-                  type="text"
-                  required
-                  value={subjectValue}
-                  onChange={(e) => setSubjectValue(e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''))}
-                  placeholder="e.g., technical_support"
-                  className="w-full px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-mono font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-850 dark:text-zinc-200"
-                />
+
+              {/* Contact Phone */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  Communications Phone
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+1 (617) 555-0198"
+                    className="w-full text-xs font-semibold pl-8 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-400 transition-all"
+                  />
+                  <Phone className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
+                </div>
+                {fieldErrors.phone && (
+                  <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block">{fieldErrors.phone}</span>
+                )}
               </div>
-              <div>
-                <label className="block text-[9px] font-bold uppercase tracking-wider text-zinc-450 mb-1">Sort Order</label>
-                <input
-                  type="number"
-                  value={subjectSortOrder}
-                  onChange={(e) => setSubjectSortOrder(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/60 rounded-lg text-xs font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-800 dark:text-zinc-250"
-                />
+
+              {/* Mailing Address */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  Mailing Address / Headquarters location
+                </label>
+                <div className="relative flex items-start">
+                  <textarea
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder={"ScholarlyNest Press\n750 University Research Boulevard, Suite 400\nCambridge, MA 02138, United States"}
+                    rows={4}
+                    className="w-full text-xs font-semibold pl-8 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-400 transition-all leading-relaxed"
+                  />
+                  <MapPin className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-3" />
+                </div>
+                {fieldErrors.address && (
+                  <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block">{fieldErrors.address}</span>
+                )}
               </div>
+
             </div>
-            <div className="flex justify-end space-x-1.5 pt-2">
-              <button
-                type="button"
-                onClick={resetSubjectForm}
-                className="px-2.5 py-1.5 border border-zinc-200 dark:border-zinc-800/60 rounded-lg text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end space-x-3">
+              <Link 
+                href="/admin"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-zinc-400 transition-colors cursor-pointer"
               >
                 Cancel
-              </button>
+              </Link>
               <button
                 type="submit"
-                disabled={subjectSaving}
-                className="px-3 py-1.5 bg-[var(--accent)] text-white hover:opacity-90 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
+                disabled={saving}
+                className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[var(--accent)] hover:opacity-90 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
               >
-                {subjectSaving ? 'Saving...' : 'Save'}
+                {saving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving Details...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>Save Contact Details</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
-        )}
+        </div>
 
-        {/* Subjects List */}
-        <div className="space-y-2">
-          {subjectsLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
-            </div>
-          ) : subjects.length > 0 ? (
-            subjects.map((s) => (
-              <div key={s.id} className="flex items-center justify-between p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-800/40 bg-zinc-50/50 dark:bg-zinc-950">
-                <div>
-                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">{s.label}</span>
-                  <span className="block text-[9px] text-zinc-400 font-semibold font-mono">value: {s.value} · order: {s.sort_order}</span>
+        {/* Right Side: Contact Subject Options (7 columns) */}
+        <div className="lg:col-span-7">
+          {/* Contact Subject Matter Management */}
+          <div className="bg-white dark:bg-[#121211] p-6 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/60 shadow-sm space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <Tag className="w-5 h-5" />
                 </div>
-                <div className="flex items-center space-x-1.5">
-                  <button
-                    onClick={() => handleEditSubjectClick(s)}
-                    className="p-1.5 text-zinc-400 hover:text-[var(--accent)] hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <Edit className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSubject(s.id, s.label)}
-                    disabled={deletingSubjectId === s.id}
-                    className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    {deletingSubjectId === s.id ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3.5 h-3.5" />
-                    )}
-                  </button>
+                <div>
+                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Contact Subject Options</h3>
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500">Manage the subject matter dropdown options displayed on the public contact form.</p>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-8 text-zinc-455">
-              <p className="text-xs">No contact subjects configured yet.</p>
+              {!showSubjectForm && (
+                <button
+                  onClick={() => {
+                    resetSubjectForm();
+                    setShowSubjectForm(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-2 border border-zinc-200 dark:border-zinc-800/60 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer text-zinc-700 dark:text-zinc-300"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Add Subject</span>
+                </button>
+              )}
             </div>
-          )}
+
+            {/* Subject Form */}
+            {showSubjectForm && (
+              <form onSubmit={handleSaveSubject} className="bg-zinc-50 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-800/50 p-4 rounded-xl space-y-3.5 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-450">
+                    {editingSubject ? 'Edit Subject' : 'Create Subject'}
+                  </h4>
+                  <button type="button" onClick={resetSubjectForm} className="p-1 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200 cursor-pointer">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[9px] font-bold uppercase tracking-wider text-zinc-450 mb-1">Display Label</label>
+                    <input
+                      type="text"
+                      required
+                      value={subjectLabel}
+                      onChange={(e) => {
+                        setSubjectLabel(e.target.value);
+                        if (!editingSubject) {
+                          setSubjectValue(e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''));
+                        }
+                      }}
+                      placeholder="e.g., Technical Support"
+                      className="w-full px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-850 dark:text-zinc-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold uppercase tracking-wider text-zinc-450 mb-1">Value Key</label>
+                    <input
+                      type="text"
+                      required
+                      value={subjectValue}
+                      onChange={(e) => setSubjectValue(e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''))}
+                      placeholder="e.g., technical_support"
+                      className="w-full px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-mono font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-850 dark:text-zinc-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold uppercase tracking-wider text-zinc-450 mb-1">Sort Order</label>
+                    <input
+                      type="number"
+                      value={subjectSortOrder}
+                      onChange={(e) => setSubjectSortOrder(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/60 rounded-lg text-xs font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-800 dark:text-zinc-250"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-1.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={resetSubjectForm}
+                    className="px-2.5 py-1.5 border border-zinc-200 dark:border-zinc-800/60 rounded-lg text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={subjectSaving}
+                    className="px-3 py-1.5 bg-[var(--accent)] text-white hover:opacity-90 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {subjectSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Subjects List */}
+            <div className="space-y-2">
+              {subjectsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+                </div>
+              ) : subjects.length > 0 ? (
+                subjects.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-800/40 bg-zinc-50/50 dark:bg-zinc-950">
+                    <div>
+                      <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">{s.label}</span>
+                      <span className="block text-[9px] text-zinc-400 font-semibold font-mono">value: {s.value} · order: {s.sort_order}</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      <button
+                        onClick={() => handleEditSubjectClick(s)}
+                        className="p-1.5 text-zinc-400 hover:text-[var(--accent)] hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSubject(s.id, s.label)}
+                        disabled={deletingSubjectId === s.id}
+                        className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {deletingSubjectId === s.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-zinc-455">
+                  <p className="text-xs">No contact subjects configured yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -21,7 +21,8 @@ import {
   Monitor,
   Settings,
   Mail,
-  MessageSquare
+  MessageSquare,
+  Loader2
 } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
@@ -87,7 +88,7 @@ export default function AdminLayout({ children }) {
   // Auto-collapse sidebar on resize
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
+      if (window.innerWidth < 1024) {
         setSidebarOpen(false);
       } else {
         setSidebarOpen(true);
@@ -101,7 +102,7 @@ export default function AdminLayout({ children }) {
 
   // Auto-collapse on mobile route changes
   useEffect(() => {
-    if (window.innerWidth < 768) {
+    if (window.innerWidth < 1024) {
       setSidebarOpen(false);
     }
   }, [pathname]);
@@ -169,13 +170,12 @@ export default function AdminLayout({ children }) {
     }
   }, [pathname]);
 
-  // Safe checks for rendering
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 transition-colors">
         <div className="flex flex-col items-center space-y-4">
-          <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(30,58,138,0.5)]" />
-          <span className="text-xs text-[var(--muted)] font-mono uppercase tracking-widest font-bold">Authenticating Connection...</span>
+          <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
+          <span className="text-[10px] text-zinc-400 dark:text-zinc-550 font-sans font-bold uppercase tracking-widest">Authenticating Connection...</span>
         </div>
       </div>
     );
@@ -187,7 +187,6 @@ export default function AdminLayout({ children }) {
   const isCmsActive = pathname ? (pathname.startsWith('/admin/cms') || pathname.startsWith('/admin/footer-cms')) : false;
   const isMagazineActive = pathname ? (pathname.startsWith('/admin/magazines') || pathname.startsWith('/admin/articles')) : false;
 
-  // Hiding empty categories and pages dynamically
   const showMagazinePortal = hasPermission('magazines.view-any') || hasPermission('magazines.view-own') || hasPermission('articles.view-any') || hasPermission('articles.view-own');
   const showRbac = hasPermission('roles.view-any');
   const showContactSettings = hasPermission('settings.view-any') || hasPermission('settings.manage') || hasPermission('footer.manage');
@@ -196,91 +195,81 @@ export default function AdminLayout({ children }) {
   const showCms = hasPermission('settings.view-any') || hasPermission('settings.manage') || hasPermission('footer.manage');
 
   return (
-    <div className="h-screen w-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col md:flex-row transition-all duration-300 font-sans relative overflow-hidden">
+    <div className="h-screen w-screen bg-zinc-50/50 text-zinc-950 dark:bg-zinc-950 dark:text-zinc-100 flex flex-col lg:flex-row transition-all duration-300 font-sans relative overflow-hidden text-left">
 
-      {/* Backdrop overlay for mobile sidebar */}
+      {/* Backdrop for mobile sidebar */}
       {sidebarOpen && (
         <div 
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200" 
+          className="fixed inset-0 bg-zinc-950/40 backdrop-blur-sm z-40 lg:hidden animate-in fade-in duration-200" 
         />
       )}
 
-      {/* Background ambient glow */}
-      <div className="absolute top-0 left-0 w-full h-full bg-mesh opacity-50 pointer-events-none z-0" />
-
       {/* ==========================================
-          PORTAL SIDEBAR
+          PORTAL SIDEBAR (bg-zinc-900 slate framework)
           ========================================== */}
       <aside className={`
-        /* Base styles */
-        flex flex-col justify-between shrink-0 z-50 shadow-2xl overflow-y-auto transition-all duration-300 ease-in-out glass-panel
+        flex flex-col justify-between shrink-0 z-50 overflow-y-auto transition-all duration-300 ease-in-out bg-zinc-900 border-r border-zinc-800 text-zinc-300
         
-        /* Mobile Overlay position */
-        fixed top-4 bottom-4 left-4 w-64 rounded-2xl border border-[var(--muted-border)]
-        ${sidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-[calc(100%+2rem)] opacity-0'}
+        /* Mobile drawer overlay positioning */
+        fixed top-0 bottom-0 left-0 w-64
+        ${sidebarOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 pointer-events-none'}
         
-        /* Desktop Flex position */
-        md:relative md:top-auto md:bottom-auto md:left-auto md:m-4 md:mr-0 md:h-[calc(100vh-2rem)]
-        ${sidebarOpen ? 'md:w-64 md:translate-x-0 md:opacity-100' : 'md:w-0 md:-translate-x-full md:opacity-0 md:pointer-events-none md:-mr-4 md:m-0 md:border-none'}
+        /* Desktop stationary positioning */
+        lg:relative lg:translate-x-0 lg:opacity-100 lg:pointer-events-auto
+        ${sidebarOpen ? 'lg:w-64' : 'lg:w-0 lg:pointer-events-none lg:border-none'}
       `}>
         
-        {/* Subtle inner glow */}
-        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-[var(--accent)]/10 to-transparent pointer-events-none" />
-
         <div>
-          {/* Brand Header */}
-          <div className="h-20 px-6 border-b border-[var(--muted-border)] flex items-center justify-between relative z-10">
+          {/* Header logo container */}
+          <div className="h-20 px-6 border-b border-zinc-800/80 flex items-center justify-between">
             <Link href="/" className="flex items-center">
-              <Image src="/logo.png" alt="ScholarlyNest Logo" width={690} height={362} className="h-10 sm:h-12 md:h-16 w-auto object-contain" priority />
+              <Image 
+                src="/logo.png" 
+                alt="ScholarlyNest Logo" 
+                width={690} 
+                height={362} 
+                className="h-9 w-auto object-contain brightness-0 invert" 
+                priority 
+              />
             </Link>
-            {/* Mobile close button inside sidebar */}
             <button
               onClick={() => setSidebarOpen(false)}
-              className="p-1.5 rounded-lg text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 md:hidden transition-colors border border-transparent hover:border-red-500/20"
+              className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-800 lg:hidden transition-colors border border-transparent"
               aria-label="Close Sidebar"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* User Profile Summary */}
-          <div className="p-5 border-b border-[var(--muted-border)] flex items-center space-x-4 bg-white/5 dark:bg-black/10 relative z-10">
-            {user.profile_image ? (
-              <img
-                src={user.profile_image}
-                alt={user.name}
-                className="w-10 h-10 rounded-xl object-cover border border-blue-400/30 shadow-[0_0_10px_rgba(30,58,138,0.4)] select-none"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--accent)] to-blue-900 flex items-center justify-center font-bold text-sm text-white shadow-[0_0_10px_rgba(30,58,138,0.4)] border border-blue-400/30 select-none">
-                {user.name.charAt(0)}
-              </div>
-            )}
-            <div className="overflow-hidden">
-              <h4 className="text-sm font-bold truncate text-[var(--foreground)]">{user.name}</h4>
-              <span className="text-[9px] font-bold text-[var(--accent-gold)] flex items-center mt-0.5 uppercase tracking-widest">
+          {/* User profile section */}
+          <div className="p-5 border-b border-zinc-800/80 flex items-center space-x-3 bg-zinc-950/20">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-xs uppercase border border-amber-500/20 shrink-0">
+              {user.name.charAt(0)}
+            </div>
+            <div className="overflow-hidden min-w-0">
+              <h4 className="text-xs font-bold truncate text-white leading-tight">{user.name}</h4>
+              <span className="text-[9px] font-bold text-amber-500 flex items-center mt-1 uppercase tracking-wider font-mono leading-none">
                 <ShieldAlert className="w-3 h-3 mr-1" />
                 {getRoleLabel()}
               </span>
             </div>
           </div>
 
-          {/* Sidebar Menu Links */}
-          <nav className="p-4 space-y-2 relative z-10">
+          {/* Nav Links */}
+          <nav className="p-4 space-y-1.5 text-[10px] font-bold uppercase tracking-wider">
             <Link
               href="/admin"
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-premium ${isOverviewActive ? 'bg-[var(--accent)] text-white shadow-[0_0_15px_rgba(30,58,138,0.4)]' : 'text-[var(--muted)] hover:bg-white/10 hover:text-[var(--foreground)]'}`}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isOverviewActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
             >
               <LayoutDashboard className="w-4 h-4" />
               <span>Console Overview</span>
             </Link>
 
-            {/* My Articles for standard Authors who cannot view all magazine articles */}
             {hasPermission('articles.view-own') && !hasPermission('articles.view-any') && (
               <Link
                 href="/admin/articles"
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-premium ${pathname === '/admin/articles' ? 'bg-[var(--accent)] text-white shadow-[0_0_15px_rgba(30,58,138,0.4)]' : 'text-[var(--muted)] hover:bg-white/10 hover:text-[var(--foreground)]'}`}
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${pathname === '/admin/articles' ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
               >
                 <FileText className="w-4 h-4" />
                 <span>My Articles</span>
@@ -289,44 +278,43 @@ export default function AdminLayout({ children }) {
 
             {showMagazinePortal && (
               <div className="space-y-1">
-                {/* Magazine Dropdown Toggle */}
                 <button
                   onClick={() => setMagazineDropdownOpen(!magazineDropdownOpen)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-premium ${isMagazineActive ? 'bg-[var(--accent)] text-white shadow-[0_0_15px_rgba(30,58,138,0.4)]' : 'text-[var(--muted)] hover:bg-white/10 hover:text-[var(--foreground)]'}`}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 ${isMagazineActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
                 >
                   <div className="flex items-center space-x-3">
                     <BookOpen className="w-4 h-4" />
                     <span>Magazine</span>
                   </div>
-                  <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${magazineDropdownOpen ? 'rotate-90 text-[var(--accent-gold)]' : ''}`} />
+                  <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${magazineDropdownOpen ? 'rotate-90 text-amber-500' : 'text-zinc-500'}`} />
                 </button>
 
                 {magazineDropdownOpen && (
-                  <div className="pl-4 pr-2 py-1.5 space-y-1.5 bg-black/5 dark:bg-white/5 rounded-xl border border-[var(--muted-border)]/40 animate-in slide-in-from-top-1 duration-200">
+                  <div className="pl-4 pr-1 py-1 space-y-1 border-l border-zinc-800 ml-5 animate-in slide-in-from-top-1 duration-200">
                     {(hasPermission('magazines.view-any') || hasPermission('magazines.view-own')) && (
                       <Link
                         href="/admin/magazines"
-                        className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/magazines' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                        className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/magazines' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
+                        <span className="w-1 h-1 rounded-full bg-current" />
                         <span>Magazines Directory</span>
                       </Link>
                     )}
                     {(hasPermission('articles.view-any') || hasPermission('articles.view-own')) && (
                       <Link
                         href="/admin/articles"
-                        className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/articles' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                        className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/articles' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
+                        <span className="w-1 h-1 rounded-full bg-current" />
                         <span>Magazine Articles</span>
                       </Link>
                     )}
                     {(hasPermission('articles.view-any') || hasPermission('articles.view-own') || hasPermission('magazines.view-any') || hasPermission('magazines.view-own')) && (
                       <Link
                         href="/admin/magazines/tags"
-                        className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/magazines/tags' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                        className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/magazines/tags' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
+                        <span className="w-1 h-1 rounded-full bg-current" />
                         <span>Magazine Tags</span>
                       </Link>
                     )}
@@ -338,7 +326,7 @@ export default function AdminLayout({ children }) {
             {showRbac && (
               <Link
                 href="/admin/rbac"
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-premium ${isRbacActive ? 'bg-[var(--accent-gold)] text-slate-900 shadow-[0_0_15px_rgba(205,164,52,0.4)]' : 'text-[var(--muted)] hover:bg-white/10 hover:text-[var(--foreground)]'}`}
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isRbacActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
               >
                 <ShieldAlert className="w-4 h-4" />
                 <span>Access Control</span>
@@ -348,7 +336,7 @@ export default function AdminLayout({ children }) {
             {showContactSettings && (
               <Link
                 href="/admin/contact-settings"
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-premium ${pathname === '/admin/contact-settings' ? 'bg-[var(--accent)] text-white shadow-[0_0_15px_rgba(30,58,138,0.4)]' : 'text-[var(--muted)] hover:bg-white/10 hover:text-[var(--foreground)]'}`}
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${pathname === '/admin/contact-settings' ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
               >
                 <Mail className="w-4 h-4" />
                 <span>Contact Settings</span>
@@ -358,7 +346,7 @@ export default function AdminLayout({ children }) {
             {showContactMessages && (
               <Link
                 href="/admin/contact-messages"
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-premium ${pathname === '/admin/contact-messages' ? 'bg-[var(--accent)] text-white shadow-[0_0_15px_rgba(30,58,138,0.4)]' : 'text-[var(--muted)] hover:bg-white/10 hover:text-[var(--foreground)]'}`}
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${pathname === '/admin/contact-messages' ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
               >
                 <MessageSquare className="w-4 h-4" />
                 <span>Contact Messages</span>
@@ -368,7 +356,7 @@ export default function AdminLayout({ children }) {
             {showNewsletter && (
               <Link
                 href="/admin/newsletter"
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-premium ${pathname === '/admin/newsletter' ? 'bg-[var(--accent)] text-white shadow-[0_0_15px_rgba(30,58,138,0.4)]' : 'text-[var(--muted)] hover:bg-white/10 hover:text-[var(--foreground)]'}`}
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${pathname === '/admin/newsletter' ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
               >
                 <Mail className="w-4 h-4" />
                 <span>Newsletter Manager</span>
@@ -377,33 +365,32 @@ export default function AdminLayout({ children }) {
 
             {showCms && (
               <div className="space-y-1">
-                {/* CMS Dropdown Toggle */}
                 <button
                   onClick={() => setCmsDropdownOpen(!cmsDropdownOpen)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-premium ${isCmsActive ? 'bg-[var(--accent)] text-white shadow-[0_0_15px_rgba(30,58,138,0.4)]' : 'text-[var(--muted)] hover:bg-white/10 hover:text-[var(--foreground)]'}`}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 ${isCmsActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
                 >
                   <div className="flex items-center space-x-3">
-                    <BookOpen className="w-4 h-4" />
+                    <FileText className="w-4 h-4" />
                     <span>CMS Pages</span>
                   </div>
-                  <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${cmsDropdownOpen ? 'rotate-90 text-[var(--accent-gold)]' : ''}`} />
+                  <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${cmsDropdownOpen ? 'rotate-90 text-amber-500' : 'text-zinc-500'}`} />
                 </button>
 
                 {cmsDropdownOpen && (
-                  <div className="pl-4 pr-2 py-1.5 space-y-1.5 bg-black/5 dark:bg-white/5 rounded-xl border border-[var(--muted-border)]/40 animate-in slide-in-from-top-1 duration-200">
+                  <div className="pl-4 pr-1 py-1 space-y-1 border-l border-zinc-800 ml-5 animate-in slide-in-from-top-1 duration-200">
                     <Link
                       href="/admin/cms/faqs"
-                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/cms/faqs' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/cms/faqs' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
                       <span>Manage FAQs</span>
                     </Link>
                     {(hasPermission('footer.manage') || hasPermission('settings.manage')) && (
                       <Link
                         href="/admin/footer-cms"
-                        className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors ${pathname === '/admin/footer-cms' ? 'text-[var(--accent-gold)]' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                        className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/footer-cms' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-gold)]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
                         <span>Footer Menu Builder</span>
                       </Link>
                     )}
@@ -414,7 +401,7 @@ export default function AdminLayout({ children }) {
 
             <Link
               href="/admin/settings"
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-premium ${pathname === '/admin/settings' ? 'bg-[var(--accent)] text-white shadow-[0_0_15px_rgba(30,58,138,0.4)]' : 'text-[var(--muted)] hover:bg-white/10 hover:text-[var(--foreground)]'}`}
+              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${pathname === '/admin/settings' ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
             >
               <Settings className="w-4 h-4" />
               <span>Security Settings</span>
@@ -422,14 +409,14 @@ export default function AdminLayout({ children }) {
           </nav>
         </div>
 
-        {/* Bottom Actions */}
-        <div className="p-4 border-t border-[var(--muted-border)] bg-white/5 dark:bg-black/10 relative z-10">
+        {/* Bottom logout section */}
+        <div className="p-4 border-t border-zinc-800/80 bg-zinc-950/20">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer border border-transparent hover:border-red-500/30"
+            className="w-full flex items-center space-x-3 px-3 py-3 rounded-xl text-[10px] font-bold text-red-500 hover:bg-red-500/10 hover:text-red-400 border border-transparent transition-colors cursor-pointer uppercase tracking-wider"
           >
             <LogOut className="w-4 h-4" />
-            <span className="uppercase tracking-wider">Sign Out Session</span>
+            <span>Sign Out Session</span>
           </button>
         </div>
 
@@ -441,53 +428,52 @@ export default function AdminLayout({ children }) {
       <div className="flex-grow flex flex-col min-w-0 h-screen overflow-hidden z-10">
 
         {/* TOP BAR / PORTAL HEADER */}
-        <header className="h-20 bg-transparent px-6 sm:px-8 flex items-center justify-between sticky top-0 backdrop-blur-sm z-45">
+        <header className="h-20 border-b border-zinc-200/60 dark:border-zinc-900/60 px-6 sm:px-8 flex items-center justify-between sticky top-0 backdrop-blur-md bg-white/70 dark:bg-zinc-950/70 z-40">
 
-          {/* Breadcrumb Path with Toggler */}
+          {/* Toggle button and breadcrumbs path */}
           <div className="flex items-center space-x-3">
-            {/* Sidebar Toggle Button */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2.5 glass-panel rounded-full hover:bg-white/10 text-[var(--muted)] hover:text-[var(--foreground)] relative transition-premium cursor-pointer border border-[var(--muted-border)] shadow-sm hover-glow flex items-center justify-center mr-1 z-40"
+              className="p-2 bg-white/80 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
               aria-label="Toggle Sidebar"
             >
               {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
 
-            <div className="flex items-center space-x-3 text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[var(--muted)] select-none glass-panel px-4 py-2 rounded-full border border-[var(--muted-border)]">
+            <div className="hidden sm:flex items-center space-x-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
               <span>Workspace</span>
-              <ChevronRight className="w-3.5 h-3.5 text-[var(--accent-gold)]" />
-              <span className="text-[var(--foreground)]">
+              <ChevronRight className="w-3.5 h-3.5 text-amber-500" />
+              <span className="text-zinc-800 dark:text-zinc-200">
                 {isOverviewActive ? 'Overview' : isRbacActive ? 'Access Control' : isCmsActive ? 'CMS Page Management' : isMagazineActive ? 'Magazine Portal' : 'Console'}
               </span>
             </div>
           </div>
 
-          {/* Topbar Action Panel */}
-          <div className="flex items-center space-x-5">
-
-            {/* Theme Toggle Button */}
+          {/* Action panels: notifications and color switches */}
+          <div className="flex items-center space-x-4">
+            
+            {/* Theme Select Toggler */}
             <div className="relative">
               <button
                 onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}
-                className="p-2.5 glass-panel rounded-full hover:bg-white/10 text-[var(--muted)] hover:text-[var(--foreground)] relative transition-premium cursor-pointer border border-[var(--muted-border)] shadow-sm hover-glow flex items-center justify-center"
+                className="p-2 bg-white/80 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl text-zinc-400 hover:text-zinc-905 dark:hover:text-white transition-colors cursor-pointer"
                 aria-label="Change Color Theme"
               >
                 {theme === 'light' && <Sun className="w-4 h-4 text-amber-500" />}
-                {theme === 'dark' && <Moon className="w-4 h-4 text-[var(--accent-gold)]" />}
+                {theme === 'dark' && <Moon className="w-4 h-4 text-amber-400" />}
                 {theme === 'system' && <Monitor className="w-4 h-4" />}
               </button>
 
               {themeDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-36 glass-panel rounded-xl shadow-xl overflow-hidden z-50 text-xs font-semibold p-1 animate-in fade-in duration-200">
+                <div className="absolute right-0 mt-2 w-32 rounded-xl border border-zinc-200 bg-white/95 dark:border-zinc-800 dark:bg-zinc-900 p-1 shadow-lg z-50 text-[10px] font-bold uppercase tracking-wider animate-in fade-in duration-200 backdrop-blur-md">
                   {['light', 'dark', 'system'].map((t) => (
                     <button
                       key={t}
                       onClick={() => handleThemeChange(t)}
-                      className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-left transition-colors cursor-pointer ${theme === t ? 'bg-[var(--accent)] text-white' : 'hover:bg-black/5 dark:hover:bg-white/10 text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-left transition-colors cursor-pointer ${theme === t ? 'bg-amber-500/5 text-amber-600 dark:text-amber-400' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'}`}
                     >
                       {t === 'light' && <Sun className="w-3.5 h-3.5 text-amber-500" />}
-                      {t === 'dark' && <Moon className="w-3.5 h-3.5 text-[var(--accent-gold)]" />}
+                      {t === 'dark' && <Moon className="w-3.5 h-3.5 text-amber-400" />}
                       {t === 'system' && <Monitor className="w-3.5 h-3.5" />}
                       <span className="capitalize">{t}</span>
                     </button>
@@ -496,33 +482,32 @@ export default function AdminLayout({ children }) {
               )}
             </div>
 
-            {/* Notification Bell with Badge */}
+            {/* Notification Bell */}
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2.5 glass-panel rounded-full hover:bg-white/10 text-[var(--muted)] hover:text-[var(--foreground)] relative transition-premium cursor-pointer border border-[var(--muted-border)] shadow-sm hover-glow"
+                className="p-2 bg-white/80 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 rounded-xl text-zinc-400 hover:text-zinc-905 dark:hover:text-white transition-colors cursor-pointer"
               >
                 <Bell className="w-4 h-4" />
                 {notifications.some(n => n.unread) && (
-                  <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-[var(--accent-gold)] rounded-full animate-pulse border border-[var(--background)] shadow-[0_0_8px_rgba(205,164,52,0.6)]" />
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full" />
                 )}
               </button>
 
-              {/* Float Dropdown Notification list */}
               {showNotifications && (
-                <div className="absolute right-0 mt-3 w-80 glass-panel rounded-xl shadow-2xl py-2 z-50 text-xs border border-[var(--muted-border)] animate-in fade-in slide-in-from-top-2">
-                  <div className="px-4 py-3 border-b border-[var(--muted-border)] flex items-center justify-between bg-black/5 dark:bg-white/5">
-                    <span className="font-bold text-[var(--foreground)] text-[10px] uppercase tracking-widest">Notifications</span>
-                    <button onClick={markAllNotificationsRead} className="text-[9px] font-bold text-[var(--accent)] hover:text-[var(--accent-gold)] uppercase tracking-widest transition-colors">Mark all read</button>
+                <div className="absolute right-0 mt-3 w-80 rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 shadow-xl py-2 z-50 text-xs animate-in fade-in duration-200">
+                  <div className="px-4 py-2.5 border-b border-zinc-100 dark:border-zinc-850 flex items-center justify-between">
+                    <span className="font-bold text-zinc-800 dark:text-white text-[10px] uppercase tracking-wider">Notifications</span>
+                    <button onClick={markAllNotificationsRead} className="text-[9px] font-bold text-amber-600 hover:text-amber-505 uppercase tracking-wider">Mark read</button>
                   </div>
                   <div className="max-h-72 overflow-y-auto">
                     {notifications.map(n => (
-                      <div key={n.id} className={`px-5 py-4 hover:bg-white/5 border-b border-[var(--muted-border)] flex flex-col space-y-1.5 transition-colors ${n.unread ? 'bg-[var(--accent)]/5' : ''}`}>
-                        <div className="flex justify-between font-bold text-[var(--foreground)]">
+                      <div key={n.id} className="px-5 py-4 border-b border-zinc-50 dark:border-zinc-850 flex flex-col space-y-1">
+                        <div className="flex justify-between font-bold text-zinc-800 dark:text-zinc-200">
                           <span>{n.title}</span>
-                          <span className="text-[9px] font-medium text-[var(--muted)]">{n.time}</span>
+                          <span className="text-[9px] font-semibold text-zinc-400">{n.time}</span>
                         </div>
-                        <p className="text-[10px] font-medium text-[var(--muted)] leading-relaxed">{n.desc}</p>
+                        <p className="text-[10px] text-zinc-500 dark:text-zinc-405 leading-relaxed">{n.desc}</p>
                       </div>
                     ))}
                   </div>
@@ -534,29 +519,26 @@ export default function AdminLayout({ children }) {
 
         </header>
 
-        {/* Render child sub-pages dynamically */}
-        <main className="flex-grow p-6 sm:p-8 space-y-8 overflow-y-auto">
+        {/* Dynamic portal core children container */}
+        <main className="flex-grow p-6 sm:p-8 space-y-8 overflow-y-auto bg-zinc-50/20 dark:bg-zinc-950/10">
           {children}
         </main>
 
       </div>
 
-      {/* Global Glassmorphic Loader Overlay */}
+      {/* Dynamic Loader screen overlays */}
       {(apiLoading || pageLoading) && (
-        <div className="fixed inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-[4px] z-[99999] flex flex-col items-center justify-center transition-all duration-300 animate-in fade-in">
-          <div className="glass-panel p-6 rounded-2xl flex flex-col items-center space-y-4 shadow-2xl border border-[var(--muted-border)] max-w-xs text-center bg-[var(--card-bg)]">
+        <div className="fixed inset-0 bg-zinc-950/20 dark:bg-zinc-950/40 backdrop-blur-sm z-[99999] flex flex-col items-center justify-center animate-in fade-in">
+          <div className="bg-white/95 dark:bg-zinc-900/95 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl flex flex-col items-center space-y-4 shadow-xl max-w-xs text-center">
             <div className="relative flex items-center justify-center">
-              {/* Spinning Accent Border */}
-              <div className="w-12 h-12 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(59,130,246,0.3)]" />
-              {/* Inner Glowing Core */}
-              <div className="absolute w-4 h-4 rounded-full bg-[var(--accent-gold)] animate-pulse shadow-[0_0_10px_rgba(191,161,105,0.8)]" />
+              <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
             </div>
-            <div className="space-y-1 select-none">
-              <span className="text-[10px] font-bold text-[var(--foreground)] uppercase tracking-widest block font-mono">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-widest block font-mono">
                 {apiLoading ? 'Processing Request' : 'Loading Workspace'}
               </span>
-              <span className="text-[9px] text-[var(--muted)] block font-medium">
-                Please wait while we sync database ledger...
+              <span className="text-[9px] text-zinc-450 dark:text-zinc-500 block font-medium">
+                Please wait while we synchronize catalog ledger...
               </span>
             </div>
           </div>

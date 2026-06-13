@@ -41,7 +41,7 @@ export default function NewsletterRibbon() {
       <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-[var(--accent-gold)]/5 to-transparent pointer-events-none rounded-full blur-3xl" />
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-[var(--accent)]/5 to-transparent pointer-events-none rounded-full blur-3xl" />
 
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 relative z-10">
+      <div className="w-full px-4 sm:px-8 lg:px-12 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           
           {/* Content Column */}

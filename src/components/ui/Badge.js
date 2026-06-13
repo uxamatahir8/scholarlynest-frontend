@@ -1,21 +1,16 @@
 import React from 'react';
 
-export function Badge({ children, variant = 'default', className = '' }) {
-  const baseStyles = "inline-flex items-center px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest border transition-colors shadow-sm backdrop-blur-sm";
-  
+export function Badge({ children, variant = 'default', className = '', ...props }) {
   const variants = {
-    default: "bg-white/10 text-[var(--foreground)] border-[var(--muted-border)]",
-    primary: "bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400 dark:border-blue-500/30",
-    gold: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20 dark:text-yellow-400 dark:border-yellow-500/30",
-    success: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30",
-    warning: "bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400 dark:border-amber-500/30",
-    danger: "bg-red-500/10 text-red-600 border-red-500/20 dark:text-red-400 dark:border-red-500/30",
-    info: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:text-indigo-400 dark:border-indigo-500/30",
-    outline: "bg-transparent text-[var(--muted)] border-[var(--muted-border)]",
+    default: 'border-zinc-200 bg-zinc-100/40 text-zinc-650 dark:border-zinc-800 dark:bg-zinc-800/30 dark:text-zinc-300',
+    primary: 'border-blue-500/15 bg-blue-500/[0.03] text-blue-600 dark:text-blue-400 dark:border-blue-500/20',
+    gold: 'border-amber-500/20 bg-amber-500/[0.03] text-amber-700 dark:text-amber-405 dark:border-amber-500/20',
+    success: 'border-emerald-500/15 bg-emerald-500/[0.03] text-emerald-700 dark:text-emerald-400 dark:border-emerald-500/20',
+    danger: 'border-red-500/15 bg-red-500/[0.03] text-red-650 dark:text-red-400 dark:border-red-500/20',
   };
 
   return (
-    <span className={`${baseStyles} ${variants[variant]} ${className}`}>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${variants[variant] || variants.default} ${className}`} {...props}>
       {children}
     </span>
   );

@@ -86,7 +86,7 @@ export default function AdminArticlesBoard() {
   // Selected article for review modal
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [activeReviewTab, setActiveReviewTab] = useState('abstract'); // 'abstract' | 'fulltext'
+  const [activeReviewTab, setActiveReviewTab] = useState('abstract'); // 'abstract' | 'fulltext' | 'share_stats'
   const [rejectionReason, setRejectionReason] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
@@ -144,10 +144,6 @@ export default function AdminArticlesBoard() {
     setIsReviewModalOpen(true);
   };
 
-  const paginatedArticles = articles;
-
-
-
   const handleReviewAction = async (status) => {
     if (status === 'rejected' && !rejectionReason.trim()) {
       toast('Please supply a reason for rejecting this publication.', 'error');
@@ -178,20 +174,20 @@ export default function AdminArticlesBoard() {
     switch (status) {
       case 'approved':
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-emerald-500/[0.04] text-emerald-600 border border-emerald-500/10">
             Approved
           </span>
         );
       case 'rejected':
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase bg-red-500/10 text-red-500 border border-red-500/20">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-red-500/[0.04] text-red-500 border border-red-500/10">
             Rejected
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase bg-amber-500/10 text-amber-605 border border-amber-500/20">
-            Pending Review
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-amber-500/[0.04] text-amber-600 border border-amber-500/10">
+            Pending
           </span>
         );
     }
@@ -206,19 +202,19 @@ export default function AdminArticlesBoard() {
   if (authLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 space-y-4">
-        <Loader2 className="w-10 h-10 animate-spin text-[var(--accent)]" />
-        <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">Authenticating Privileges...</span>
+        <Loader2 className="w-8 h-8 animate-spin text-amber-605" />
+        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Authenticating Privileges...</span>
       </div>
     );
   }
 
   if (!user || (!hasPermission('articles.view-any') && !hasPermission('articles.view-own'))) {
     return (
-      <div className="p-6 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl flex items-start space-x-4 animate-in fade-in slide-in-from-bottom-4">
-        <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
+      <div className="p-6 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl flex items-start space-x-4 animate-in fade-in">
+        <ShieldAlert className="w-6 h-6 text-red-500 shrink-0" />
         <div>
-          <h3 className="text-sm font-bold text-red-700 dark:text-red-400">Access Restricted</h3>
-          <p className="text-xs text-red-600 dark:text-red-300 mt-1">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-red-750">Access Restricted</h3>
+          <p className="text-xs text-red-600 dark:text-red-350 mt-1">
             You must possess article viewing privileges to access this registry.
           </p>
         </div>
@@ -227,47 +223,47 @@ export default function AdminArticlesBoard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-in fade-in duration-300 text-left font-sans">
       <title>{isAdminOrEditor ? "Manuscripts Board - ScholarlyNest" : "My Articles - ScholarlyNest"}</title>
       
-      {/* Title Section */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--foreground)]">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-900 pb-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white leading-none">
             {isAdminOrEditor ? "Manuscripts Editorial Board" : "My Research Articles"}
           </h1>
-          <p className="text-xs text-[var(--muted)] font-medium mt-1">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
             {isAdminOrEditor 
-              ? "Review and process research paper submissions, drafts, and PDF generation pipelines." 
-              : "Manage your article drafts, track review status, and publish new articles."}
+              ? "Oversee platform submissions, review papers, and download manuscript files." 
+              : "Manage drafts, track editorial review cycles, and publish new academic work."}
           </p>
         </div>
         {hasPermission('articles.create') && (
-          <Link href="/admin/articles/new">
+          <Link href="/admin/articles/new" className="self-start sm:self-auto">
             <Button
               variant="primary"
               size="sm"
-              className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white shadow-md cursor-pointer shrink-0"
+              className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white shadow-sm cursor-pointer shrink-0"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               <span>Add Article</span>
             </Button>
           </Link>
         )}
       </div>
 
-      {/* Search and Filters Section */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        {/* Status filter tabs */}
-        <div className="flex rounded-xl p-1 bg-black/5 dark:bg-white/5 border border-[var(--muted-border)]/60 w-full lg:max-w-md">
+      {/* Filter Tabs & Search row */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 font-sans">
+        {/* Status selection */}
+        <div className="flex rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/40 w-full lg:max-w-md">
           {['all', 'pending', 'approved', 'rejected'].map((tab) => (
             <button
               key={tab}
               onClick={() => setStatusFilter(tab)}
-              className={`flex-1 py-2 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex-1 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 statusFilter === tab
-                  ? 'bg-[var(--background)] shadow-md text-[var(--accent)]'
-                  : 'text-[var(--muted)] hover:text-[var(--foreground)]'
+                  ? 'bg-white shadow text-amber-600 dark:bg-zinc-950 dark:text-amber-400'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
               }`}
             >
               {tab}
@@ -275,35 +271,35 @@ export default function AdminArticlesBoard() {
           ))}
         </div>
 
-        {/* Live Search & Magazine Filter Dropdown */}
+        {/* Inputs */}
         <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full lg:w-auto">
-          {/* Search Input */}
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted)]" />
+          {/* Search box */}
+          <div className="relative w-full sm:w-60">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-405" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search title, author, abstract..."
-              className="w-full text-xs font-semibold pl-9 pr-8 py-2 bg-[var(--background)] border border-[var(--muted-border)]/60 rounded-xl focus:outline-none focus:border-[var(--accent)] transition-colors text-[var(--foreground)]"
+              placeholder="Search registry..."
+              className="w-full text-xs font-semibold pl-9 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] p-0.5 cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 p-0.5 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Magazine Filter Dropdown */}
-          <div className="relative w-full sm:w-60">
+          {/* Magazine selector */}
+          <div className="relative w-full sm:w-56">
             <select
               value={selectedMagazineId}
               onChange={(e) => setSelectedMagazineId(e.target.value)}
-              className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-[var(--background)] border border-[var(--muted-border)]/60 rounded-xl focus:outline-none focus:border-[var(--accent)] transition-colors text-[var(--foreground)] cursor-pointer appearance-none"
+              className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100 cursor-pointer appearance-none"
             >
               <option value="all">All Magazines</option>
               {magazines.map((m) => (
@@ -312,39 +308,39 @@ export default function AdminArticlesBoard() {
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--muted)] pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
           </div>
         </div>
       </div>
 
-      {/* Main workspace listing */}
+      {/* Main Table View */}
       {loading && (
-        <div className="flex flex-col items-center justify-center py-24 space-y-4 glass-panel border border-[var(--muted-border)]/60 rounded-2xl bg-[var(--card-bg)]">
-          <Loader2 className="w-8 h-8 animate-spin text-[var(--accent)] dark:text-blue-400" />
-          <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest font-mono">Loading Publications Ledger...</span>
+        <div className="flex flex-col items-center justify-center py-24 space-y-4 border border-zinc-200/80 rounded-2xl bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/20 backdrop-blur-md">
+          <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
+          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Loading Publications Ledger...</span>
         </div>
       )}
 
       {error && (
-        <div className="flex items-center space-x-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-650 dark:text-red-400 text-xs">
+        <div className="flex items-center space-x-3 p-4 bg-red-500/[0.04] border border-red-500/10 rounded-xl text-red-650 text-xs">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <span className="font-semibold text-xs leading-none">{error}</span>
         </div>
       )}
 
       {!loading && !error && articles.length === 0 && (
-        <div className="text-center py-20 glass-panel border border-[var(--muted-border)]/60 rounded-2xl bg-[var(--card-bg)]">
-          <FileText className="w-12 h-12 mx-auto text-[var(--muted)] mb-3 opacity-55" />
-          <p className="text-xs font-semibold text-[var(--muted)]">No articles match the selected search or filter criteria.</p>
+        <div className="text-center py-20 border border-zinc-200/80 rounded-2xl bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/20 backdrop-blur-md">
+          <FileText className="w-10 h-10 mx-auto text-zinc-350 mb-3 opacity-60" />
+          <p className="text-xs font-semibold text-zinc-450">No manuscripts match the selected search or filter criteria.</p>
         </div>
       )}
 
       {!loading && !error && articles.length > 0 && (
-        <Card className="border border-[var(--muted-border)] bg-[var(--card-bg)] shadow-md overflow-hidden animate-in fade-in duration-300">
-          <CardContent className="p-0 overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[700px]">
+        <div className="border border-zinc-200/80 dark:border-zinc-850 bg-white/70 dark:bg-zinc-900/20 backdrop-blur-md rounded-2xl shadow-sm overflow-hidden animate-in fade-in duration-300">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[700px] font-sans">
               <thead>
-                <tr className="bg-black/5 dark:bg-white/5 border-b border-[var(--muted-border)] text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">
+                <tr className="bg-zinc-50/50 dark:bg-zinc-900/10 border-b border-zinc-150 dark:border-zinc-850 text-[10px] font-bold uppercase tracking-wider text-zinc-455">
                   <th className="px-6 py-4">Article Details</th>
                   <th className="px-6 py-4">Magazine Issues</th>
                   {isAdminOrEditor && <th className="px-6 py-4">Author Details</th>}
@@ -352,13 +348,13 @@ export default function AdminArticlesBoard() {
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--muted-border)]/50 text-xs font-semibold text-[var(--foreground)]">
-                {paginatedArticles.map((art) => (
-                  <tr key={art.id} className="hover:bg-[var(--foreground)]/5 transition-colors">
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-850/60 text-xs font-semibold text-zinc-700 dark:text-zinc-305">
+                {articles.map((art) => (
+                  <tr key={art.id} className="hover:bg-amber-500/[0.01] transition-colors">
                     <td className="px-6 py-4 max-w-[340px]">
-                      <div className="flex items-center space-x-3 text-left">
+                      <div className="flex items-center space-x-3.5 text-left">
                         {/* Thumbnail */}
-                        <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50 flex items-center justify-center">
+                        <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-zinc-200/80 dark:border-zinc-800/85 bg-zinc-50 flex items-center justify-center">
                           {(art.featured_image || art.magazine?.cover_image) ? (
                             <img 
                               src={getFullImageUrl(art.featured_image || art.magazine?.cover_image)} 
@@ -370,36 +366,36 @@ export default function AdminArticlesBoard() {
                           )}
                         </div>
                         {/* Title details */}
-                        <div className="space-y-1 min-w-0 flex-grow">
-                          <h4 className="text-sm font-bold text-[var(--foreground)] line-clamp-1" title={art.title}>{art.title}</h4>
-                          <div className="flex items-center space-x-2 text-[10px] text-[var(--muted)] font-medium">
-                            <Calendar className="w-3.5 h-3.5" />
-                            <span>Submitted on {new Date(art.created_at).toLocaleDateString()}</span>
+                        <div className="space-y-0.5 min-w-0 flex-grow">
+                          <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-150 truncate leading-snug font-serif" title={art.title}>{art.title}</h4>
+                          <div className="flex items-center space-x-1.5 text-[9px] text-zinc-400 font-semibold font-mono uppercase tracking-wider">
+                            <Calendar className="w-3 h-3" />
+                            <span>Submitted: {new Date(art.created_at).toLocaleDateString()}</span>
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-[var(--background)] border border-[var(--muted-border)]/60 font-bold text-[10px] uppercase text-[var(--foreground)]">
-                        <BookOpen className="w-3.5 h-3.5 text-[var(--accent-gold)]" />
+                      <span className="inline-flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 font-bold text-[9px] uppercase text-zinc-650 dark:text-zinc-300">
+                        <BookOpen className="w-3.5 h-3.5 text-amber-500" />
                         <span>{art.magazine?.title}</span>
                       </span>
                     </td>
                     {isAdminOrEditor && (
                       <td className="px-6 py-4 space-y-0.5">
-                        <div className="font-bold text-[var(--foreground)] flex items-center space-x-1">
-                          <User className="w-3.5 h-3.5 text-[var(--muted)] opacity-60" />
+                        <div className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center space-x-1">
+                          <User className="w-3.5 h-3.5 text-zinc-405" />
                           <span>{art.user?.name}</span>
                         </div>
-                        <p className="text-[10px] text-[var(--muted)] font-mono font-medium">{art.user?.email}</p>
+                        <p className="text-[9px] text-zinc-400 font-mono font-medium">{art.user?.email}</p>
                       </td>
                     )}
                     <td className="px-6 py-4">{getStatusBadge(art.status)}</td>
-                    <td className="px-6 py-4 text-right space-x-3">
+                    <td className="px-6 py-4 text-right space-x-3.5">
                       {hasPermission('articles.edit-own') && (
                         <Link
                           href={`/admin/articles/${art.id}/edit`}
-                          className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-blue-500 dark:text-blue-450 hover:text-blue-600 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                          className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-blue-605 hover:underline cursor-pointer"
                         >
                           <Edit className="w-3.5 h-3.5" />
                           <span>Edit</span>
@@ -408,7 +404,7 @@ export default function AdminArticlesBoard() {
 
                       <button
                         onClick={() => openReviewModal(art)}
-                        className="inline-flex items-center space-x-1.5 text-[10px] font-bold uppercase text-[var(--accent)] dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors cursor-pointer"
+                        className="inline-flex items-center space-x-1.5 text-[10px] font-bold uppercase text-amber-600 hover:underline cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
                         <span>{isAdminOrEditor ? "Review" : "View"}</span>
@@ -419,7 +415,7 @@ export default function AdminArticlesBoard() {
                           href={getAbsoluteFileUrl(art)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-emerald-500 dark:text-emerald-450 hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors cursor-pointer"
+                          className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-emerald-600 hover:underline cursor-pointer"
                         >
                           <Download className="w-3.5 h-3.5" />
                           <span>PDF</span>
@@ -430,21 +426,21 @@ export default function AdminArticlesBoard() {
                 ))}
               </tbody>
             </table>
-          </CardContent>
+          </div>
 
-          {/* Card Footer for Pagination */}
-          <div className="px-6 py-4 border-t border-[var(--muted-border)]/55 flex flex-col sm:flex-row items-center justify-between gap-4 bg-black/5 dark:bg-white/5 text-xs font-semibold text-[var(--muted)]">
+          {/* Table Footer with Pagination Controls */}
+          <div className="px-6 py-4 border-t border-zinc-150 dark:border-zinc-850/80 flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-550/[0.01] text-xs font-semibold text-zinc-450 font-sans">
             <div className="flex items-center space-x-4">
-              <span>Total Articles: <strong className="text-[var(--foreground)]">{totalArticles}</strong></span>
-              <span className="h-4 w-px bg-[var(--muted-border)]/65 hidden sm:inline" />
+              <span>Total Articles: <strong className="text-zinc-800 dark:text-zinc-200">{totalArticles}</strong></span>
+              <span className="h-4 w-px bg-zinc-150 dark:bg-zinc-800 hidden sm:inline" />
               <span>
                 {totalArticles === 0 ? (
                   "Showing 0-0 of 0"
                 ) : (
                   <>
-                    Showing <strong className="text-[var(--foreground)]">{(currentPage - 1) * itemsPerPage + 1}</strong> -{" "}
-                    <strong className="text-[var(--foreground)]">{Math.min(currentPage * itemsPerPage, totalArticles)}</strong> of{" "}
-                    <strong className="text-[var(--foreground)]">{totalArticles}</strong>
+                    Showing <strong className="text-zinc-800 dark:text-zinc-200">{(currentPage - 1) * itemsPerPage + 1}</strong> -{" "}
+                    <strong className="text-zinc-800 dark:text-zinc-200">{Math.min(currentPage * itemsPerPage, totalArticles)}</strong> of{" "}
+                    <strong className="text-zinc-800 dark:text-zinc-200">{totalArticles}</strong>
                   </>
                 )}
               </span>
@@ -456,124 +452,112 @@ export default function AdminArticlesBoard() {
               onPageChange={setCurrentPage}
             />
           </div>
-        </Card>
+        </div>
       )}
 
-      {/* REVIEW DETAILS & TRANSITION MODAL */}
+      {/* REVIEW DETAILS MODAL OVERLAY */}
       {isReviewModalOpen && selectedArticle && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="glass-panel bg-[var(--card-bg)] text-[var(--foreground)] rounded-2xl border border-[var(--muted-border)] shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[95vh]">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div 
+            onClick={() => setIsReviewModalOpen(false)}
+            className="absolute inset-0 bg-zinc-950/40 backdrop-blur-md transition-opacity duration-300 animate-in fade-in"
+          />
+          <div className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh] font-sans">
             
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-[var(--muted-border)]/60 flex items-center justify-between bg-black/5 dark:bg-white/5">
-              <div className="space-y-1 text-left">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] font-mono">Submission Review Center</h3>
-                <p className="text-[11px] text-[var(--muted)] font-medium">Issue: {selectedArticle.magazine?.title}</p>
+            <div className="px-6 py-4.5 border-b border-zinc-150 dark:border-zinc-850/80 flex items-center justify-between">
+              <div className="space-y-0.5 text-left">
+                <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 font-mono">Submission Review Center</span>
+                <p className="text-xs text-zinc-900 dark:text-white font-bold leading-none">Issue: {selectedArticle.magazine?.title}</p>
               </div>
               <button 
                 onClick={() => setIsReviewModalOpen(false)} 
-                className="p-1.5 rounded-lg text-[var(--muted)] hover:bg-[var(--foreground)]/5 hover:text-[var(--foreground)] transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-zinc-400 hover:bg-zinc-105 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 space-y-6 overflow-y-auto flex-grow flex flex-col min-h-[400px]">
+            <div className="p-6 space-y-6 overflow-y-auto flex-grow flex flex-col min-h-[350px]">
               
-              {/* Title Header */}
-              <div className="space-y-2 pb-4 border-b border-[var(--muted-border)]/40 text-left">
-                <h2 className="text-lg font-bold text-[var(--foreground)] leading-snug">{selectedArticle.title}</h2>
-                <div className="flex items-center space-x-4 text-[10px] text-[var(--muted)] font-medium">
+              {/* Title Section */}
+              <div className="space-y-1.5 pb-4 border-b border-zinc-100 dark:border-zinc-850 text-left">
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-snug font-serif">{selectedArticle.title}</h2>
+                <div className="flex items-center space-x-3 text-[10px] text-zinc-450 font-bold uppercase tracking-wider">
                   <span className="flex items-center">
-                    <User className="w-3.5 h-3.5 mr-1 text-[var(--accent-gold)]" />
-                    Submitted by: {selectedArticle.user?.name}
+                    <User className="w-3.5 h-3.5 mr-1 text-amber-500" />
+                    Author: {selectedArticle.user?.name}
                   </span>
                   <span>•</span>
                   <span>Date: {new Date(selectedArticle.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
 
-              {/* Segment Tab Controls */}
-              <div className="flex rounded-xl p-1 bg-black/5 dark:bg-white/5 border border-[var(--muted-border)]/60 max-w-sm self-start">
-                <button
-                  type="button"
-                  onClick={() => setActiveReviewTab('abstract')}
-                  className={`px-4 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                    activeReviewTab === 'abstract'
-                      ? 'bg-[var(--background)] shadow-md text-[var(--accent)]'
-                      : 'text-[var(--muted)] hover:text-[var(--foreground)]'
-                  }`}
-                >
-                  Abstract
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveReviewTab('fulltext')}
-                  className={`px-4 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                    activeReviewTab === 'fulltext'
-                      ? 'bg-[var(--background)] shadow-md text-[var(--accent)]'
-                      : 'text-[var(--muted)] hover:text-[var(--foreground)]'
-                  }`}
-                >
-                  Full Text
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveReviewTab('share_stats')}
-                  className={`px-4 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                    activeReviewTab === 'share_stats'
-                      ? 'bg-[var(--background)] shadow-md text-[var(--accent)]'
-                      : 'text-[var(--muted)] hover:text-[var(--foreground)]'
-                  }`}
-                >
-                  Share Analytics
-                </button>
+              {/* Tabs controls */}
+              <div className="flex rounded-xl p-1 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-850 w-full max-w-sm self-start">
+                {['abstract', 'fulltext', 'share_stats'].map((tab) => {
+                  const label = tab === 'abstract' ? 'Abstract' : tab === 'fulltext' ? 'Full Text' : 'Share Metrics';
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setActiveReviewTab(tab)}
+                      className={`flex-1 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        activeReviewTab === tab
+                          ? 'bg-white shadow text-amber-600 dark:bg-zinc-900 dark:text-amber-400'
+                          : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-250'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Reader Panel */}
-              <div className="flex-grow p-5 rounded-xl border border-[var(--muted-border)]/65 bg-[var(--background)]/40 text-left overflow-y-auto max-h-[320px]">
+              {/* Reader Panel (using font-serif where appropriate) */}
+              <div className="flex-grow p-5 rounded-xl border border-zinc-150 dark:border-zinc-850/80 bg-zinc-50/30 dark:bg-zinc-950/20 text-left overflow-y-auto max-h-[300px]">
                 {activeReviewTab === 'abstract' ? (
-                  <div className="space-y-4">
+                  <div className="space-y-4 font-serif">
                     {(selectedArticle.featured_image || selectedArticle.magazine?.cover_image) && (
-                      <div className="w-full max-w-sm h-48 rounded-xl overflow-hidden border border-zinc-250/50 bg-zinc-50/50 shadow-sm mb-4">
+                      <div className="w-full max-w-sm h-40 rounded-xl overflow-hidden border border-zinc-200/50 bg-zinc-50/50 shadow-sm mb-4">
                         <img 
                           src={getFullImageUrl(selectedArticle.featured_image || selectedArticle.magazine?.cover_image)} 
-                          alt="Article Featured Image" 
+                          alt="Article Cover" 
                           className="w-full h-full object-cover" 
                         />
                       </div>
                     )}
-                    <div className="prose prose-sm max-w-none text-[var(--foreground)]/80 italic leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedArticle.abstract }} />
+                    <div className="prose prose-sm max-w-none text-zinc-700 dark:text-zinc-300 italic leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: selectedArticle.abstract }} />
                   </div>
                 ) : activeReviewTab === 'fulltext' ? (
-                  <div className="prose prose-sm max-w-none text-[var(--foreground)] leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedArticle.full_text }} />
+                  <div className="prose prose-sm max-w-none text-zinc-850 dark:text-zinc-350 leading-relaxed font-serif text-sm" dangerouslySetInnerHTML={{ __html: selectedArticle.full_text }} />
                 ) : (
-                  <div className="space-y-4 text-left">
+                  <div className="space-y-4 text-left font-sans">
                     <div className="flex items-center justify-between border-b border-zinc-150 dark:border-zinc-800 pb-3">
                       <div>
-                        <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">Social Sharing Metric Summary</h4>
-                        <p className="text-[10px] text-[var(--muted)]">Real-time click engagement for share links and embeds</p>
+                        <h4 className="text-xs font-bold text-zinc-800 dark:text-white uppercase tracking-wider">Sharing Metric Summary</h4>
+                        <p className="text-[9px] text-zinc-400 font-semibold">Real-time click engagement metrics for share anchors</p>
                       </div>
                       <div className="text-right">
-                        <span className="text-2xl font-black font-mono text-[var(--accent)]">
+                        <span className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400">
                           {selectedArticle.share_clicks?.reduce((acc, curr) => acc + curr.clicks, 0) || 0}
                         </span>
-                        <p className="text-[9px] uppercase tracking-widest font-mono font-bold text-[var(--muted)]">Total Shares</p>
+                        <p className="text-[8px] uppercase tracking-wider font-bold text-zinc-400">Total clicks</p>
                       </div>
                     </div>
 
                     {!selectedArticle.share_clicks || selectedArticle.share_clicks.length === 0 ? (
-                      <p className="text-xs italic text-[var(--muted)] py-6 text-center">No sharing interactions logged yet.</p>
+                      <p className="text-xs italic text-zinc-450 py-6 text-center">No sharing interactions logged yet.</p>
                     ) : (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {selectedArticle.share_clicks.map((item) => (
-                          <div key={item.id} className="p-3 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/40 border border-zinc-150 dark:border-zinc-850 flex items-center justify-between">
-                            <div>
-                              <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--muted)] block font-mono">{item.platform.replace('_', ' ')}</span>
-                              <span className="text-xs font-bold text-[var(--foreground)] mt-0.5 block">{item.clicks} clicks</span>
+                          <div key={item.id} className="p-3.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 flex items-center justify-between shadow-sm">
+                            <div className="text-left">
+                              <span className="text-[9px] uppercase font-bold tracking-wider text-zinc-450 block font-mono">{item.platform.replace('_', ' ')}</span>
+                              <span className="text-[11px] font-bold text-zinc-805 dark:text-zinc-250 mt-0.5 block">{item.clicks} clicks</span>
                             </div>
-                            <span className="h-2.5 w-2.5 rounded-full bg-[var(--accent)] opacity-40 shrink-0"></span>
+                            <span className="h-2 w-2 rounded-full bg-amber-500 opacity-40 shrink-0"></span>
                           </div>
                         ))}
                       </div>
@@ -582,32 +566,32 @@ export default function AdminArticlesBoard() {
                 )}
               </div>
 
-              {/* Review workflow choices (Only show actions if article is pending review AND user is admin/editor) */}
+              {/* Review actions / comments */}
               {selectedArticle.status === 'pending' ? (
                 isAdminOrEditor ? (
-                  <div className="pt-4 border-t border-[var(--muted-border)]/60 space-y-4 text-left">
-                    <div>
-                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Editorial Determination</h4>
-                      <p className="text-[11px] text-[var(--muted)] font-medium mt-0.5">Record review feedback. If rejecting, a justification must be supplied.</p>
+                  <div className="pt-4 border-t border-zinc-150 dark:border-zinc-850 space-y-4 text-left font-sans">
+                    <div className="space-y-1">
+                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 font-mono">Editorial Verdict Form</h4>
+                      <p className="text-[10px] text-zinc-450 font-medium">Record verdict. A reason must be written if rejecting this submission.</p>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] font-mono block">Rejection Comments / Feedback</label>
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-405 font-mono block">Rejection Feedback / Justification</label>
                       <textarea
                         value={rejectionReason}
                         onChange={(e) => setRejectionReason(e.target.value)}
-                        placeholder="Required only for rejections. Enter editorial feedback here..."
+                        placeholder="Feedback written here is visible to authors..."
                         rows={2}
-                        className="w-full text-xs font-semibold px-3 py-2 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                        className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors"
                       />
                     </div>
 
-                    <div className="flex items-center justify-end space-x-3">
+                    <div className="flex items-center justify-end space-x-2.5">
                       <button
                         type="button"
                         disabled={submittingReview}
                         onClick={() => handleReviewAction('rejected')}
-                        className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-red-500 bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-colors cursor-pointer disabled:opacity-50"
+                        className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-red-650 bg-red-500/[0.04] border border-red-500/20 hover:bg-red-500/[0.08] transition-colors cursor-pointer disabled:opacity-50"
                       >
                         <X className="w-4 h-4" />
                         <span>Reject manuscript</span>
@@ -617,7 +601,7 @@ export default function AdminArticlesBoard() {
                         type="button"
                         disabled={submittingReview}
                         onClick={() => handleReviewAction('approved')}
-                        className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-emerald-600 hover:bg-emerald-700 shadow-md transition-colors cursor-pointer disabled:opacity-50"
+                        className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
                       >
                         {submittingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                         <span>Approve & Compile PDF</span>
@@ -625,25 +609,21 @@ export default function AdminArticlesBoard() {
                     </div>
                   </div>
                 ) : (
-                  <div className="pt-4 border-t border-[var(--muted-border)]/60 space-y-3 text-left">
-                    <div>
-                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Review Status</h4>
-                      <div className="mt-2">
-                        {getStatusBadge(selectedArticle.status)}
-                      </div>
+                  <div className="pt-4 border-t border-zinc-150 dark:border-zinc-850 text-left font-sans">
+                    <h4 className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono">Review Status</h4>
+                    <div className="mt-2">
+                      {getStatusBadge(selectedArticle.status)}
                     </div>
                   </div>
                 )
               ) : (
-                <div className="pt-4 border-t border-[var(--muted-border)]/60 space-y-3 text-left">
-                  <div>
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Archived Review Result</h4>
-                    <div className="mt-2 flex items-center space-x-2">
-                      {getStatusBadge(selectedArticle.status)}
-                      {selectedArticle.status === 'rejected' && (
-                        <p className="text-xs text-[var(--muted)] font-medium">Reason: {selectedArticle.rejection_reason || 'No comments left.'}</p>
-                      )}
-                    </div>
+                <div className="pt-4 border-t border-zinc-150 dark:border-zinc-850 text-left font-sans">
+                  <h4 className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono">Historical Record</h4>
+                  <div className="mt-2 flex items-center space-x-3">
+                    {getStatusBadge(selectedArticle.status)}
+                    {selectedArticle.status === 'rejected' && (
+                      <p className="text-xs text-zinc-500 font-medium">Rejection Reason: <strong className="text-zinc-900 dark:text-zinc-200">{selectedArticle.rejection_reason || 'None provided.'}</strong></p>
+                    )}
                   </div>
                 </div>
               )}

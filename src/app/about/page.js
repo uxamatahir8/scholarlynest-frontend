@@ -19,7 +19,7 @@ export default function AboutPage() {
         customLabels={{ about: 'About Us' }}
       />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pb-16">
 
         {/* GUIDING PRINCIPLES GRID */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">

@@ -233,7 +233,7 @@ export default function CmsPageEditWorkspace() {
   }
 
   return (
-    <div className="p-6 sm:p-8 max-w-5xl mx-auto w-full space-y-6 animate-in fade-in duration-300">
+    <div className="p-6 sm:p-8 w-full space-y-6 animate-in fade-in duration-300">
       <title>{`Update ${activePageInfo.name}  - ScholarlyNest`}</title>
 
       {/* Workspace Navigation Bar */}

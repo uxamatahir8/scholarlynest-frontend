@@ -358,8 +358,8 @@ export default function AdminEditArticle() {
 
   if (loadingArticle) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 space-y-4">
-        <Loader2 className="w-10 h-10 animate-spin text-[var(--accent)]" />
+      <div className="flex flex-col items-center justify-center py-32 space-y-4 font-sans text-center">
+        <Loader2 className="w-10 h-10 animate-spin text-amber-600" />
         <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">Downloading Article details...</span>
       </div>
     );
@@ -367,11 +367,11 @@ export default function AdminEditArticle() {
 
   if (!user || (!canEditAll && !canEditSeo)) {
     return (
-      <div className="p-6 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl flex items-start space-x-4 max-w-xl mx-auto mt-12 animate-in fade-in slide-in-from-bottom-4">
-        <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
-        <div>
+      <div className="p-6 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl flex items-start space-x-4 max-w-xl mx-auto mt-12 animate-in fade-in slide-in-from-bottom-4">
+        <AlertCircle className="w-6 h-6 text-red-550 shrink-0" />
+        <div className="text-left font-sans">
           <h3 className="text-sm font-bold text-red-750 dark:text-red-400">Access Restricted</h3>
-          <p className="text-xs text-red-600 dark:text-red-300 mt-1">
+          <p className="text-xs text-red-655 dark:text-red-300 mt-1 leading-relaxed">
             You must possess administrative, editing, or SEO privileges to access this article's workspace.
           </p>
         </div>
@@ -380,37 +380,37 @@ export default function AdminEditArticle() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-8 w-full font-sans text-left">
       {/* Navigation Headers */}
-      <div className="flex items-center justify-between pb-4 border-b border-zinc-200">
-        <Link href="/admin/articles" className="inline-flex items-center text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-[var(--accent)] transition-colors">
-          <ArrowLeft className="w-4 h-4 mr-1.5" />
+      <div className="flex items-center justify-between pb-4 border-b border-zinc-150 dark:border-zinc-900">
+        <Link href="/admin/articles" className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-zinc-405 hover:text-amber-600 transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
           Back to Articles
         </Link>
-        <div className="flex items-center space-x-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+        <div className="flex items-center space-x-2 text-[9px] font-bold uppercase tracking-widest text-zinc-400">
           <span>Console</span>
-          <ChevronRight className="w-3 h-3 text-[var(--accent-gold)]" />
+          <ChevronRight className="w-3 h-3 text-amber-500" />
           <span>Articles</span>
-          <ChevronRight className="w-3 h-3 text-[var(--accent-gold)]" />
-          <span className="text-zinc-650">Edit Article</span>
+          <ChevronRight className="w-3 h-3 text-amber-500" />
+          <span className="text-zinc-800 dark:text-zinc-200">Edit Article</span>
         </div>
       </div>
 
       {/* Hero card details */}
-      <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-2">
-        <h1 className="text-xl font-bold text-zinc-950 font-serif">Edit Article Workspace</h1>
-        <p className="text-xs text-zinc-500 font-medium leading-relaxed">Modify publication details, update visual/HTML abstracts, compile documents, and manage metadata categories.</p>
+      <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-2">
+        <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Edit Article Workspace</h1>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">Modify publication details, update visual/HTML abstracts, compile documents, and manage metadata categories.</p>
       </div>
 
       {canEditAll ? (
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Row Grid: Magazine, Status & Title */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="space-y-1 md:col-span-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">Target Magazine *</label>
+            <div className="space-y-1.5 md:col-span-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Target Magazine *</label>
               {loadingMagazines ? (
-                <div className="flex items-center space-x-2 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-xs text-zinc-450 font-semibold">
-                  <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />
+                <div className="flex items-center space-x-2 px-3 py-3.5 bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-450 font-semibold">
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
                   <span>Loading issues...</span>
                 </div>
               ) : (
@@ -420,7 +420,7 @@ export default function AdminEditArticle() {
                     setMagazineId(e.target.value);
                     setSelectedTags([]); // Clear tags if issue changed
                   }}
-                  className="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                  className="w-full text-xs font-semibold px-3 py-3.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200 cursor-pointer"
                 >
                   {magazines.map((m) => (
                     <option key={m.id} value={m.id}>{m.title}</option>
@@ -432,12 +432,12 @@ export default function AdminEditArticle() {
               )}
             </div>
 
-            <div className="space-y-1 md:col-span-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">Article Status</label>
+            <div className="space-y-1.5 md:col-span-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Article Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                className="w-full text-xs font-semibold px-3 py-3.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200 cursor-pointer"
               >
                 <option value="pending">Pending Review</option>
                 <option value="approved">Approved</option>
@@ -445,14 +445,14 @@ export default function AdminEditArticle() {
               </select>
             </div>
 
-            <div className="space-y-1 md:col-span-2">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">Article Title *</label>
+            <div className="space-y-1.5 md:col-span-2">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Article Title *</label>
               <input 
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Advancements in Deep Neural Network Optimizations"
-                className="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                className="w-full text-xs font-semibold px-3 py-3 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200"
               />
               {validationErrors.title && (
                 <p className="text-[10px] font-semibold text-red-500">{validationErrors.title}</p>
@@ -461,10 +461,10 @@ export default function AdminEditArticle() {
           </div>
 
           {/* Author Metadata & Collaborators */}
-          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-            <div className="border-b border-zinc-100 pb-3">
-              <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-serif">Author Metadata & Collaborators</h3>
-              <p className="text-[10px] text-zinc-400 font-medium">Add secondary contributors with customizable edit permissions and account provisioning gates.</p>
+          <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-4">
+            <div className="border-b border-zinc-100 dark:border-zinc-850 pb-3">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider font-serif">Collaborators & Permissions</h3>
+              <p className="text-[10px] text-zinc-400 mt-1 font-semibold leading-relaxed">Map editing privileges and coordinate account provisioning gates for co-authors.</p>
             </div>
             <CoAuthorRepeater 
               coAuthors={coAuthors}
@@ -474,27 +474,27 @@ export default function AdminEditArticle() {
             />
             {validationErrors.coAuthors && (
               <p className="text-[10px] font-semibold text-red-500 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" />{validationErrors.coAuthors}
+                <AlertCircle className="w-3.5 h-3.5 text-red-550" />{validationErrors.coAuthors}
               </p>
             )}
           </div>
 
           {/* Keywords & Tags Selection Panel */}
-          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Article Keywords & Tags</label>
-              <span className="text-[10px] text-zinc-400 font-medium">Select tags associated with this magazine or enter new ones below.</span>
+          <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Keywords & Tag Indices</label>
+              <span className="text-[10px] text-zinc-400 font-medium">Select tags associated with this magazine or submit custom terms.</span>
             </div>
 
             {loadingTags ? (
               <div className="flex items-center space-x-2 text-xs text-zinc-450 font-semibold py-1">
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent)]" />
-                <span>Loading magazine tags...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+                <span>Syncing tags database...</span>
               </div>
             ) : (
               <div className="space-y-4">
                 {availableTags.length > 0 && (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <span className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider block font-mono">Available Tags (Click to toggle)</span>
                     <div className="flex flex-wrap gap-1.5">
                       {availableTags.map((tag) => {
@@ -512,8 +512,8 @@ export default function AdminEditArticle() {
                             }}
                             className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
                               isSelected 
-                                ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30' 
-                                : 'bg-zinc-50 text-zinc-650 border-zinc-200 hover:border-zinc-350'
+                                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20' 
+                                : 'bg-zinc-50 dark:bg-zinc-950 text-zinc-650 border-zinc-200 hover:border-amber-500/20 hover:bg-amber-500/[0.01] dark:border-zinc-800'
                             }`}
                           >
                             {tag.name}
@@ -525,8 +525,8 @@ export default function AdminEditArticle() {
                 )}
 
                 {/* Add Custom keyword input */}
-                <div className="space-y-1.5">
-                  <span className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider block font-mono">Add Custom Keyword</span>
+                <div className="space-y-2">
+                  <span className="text-[9px] font-bold text-zinc-455 uppercase tracking-wider block font-mono">Add Custom Keyword</span>
                   <div className="flex items-center space-x-2 max-w-md">
                     <input
                       type="text"
@@ -539,12 +539,12 @@ export default function AdminEditArticle() {
                         }
                       }}
                       placeholder="Type keyword and press Enter..."
-                      className="flex-grow text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                      className="flex-grow text-xs font-semibold px-3.5 py-2.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-505 transition-colors text-zinc-900 dark:text-zinc-200"
                     />
                     <button
                       type="button"
                       onClick={addCustomKeyword}
-                      className="px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-white bg-zinc-800 hover:bg-zinc-950 rounded-lg transition-colors cursor-pointer"
+                      className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white bg-zinc-955 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 rounded-xl transition-all cursor-pointer shrink-0 shadow-sm"
                     >
                       Add
                     </button>
@@ -553,21 +553,21 @@ export default function AdminEditArticle() {
 
                 {/* Selected custom keyword tags list */}
                 {selectedTags.some(t => typeof t === 'string') && (
-                  <div className="space-y-1.5">
-                    <span className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider block font-mono">Custom Keywords</span>
+                  <div className="space-y-2">
+                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block font-mono">Custom Keywords</span>
                     <div className="flex flex-wrap gap-1.5">
                       {selectedTags.filter(t => typeof t === 'string').map((keyword, index) => (
                         <span 
                           key={index}
-                          className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-[10px] font-bold rounded-lg bg-[var(--accent-gold)]/10 text-amber-800 border border-[var(--accent-gold)]/30"
+                          className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-[10px] font-bold rounded-lg bg-amber-500/[0.04] text-amber-700 dark:text-amber-400 border border-amber-500/20"
                         >
                           <span>{keyword}</span>
                           <button
                             type="button"
                             onClick={() => setSelectedTags(selectedTags.filter(t => t !== keyword))}
-                            className="hover:text-red-750 transition-colors cursor-pointer"
+                            className="hover:text-red-650 transition-colors cursor-pointer"
                           >
-                            <X className="w-3 h-3" />
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </span>
                       ))}
@@ -581,31 +581,31 @@ export default function AdminEditArticle() {
           {/* Abstract Box */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 font-mono">
                 Abstract Synopsis *
               </label>
 
               {/* Abstract Toggler */}
-              <div className="flex items-center space-x-3 text-xs">
+              <div className="flex items-center space-x-3 text-[10px] font-bold uppercase tracking-wider">
                 <button
                   type="button"
                   onClick={() => setAbstractMode('visual')}
-                  className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                  className={`transition-colors cursor-pointer ${
                     abstractMode === 'visual'
-                      ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
-                      : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300'
+                      ? 'text-amber-600 border-b-2 border-amber-500 pb-0.5'
+                      : 'text-zinc-400 hover:text-zinc-900'
                   }`}
                 >
                   Visual Editor
                 </button>
-                <span className="text-zinc-300 dark:text-zinc-700">|</span>
+                <span className="text-zinc-200 dark:text-zinc-800">|</span>
                 <button
                   type="button"
                   onClick={() => setAbstractMode('html')}
-                  className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                  className={`transition-colors cursor-pointer ${
                     abstractMode === 'html'
-                      ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
-                      : 'text-zinc-400 hover:text-zinc-655 dark:hover:text-zinc-300'
+                      ? 'text-amber-600 border-b-2 border-amber-500 pb-0.5'
+                      : 'text-zinc-400 hover:text-zinc-900'
                   }`}
                 >
                   Raw HTML Body
@@ -630,7 +630,7 @@ export default function AdminEditArticle() {
                     placeholder="<!-- Abstract HTML content -->"
                     rows={6}
                     style={{ color: '#ffffff' }}
-                    className="w-full flex-grow font-mono text-xs p-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                    className="w-full flex-grow font-mono text-xs p-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               )}
@@ -643,31 +643,31 @@ export default function AdminEditArticle() {
           {/* Full Text Box */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 font-mono">
                 Full Text Content *
               </label>
 
               {/* Full Text Toggler */}
-              <div className="flex items-center space-x-3 text-xs">
+              <div className="flex items-center space-x-3 text-[10px] font-bold uppercase tracking-wider">
                 <button
                   type="button"
                   onClick={() => setFullTextMode('visual')}
-                  className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                  className={`transition-colors cursor-pointer ${
                     fullTextMode === 'visual'
-                      ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
-                      : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300'
+                      ? 'text-amber-600 border-b-2 border-amber-500 pb-0.5'
+                      : 'text-zinc-400 hover:text-zinc-900'
                   }`}
                 >
                   Visual Editor
                 </button>
-                <span className="text-zinc-300 dark:text-zinc-700">|</span>
+                <span className="text-zinc-200 dark:text-zinc-800">|</span>
                 <button
                   type="button"
                   onClick={() => setFullTextMode('html')}
-                  className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                  className={`transition-colors cursor-pointer ${
                     fullTextMode === 'html'
-                      ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
-                      : 'text-zinc-400 hover:text-zinc-655 dark:hover:text-zinc-300'
+                      ? 'text-amber-600 border-b-2 border-amber-500 pb-0.5'
+                      : 'text-zinc-400 hover:text-zinc-900'
                   }`}
                 >
                   Raw HTML Body
@@ -692,7 +692,7 @@ export default function AdminEditArticle() {
                     placeholder="<!-- Full Text HTML content -->"
                     rows={12}
                     style={{ color: '#ffffff' }}
-                    className="w-full flex-grow font-mono text-xs p-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                    className="w-full flex-grow font-mono text-xs p-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               )}
@@ -703,11 +703,11 @@ export default function AdminEditArticle() {
           </div>
 
           {/* PDF File upload & Featured Image */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-200">
-            <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-zinc-200 dark:border-zinc-900">
+            <div className="space-y-3">
               <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Replace PDF Document (Optional)</label>
               <div className="flex items-center space-x-3">
-                <label className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer border border-zinc-300">
+                <label className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-350 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer shadow-sm">
                   <Upload className="w-4 h-4" />
                   <span>Choose PDF</span>
                   <input 
@@ -717,18 +717,18 @@ export default function AdminEditArticle() {
                     className="hidden"
                   />
                 </label>
-                <span className="text-xs text-zinc-500 font-mono font-medium truncate max-w-xs">{pdfFileName || 'No file selected'}</span>
+                <span className="text-xs text-zinc-450 font-mono font-medium truncate max-w-xs">{pdfFileName || 'No file selected'}</span>
               </div>
               {existingPdfPath && (
-                <p className="text-[10px] text-emerald-600 font-bold font-mono">✓ Active PDF Link: {existingPdfPath}</p>
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-450 font-bold font-mono">✓ Active PDF Link: {existingPdfPath}</p>
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Featured Image (Optional)</label>
               <div className="flex flex-col space-y-3">
                 <div className="flex items-center space-x-3">
-                  <label className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer border border-zinc-300">
+                  <label className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-350 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer shadow-sm">
                     <Upload className="w-4 h-4" />
                     <span>Choose Image</span>
                     <input 
@@ -738,12 +738,12 @@ export default function AdminEditArticle() {
                       className="hidden"
                     />
                   </label>
-                  <span className="text-xs text-zinc-500 font-mono font-medium truncate max-w-xs">{featuredImageFileName || 'No image selected'}</span>
+                  <span className="text-xs text-zinc-450 font-mono font-medium truncate max-w-xs">{featuredImageFileName || 'No image selected'}</span>
                 </div>
 
                 {/* Preview active featured image or new image preview */}
                 {featuredImagePreview ? (
-                  <div className="relative w-full max-w-[200px] h-32 rounded-xl overflow-hidden border border-zinc-250/50 shadow-sm bg-zinc-50 animate-in fade-in duration-300">
+                  <div className="relative w-full max-w-[200px] h-32 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-850 shadow-sm bg-zinc-50 animate-in fade-in duration-300">
                     <img src={featuredImagePreview} alt="New Featured Image Preview" className="w-full h-full object-cover" />
                     <button
                       type="button"
@@ -754,12 +754,12 @@ export default function AdminEditArticle() {
                     </button>
                   </div>
                 ) : (existingFeaturedImage && !deleteFeaturedImage) ? (
-                  <div className="relative w-full max-w-[200px] h-32 rounded-xl overflow-hidden border border-zinc-250/50 shadow-sm bg-zinc-50">
+                  <div className="relative w-full max-w-[200px] h-32 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-850 shadow-sm bg-zinc-50">
                     <img src={getFullImageUrl(existingFeaturedImage)} alt="Existing Featured" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={handleRemoveFeaturedImage}
-                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-red-650 hover:bg-red-700 text-white transition-colors"
+                      className="absolute top-1.5 right-1.5 p-1 rounded-full bg-red-600 hover:bg-red-750 text-white transition-colors"
                       title="Remove Featured Image"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -767,12 +767,12 @@ export default function AdminEditArticle() {
                   </div>
                 ) : null}
               </div>
-              <p className="text-[10px] text-zinc-400 font-medium">Add or replace the article cover image. Falls back to the magazine cover image if not provided.</p>
+              <p className="text-[10px] text-zinc-400 font-medium leading-relaxed">Add or replace the article cover image. Falls back to the magazine cover image if not provided.</p>
             </div>
           </div>
 
           {/* Article Assets Manager */}
-          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+          <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-4">
             <ArticleAssetDropzone
               articleId={id}
               assets={assets}
@@ -782,23 +782,23 @@ export default function AdminEditArticle() {
 
           {/* Collapsible SEO Panel */}
           {canEditSeo && (
-            <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+            <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-4">
               <button
                 type="button"
                 onClick={() => setSeoExpanded(!seoExpanded)}
-                className="w-full flex items-center justify-between font-bold text-zinc-900 focus:outline-none"
+                className="w-full flex items-center justify-between font-bold text-zinc-900 dark:text-white focus:outline-none cursor-pointer"
               >
                 <span className="flex items-center space-x-2 text-xs uppercase tracking-wider text-zinc-500 font-mono">
-                  <Eye className="w-4 h-4 text-[var(--accent-gold)]" />
+                  <TagIcon className="w-4 h-4 text-amber-500" />
                   <span>SEO & Metadata Settings</span>
                 </span>
-                <span className="text-xs font-semibold text-[var(--accent)] font-mono uppercase tracking-wider">
-                  {seoExpanded ? 'Collapse' : 'Expand'}
+                <span className="text-[10px] font-bold text-amber-600 font-mono uppercase tracking-wider">
+                  {seoExpanded ? 'Hide' : 'Show Settings'}
                 </span>
               </button>
 
               {seoExpanded && (
-                <div className="pt-4 border-t border-zinc-100 space-y-4 animate-in fade-in duration-300">
+                <div className="pt-4 border-t border-zinc-100 dark:border-zinc-850 space-y-4 animate-in fade-in duration-300">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">SEO Title</label>
                     <input
@@ -807,13 +807,13 @@ export default function AdminEditArticle() {
                       onChange={(e) => setSeoTitle(e.target.value)}
                       placeholder="Leave blank to auto-generate (Article Title | Magazine Title)"
                       maxLength={255}
-                      className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                      className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200"
                     />
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block font-mono">Meta Description</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Meta Description</label>
                       <span className="text-[10px] font-semibold text-zinc-400 font-mono">
                         {seoDescription.length}/500
                       </span>
@@ -823,7 +823,7 @@ export default function AdminEditArticle() {
                       onChange={(e) => setSeoDescription(e.target.value.slice(0, 500))}
                       placeholder="Summarize the article content for search engines..."
                       rows={3}
-                      className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                      className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200"
                     />
                   </div>
 
@@ -835,7 +835,7 @@ export default function AdminEditArticle() {
                       onChange={(e) => setSeoKeywords(e.target.value)}
                       placeholder="e.g. deep learning, optimizers, neural networks"
                       maxLength={500}
-                      className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                      className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-505 transition-colors text-zinc-900 dark:text-zinc-200"
                     />
                   </div>
                 </div>
@@ -844,17 +844,17 @@ export default function AdminEditArticle() {
           )}
 
           {/* Submit workspace buttons */}
-          <div className="flex items-center justify-end space-x-3 pt-6 border-t border-zinc-200">
+          <div className="flex items-center justify-end space-x-3 pt-6 border-t border-zinc-150 dark:border-zinc-900">
             <Link 
               href="/admin/articles"
-              className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer"
+              className="px-4.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 hover:bg-zinc-150 transition-colors cursor-pointer"
             >
               Cancel
             </Link>
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[var(--accent)] hover:bg-[var(--accent)]/95 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
             >
               {saving ? (
                 <>
@@ -874,10 +874,10 @@ export default function AdminEditArticle() {
       ) : (
         <div className="space-y-6">
           {canEditSeo && (
-            <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between font-bold text-zinc-900 border-b border-zinc-105 pb-3">
+            <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-4">
+              <div className="flex items-center justify-between font-bold text-zinc-900 dark:text-white border-b border-zinc-100 dark:border-zinc-850 pb-3">
                 <span className="flex items-center space-x-2 text-xs uppercase tracking-wider text-zinc-500 font-mono">
-                  <Eye className="w-4 h-4 text-[var(--accent-gold)]" />
+                  <TagIcon className="w-4 h-4 text-amber-500" />
                   <span>SEO & Metadata Settings</span>
                 </span>
               </div>
@@ -891,7 +891,7 @@ export default function AdminEditArticle() {
                     onChange={(e) => setSeoTitle(e.target.value)}
                     placeholder="Leave blank to auto-generate (Article Title | Magazine Title)"
                     maxLength={255}
-                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200"
                   />
                 </div>
 
@@ -907,7 +907,7 @@ export default function AdminEditArticle() {
                     onChange={(e) => setSeoDescription(e.target.value.slice(0, 500))}
                     placeholder="Summarize the article content for search engines..."
                     rows={4}
-                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-505 transition-colors text-zinc-900 dark:text-zinc-200"
                   />
                 </div>
 
@@ -919,7 +919,7 @@ export default function AdminEditArticle() {
                     onChange={(e) => setSeoKeywords(e.target.value)}
                     placeholder="e.g. deep learning, optimizers, neural networks"
                     maxLength={500}
-                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-505 transition-colors text-zinc-900 dark:text-zinc-200"
                   />
                 </div>
 
@@ -928,7 +928,7 @@ export default function AdminEditArticle() {
                     type="button"
                     onClick={handleSaveSeoOnly}
                     disabled={savingSeo}
-                    className="inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-white bg-[var(--accent)] hover:bg-[var(--accent)]/95 shadow-sm transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-sm transition-colors cursor-pointer"
                   >
                     {savingSeo ? (
                       <>
@@ -947,10 +947,10 @@ export default function AdminEditArticle() {
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-4 border-t border-zinc-100">
+          <div className="flex items-center justify-between pt-4 border-t border-zinc-150 dark:border-zinc-900">
             <Link 
               href="/admin/articles"
-              className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer"
+              className="px-4.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 hover:bg-zinc-150 transition-colors cursor-pointer"
             >
               Back to Articles
             </Link>

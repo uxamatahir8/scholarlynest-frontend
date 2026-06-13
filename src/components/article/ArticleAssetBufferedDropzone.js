@@ -1,15 +1,17 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { Upload, X, File, FileSpreadsheet, FileText, Image, Archive, Loader2, AlertCircle } from 'lucide-react';
-import api from '../../utils/api';
+import { Upload, X, File, FileSpreadsheet, FileText, Image, Archive, AlertCircle } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
-export default function ArticleAssetDropzone({ articleId, assets, onAssetsChanged }) {
+export default function ArticleAssetBufferedDropzone({ files, onFilesChanged }) {
   const { toast } = useToast();
   const [dragActive, setDragActive] = useState(false);
-  const [uploadingFiles, setUploadingFiles] = useState({}); // tracking upload status of files by name
   const fileInputRef = useRef(null);
+
+  // Allowed MIME types and extensions matching backend configuration
+  const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'xlsx', 'xls', 'csv', 'zip', 'png', 'jpg', 'jpeg', 'txt'];
+  const MAX_FILE_SIZE_KB = 25600; // 25MB
 
   // Helper to format file size
   const formatBytes = (bytes) => {
@@ -44,6 +46,25 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
     return <File className="w-8 h-8 text-zinc-500" />;
   };
 
+  // Validate file size and type
+  const validateFile = (file) => {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
+      toast(`File "${file.name}" has an unsupported format. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}`, 'error');
+      return false;
+    }
+    if (file.size > MAX_FILE_SIZE_KB * 1024) {
+      toast(`File "${file.name}" exceeds the 25MB maximum size limit.`, 'error');
+      return false;
+    }
+    // Check duplicate
+    if (files.some(f => f.name === file.name && f.size === file.size)) {
+      toast(`File "${file.name}" is already selected.`, 'error');
+      return false;
+    }
+    return true;
+  };
+
   // Drag over handlers
   const handleDrag = (e) => {
     e.preventDefault();
@@ -55,43 +76,18 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
     }
   };
 
-  // Upload handler
-  const uploadFile = async (file) => {
-    const tempId = file.name + '-' + Date.now();
-    setUploadingFiles(prev => ({
-      ...prev,
-      [tempId]: { name: file.name, size: file.size, error: null }
-    }));
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await api.post(`/articles/${articleId}/assets`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (response.data && response.data.asset) {
-        onAssetsChanged([...assets, response.data.asset]);
-        toast(`File "${file.name}" uploaded successfully!`, 'success');
+  // Local selection handlers
+  const handleAddFiles = (selectedFiles) => {
+    const validFiles = [];
+    Array.from(selectedFiles).forEach(file => {
+      if (validateFile(file)) {
+        validFiles.push(file);
       }
-      // Remove from uploading list
-      setUploadingFiles(prev => {
-        const next = { ...prev };
-        delete next[tempId];
-        return next;
-      });
-    } catch (err) {
-      console.error('File upload error:', err);
-      const errMsg = err.response?.data?.message || `Failed to upload "${file.name}"`;
-      toast(errMsg, 'error');
-      
-      setUploadingFiles(prev => ({
-        ...prev,
-        [tempId]: { ...prev[tempId], error: errMsg }
-      }));
+    });
+
+    if (validFiles.length > 0) {
+      onFilesChanged([...files, ...validFiles]);
+      toast(`${validFiles.length} supplementary asset(s) added to upload queue.`, 'success');
     }
   };
 
@@ -102,9 +98,7 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
     setDragActive(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      Array.from(e.dataTransfer.files).forEach(file => {
-        uploadFile(file);
-      });
+      handleAddFiles(e.dataTransfer.files);
     }
   };
 
@@ -112,35 +106,19 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
   const handleChange = (e) => {
     e.preventDefault();
     if (e.target.files && e.target.files.length > 0) {
-      Array.from(e.target.files).forEach(file => {
-        uploadFile(file);
-      });
+      handleAddFiles(e.target.files);
     }
   };
 
   // Delete handler
-  const handleDelete = async (assetId, filename) => {
-    try {
-      await api.delete(`/articles/assets/${assetId}`);
-      onAssetsChanged(assets.filter(a => a.id !== assetId));
-      toast(`Asset "${filename}" deleted successfully.`, 'success');
-    } catch (err) {
-      console.error('Failed to delete asset:', err);
-      toast(err.response?.data?.message || 'Failed to delete supplementary asset.', 'error');
-    }
+  const handleDelete = (indexToDelete, filename) => {
+    onFilesChanged(files.filter((_, index) => index !== indexToDelete));
+    toast(`Asset "${filename}" removed from queue.`, 'success');
   };
 
   // Click handler to open file picker
   const onButtonClick = () => {
     fileInputRef.current.click();
-  };
-
-  const clearUploadingError = (tempId) => {
-    setUploadingFiles(prev => {
-      const next = { ...prev };
-      delete next[tempId];
-      return next;
-    });
   };
 
   return (
@@ -177,63 +155,34 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
       </div>
 
       {/* Asset list queue */}
-      {((assets && assets.length > 0) || Object.keys(uploadingFiles).length > 0) && (
-        <div className="space-y-2 border border-zinc-200 dark:border-zinc-850 bg-white/40 dark:bg-zinc-900/10 p-4 rounded-xl shadow-sm">
+      {files && files.length > 0 && (
+        <div className="space-y-2 border border-zinc-200 dark:border-zinc-850 bg-white/40 dark:bg-zinc-900/10 p-4 rounded-xl shadow-sm animate-in fade-in duration-300">
           <span className="text-[9px] font-bold text-zinc-400 font-mono uppercase tracking-widest block mb-1">
-            Supplementary Assets List
+            Supplementary Assets Queue ({files.length} file{files.length > 1 ? 's' : ''} queued)
           </span>
           
           <div className="divide-y divide-zinc-100 dark:divide-zinc-850/50">
-            {/* Uploading Queue */}
-            {Object.entries(uploadingFiles).map(([tempId, info]) => (
-              <div key={tempId} className="flex items-center justify-between py-3">
-                <div className="flex items-center space-x-3 min-w-0">
-                  <div className="p-2 bg-zinc-100 dark:bg-zinc-800/80 rounded-lg shrink-0">
-                    {info.error ? <AlertCircle className="w-5 h-5 text-red-500 animate-pulse" /> : <Loader2 className="w-5 h-5 text-amber-600 animate-spin" />}
-                  </div>
-                  <div className="min-w-0 text-left">
-                    <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 truncate">{info.name}</p>
-                    <p className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest">
-                      {info.error ? <span className="text-red-550 font-bold">Failed to upload</span> : <span>Uploading ({formatBytes(info.size)})</span>}
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  {info.error ? (
-                    <button
-                      type="button"
-                      onClick={() => clearUploadingError(tempId)}
-                      className="p-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-500 transition-colors"
-                      title="Clear error"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  ) : (
-                    <div className="w-4 h-4 mr-2" />
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {/* Completed Assets */}
-            {assets && assets.map((asset) => (
-              <div key={asset.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+            {files.map((file, index) => (
+              <div key={index} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
                 <div className="flex items-center space-x-3 min-w-0">
                   <div className="p-2 bg-zinc-150/50 dark:bg-zinc-850/50 rounded-lg shrink-0">
-                    {getFileIcon(asset.mime_type, asset.original_filename)}
+                    {getFileIcon(file.type, file.name)}
                   </div>
                   <div className="min-w-0 text-left">
-                    <p className="text-xs font-semibold text-zinc-850 dark:text-zinc-200 truncate">{asset.original_filename}</p>
-                    <p className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest">
-                      Size: {formatBytes(asset.file_size)} • {asset.mime_type || 'Unknown Type'}
+                    <p className="text-xs font-semibold text-zinc-855 dark:text-zinc-200 truncate">{file.name}</p>
+                    <p className="text-[9px] text-zinc-550 font-mono uppercase tracking-widest">
+                      Size: {formatBytes(file.size)} • Queued for upload
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleDelete(asset.id, asset.original_filename)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(index, file.name);
+                  }}
                   className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-650 transition-colors cursor-pointer"
-                  title="Remove supplementary asset"
+                  title="Remove from queue"
                 >
                   <X className="w-4 h-4" />
                 </button>

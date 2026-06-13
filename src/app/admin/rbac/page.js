@@ -610,6 +610,16 @@ export default function RbacManager() {
                                   />
                                   <span className="text-xs font-semibold text-[var(--foreground)]">Auto-Approve & Compile PDF</span>
                                 </label>
+
+                                <label className="flex items-center space-x-2.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedRole.permissions.some(p => p.name === 'articles.manage-assets')}
+                                    onChange={(e) => handleToggleCheckboxPermission('articles.manage-assets', e.target.checked)}
+                                    className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)]"
+                                  />
+                                  <span className="text-xs font-semibold text-[var(--foreground)]">Manage Supplementary Assets</span>
+                                </label>
                               </div>
                             </div>
                           </div>

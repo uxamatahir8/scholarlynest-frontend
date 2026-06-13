@@ -364,7 +364,7 @@ export default function SecuritySettings() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 w-full">
       <div className="space-y-1">
         <h1 className="font-serif text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
           Account Settings & Profile

@@ -13,6 +13,7 @@ import RecentArticles from '../components/ui/RecentArticles';
 import GlobalSearchInput from '../components/home/GlobalSearchInput';
 import api from '../utils/api';
 import SeoHead from '../components/SeoHead';
+import Pagination from '../components/ui/Pagination';
 
 export default function Home() {
   const [activeFaq, setActiveFaq] = useState(null);
@@ -37,6 +38,8 @@ export default function Home() {
   ];
 
   const [faqs, setFaqs] = useState(defaultFaqs);
+  const [faqPage, setFaqPage] = useState(1);
+  const faqItemsPerPage = 6;
 
   useEffect(() => {
     const fetchFaqs = async () => {
@@ -78,7 +81,7 @@ export default function Home() {
           <div className="absolute bottom-0 left-0 w-full h-48 bg-gradient-to-t from-[var(--background)] to-transparent pointer-events-none" />
         </div>
 
-        <div className="relative z-30 max-w-6xl mx-auto px-4 sm:px-6 text-center animate-in fade-in zoom-in-95 duration-1000 mt-20">
+        <div className="relative z-30 w-full px-4 sm:px-6 text-center animate-in fade-in zoom-in-95 duration-1000 mt-20">
           <div className="inline-flex items-center space-x-2 px-4 py-2 glass-panel rounded-full text-[10px] font-bold uppercase tracking-widest text-[var(--foreground)] mb-8 shadow-sm hover:scale-105 transition-all duration-300 cursor-default border-amber-500/25 dark:border-blue-500/20">
             {/* <span className="w-2 h-2 rounded-full bg-[var(--accent-gold)] animate-pulse" /> */}
             <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-[var(--accent-gold)]" /> The Open Science Standard</span>
@@ -129,7 +132,7 @@ export default function Home() {
       <MagazineCarousel />
 
       {/* 2. PLATFORM METRICS (FLOATING BAR) */}
-      <section className="relative z-10 -mt-12 max-w-7xl mx-auto px-4 w-full">
+      <section className="relative z-10 -mt-12 w-full px-4">
         <div className="glass-panel rounded-2xl p-8 sm:p-10 shadow-2xl border border-[var(--accent)]/10 dark:border-white/5 bg-[var(--card-bg)]/90 backdrop-blur-xl">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-[var(--muted-border)]">
             <div className="flex flex-col space-y-2 hover:scale-105 transition-transform duration-500 py-4 md:py-0">
@@ -149,7 +152,7 @@ export default function Home() {
       </section>
 
       {/* 3. CORE PILLARS (BENTO BOX GRID) */}
-      <section className="py-32 max-w-7xl mx-auto px-4 w-full">
+      <section className="py-32 w-full px-4">
         <div className="text-center space-y-3 mb-16">
           <span className="text-[10px] font-mono text-[var(--accent-gold)] uppercase tracking-widest font-bold">Platform Capabilities</span>
           <h2 className="font-serif text-4xl font-bold tracking-tight text-[var(--foreground)]">Designed for Rigor</h2>
@@ -212,36 +215,54 @@ export default function Home() {
       </section>
 
       {/* 5. FAQ */}
-      <section className="py-32 max-w-5xl mx-auto px-4 w-full">
+      <section className="py-32 w-full px-4" id="faq-section">
         <div className="text-center space-y-3 mb-16">
           <span className="text-[10px] font-mono text-[var(--accent-gold)] uppercase tracking-widest font-bold">Inquiries</span>
           <h2 className="font-serif text-4xl font-bold tracking-tight text-[var(--foreground)]">Frequently Asked Questions</h2>
         </div>
 
-        <div className="space-y-4">
-          {faqs.map((faq, index) => (
-            <div key={index} className="glass-panel rounded-2xl overflow-hidden transition-all duration-300 shadow-sm border-[var(--muted-border)]">
-              <button
-                onClick={() => toggleFaq(index)}
-                className="w-full flex justify-between items-center text-left p-6 font-bold text-[var(--foreground)] hover:bg-[var(--foreground)]/5 transition-colors focus:outline-none cursor-pointer"
-              >
-                <span className="text-sm sm:text-base font-semibold">{faq.question}</span>
-                <ChevronDown className={`w-4 h-4 text-[var(--muted)] transition-transform duration-300 ${activeFaq === index ? 'rotate-180 text-[var(--accent-gold)]' : ''}`} />
-              </button>
-              {activeFaq === index && (
-                <div className="px-6 pb-6 text-xs sm:text-sm font-medium text-[var(--muted)] leading-relaxed animate-in fade-in slide-in-from-top-2 whitespace-pre-line">
-                  {faq.answer}
+        <div className="w-full lg:max-w-[50%] mx-auto space-y-8">
+          <div className={faqs.length <= 3 ? "grid grid-cols-1 md:grid-cols-3 gap-6" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
+            {(faqs.length > 6 ? faqs.slice((faqPage - 1) * faqItemsPerPage, faqPage * faqItemsPerPage) : faqs).map((faq, index) => {
+              const absoluteIndex = faqs.length > 6 ? (faqPage - 1) * faqItemsPerPage + index : index;
+              return (
+                <div key={absoluteIndex} className="glass-panel rounded-2xl overflow-hidden transition-all duration-300 shadow-sm border-[var(--muted-border)] flex flex-col justify-start">
+                  <button
+                    onClick={() => toggleFaq(absoluteIndex)}
+                    className="w-full flex justify-between items-center text-left p-6 font-bold text-[var(--foreground)] hover:bg-[var(--foreground)]/5 transition-colors focus:outline-none cursor-pointer"
+                  >
+                    <span className="text-sm sm:text-base font-semibold">{faq.question}</span>
+                    <ChevronDown className={`w-4 h-4 text-[var(--muted)] shrink-0 transition-transform duration-300 ${activeFaq === absoluteIndex ? 'rotate-180 text-[var(--accent-gold)]' : ''}`} />
+                  </button>
+                  {activeFaq === absoluteIndex && (
+                    <div className="px-6 pb-6 text-xs sm:text-sm font-medium text-[var(--muted)] leading-relaxed animate-in fade-in slide-in-from-top-2 whitespace-pre-line border-t border-[var(--muted-border)] pt-4">
+                      {faq.answer}
+                    </div>
+                  )}
                 </div>
-              )}
+              );
+            })}
+          </div>
+
+          {faqs.length > 6 && (
+            <div className="pt-4 flex justify-center">
+              <Pagination
+                currentPage={faqPage}
+                totalPages={Math.ceil(faqs.length / faqItemsPerPage)}
+                onPageChange={(page) => {
+                  setFaqPage(page);
+                  setActiveFaq(null);
+                }}
+              />
             </div>
-          ))}
+          )}
         </div>
       </section>
 
       {/* 6. PLEDGE */}
       <section className="py-24 border-t border-[var(--muted-border)] bg-[var(--background)] relative">
         <div className="absolute inset-0 bg-mesh opacity-20 pointer-events-none" />
-        <div className="max-w-6xl mx-auto px-4 text-center space-y-6 relative z-10">
+        <div className="w-full px-4 text-center space-y-6 relative z-10">
           <div className="w-16 h-16 rounded-full glass-panel flex items-center justify-center mx-auto shadow-xl border border-[var(--accent-gold)]/20 hover:scale-110 transition-transform duration-300">
             <GraduationCap className="w-8 h-8 text-[var(--accent-gold)]" />
           </div>

@@ -12,13 +12,14 @@ import api from '../../../../utils/api';
 import { useToast } from '../../../../context/ToastContext';
 import { useAuth } from '../../../../context/AuthContext';
 import CoAuthorRepeater from '../../../../components/article/CoAuthorRepeater';
+import ArticleAssetBufferedDropzone from '../../../../components/article/ArticleAssetBufferedDropzone';
 
 const RichEditor = dynamic(() => import('../../../../components/ui/RichEditor'), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center p-8 bg-zinc-50 border border-zinc-200 rounded-xl">
-      <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
-      <span className="ml-3 text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono">Loading Editor Workspace...</span>
+      <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+      <span className="ml-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono">Loading Editor Workspace...</span>
     </div>
   )
 });
@@ -32,9 +33,10 @@ export default function AdminNewArticle() {
   const canAutoApprove = hasPermission ? hasPermission('articles.auto-approve') : false;
 
   const [coAuthors, setCoAuthors] = useState([]);
-
   const [magazines, setMagazines] = useState([]);
   const [loadingMagazines, setLoadingMagazines] = useState(true);
+  const [supplementaryFiles, setSupplementaryFiles] = useState([]);
+  const [savingStatus, setSavingStatus] = useState('');
 
   // Form states
   const [magazineId, setMagazineId] = useState('');
@@ -188,7 +190,6 @@ export default function AdminNewArticle() {
       errors.fullText = 'Article full text is required.';
     }
 
-    // Super admin must assign at least one author
     if (isSuperAdmin) {
       const validAuthors = coAuthors.filter(
         a => a.name.trim() && a.email.trim()
@@ -219,8 +220,8 @@ export default function AdminNewArticle() {
 
     try {
       setSaving(true);
+      setSavingStatus('Saving Manuscript...');
       
-      // Use FormData to support file upload
       const formData = new FormData();
       formData.append('magazine_id', magazineId);
       formData.append('title', title);
@@ -248,8 +249,36 @@ export default function AdminNewArticle() {
 
       const newArticle = response.data.article;
 
-      // If auto-approve is checked, call review endpoint immediately
+      // Upload supplementary assets if any
+      if (newArticle && newArticle.id && supplementaryFiles.length > 0) {
+        let uploadFailedCount = 0;
+        for (let i = 0; i < supplementaryFiles.length; i++) {
+          const file = supplementaryFiles[i];
+          setSavingStatus(`Uploading asset ${i + 1} of ${supplementaryFiles.length}: ${file.name}...`);
+          try {
+            const assetFormData = new FormData();
+            assetFormData.append('file', file);
+            await api.post(`/articles/${newArticle.id}/assets`, assetFormData, {
+              headers: {
+                'Content-Type': 'multipart/form-data'
+              }
+            });
+          } catch (uploadErr) {
+            console.error('Failed to upload asset', file.name, uploadErr);
+            uploadFailedCount++;
+            toast(`Failed to upload supplementary asset: ${file.name}`, 'error');
+          }
+        }
+
+        if (uploadFailedCount > 0) {
+          toast(`Article created, but ${uploadFailedCount} supplementary asset(s) failed to upload.`, 'warning');
+          router.push(`/admin/articles/${newArticle.id}/edit`);
+          return;
+        }
+      }
+
       if (autoApprove && newArticle && newArticle.id) {
+        setSavingStatus('Approving and compiling PDF...');
         await api.patch(`/admin/articles/${newArticle.id}/review`, {
           status: 'approved'
         });
@@ -265,47 +294,49 @@ export default function AdminNewArticle() {
       toast(msg, 'error');
     } finally {
       setSaving(false);
+      setSavingStatus('');
     }
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Navigation Headers */}
-      <div className="flex items-center justify-between pb-4 border-b border-zinc-200">
-        <Link href="/admin/articles" className="inline-flex items-center text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-[var(--accent)] transition-colors">
-          <ArrowLeft className="w-4 h-4 mr-1.5" />
+    <div className="space-y-8 w-full font-sans text-left">
+      {/* Navigation breadcrumb */}
+      <div className="flex items-center justify-between pb-4 border-b border-zinc-150 dark:border-zinc-900">
+        <Link href="/admin/articles" className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-zinc-405 hover:text-amber-600 transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
           Back to Articles
         </Link>
-        <div className="flex items-center space-x-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+        <div className="flex items-center space-x-2 text-[9px] font-bold uppercase tracking-widest text-zinc-400">
           <span>Console</span>
-          <ChevronRight className="w-3 h-3 text-[var(--accent-gold)]" />
+          <ChevronRight className="w-3 h-3 text-amber-500" />
           <span>Articles</span>
-          <ChevronRight className="w-3 h-3 text-[var(--accent-gold)]" />
-          <span className="text-zinc-650">New Article</span>
+          <ChevronRight className="w-3 h-3 text-amber-500" />
+          <span className="text-zinc-800 dark:text-zinc-200">New Article</span>
         </div>
       </div>
 
-      {/* Hero card details */}
-      <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-2">
-        <h1 className="text-xl font-bold text-zinc-950">Add Article to Magazine</h1>
-        <p className="text-xs text-zinc-500 font-medium leading-relaxed">Submit a new publication directly. You can write abstracts and full texts, upload pre-compiled PDFs, and toggle immediate status approval.</p>
+      {/* Intro section */}
+      <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-2">
+        <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Publish New Article</h1>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">Draft dynamic HTML abstracts, upload pre-compiled PDFs, and configure co-authors permission settings.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Row Grid: Magazine & Title */}
+        
+        {/* Magazine Selector & Title field */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-1 md:col-span-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">Select Magazine *</label>
+          <div className="space-y-1.5 md:col-span-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Select Magazine *</label>
             {loadingMagazines ? (
-              <div className="flex items-center space-x-2 px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-lg text-xs text-zinc-450 font-semibold">
-                <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />
+              <div className="flex items-center space-x-2 px-3 py-3.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-400 font-semibold">
+                <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
                 <span>Loading issues...</span>
               </div>
             ) : (
               <select
                 value={magazineId}
                 onChange={(e) => setMagazineId(e.target.value)}
-                className="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                className="w-full text-xs font-semibold px-3 py-3.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200 cursor-pointer"
               >
                 {magazines.map((m) => (
                   <option key={m.id} value={m.id}>{m.title}</option>
@@ -317,14 +348,14 @@ export default function AdminNewArticle() {
             )}
           </div>
 
-          <div className="space-y-1 md:col-span-2">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono">Article Title *</label>
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Article Title *</label>
             <input 
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Advancements in Deep Neural Network Optimizations"
-              className="w-full text-xs font-semibold px-3 py-2.5 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+              className="w-full text-xs font-semibold px-3 py-3 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200"
             />
             {validationErrors.title && (
               <p className="text-[10px] font-semibold text-red-500">{validationErrors.title}</p>
@@ -332,11 +363,11 @@ export default function AdminNewArticle() {
           </div>
         </div>
 
-        {/* Author Metadata & Collaborators */}
-        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-          <div className="border-b border-zinc-100 pb-3">
-            <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider font-serif">Author Metadata & Collaborators</h3>
-            <p className="text-[10px] text-zinc-400 font-medium">Add secondary contributors with customizable edit permissions and account provisioning gates.</p>
+        {/* Co-Authors panel */}
+        <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-4">
+          <div className="border-b border-zinc-100 dark:border-zinc-850 pb-3">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider font-serif">Collaborators & Permissions</h3>
+            <p className="text-[10px] text-zinc-400 mt-1 font-semibold leading-relaxed">Map editing privileges and coordinate account provisioning gates for co-authors.</p>
           </div>
           <CoAuthorRepeater 
             coAuthors={coAuthors}
@@ -346,27 +377,27 @@ export default function AdminNewArticle() {
           />
           {validationErrors.coAuthors && (
             <p className="text-[10px] font-semibold text-red-500 flex items-center gap-1">
-              <AlertCircle className="w-3.5 h-3.5" />{validationErrors.coAuthors}
+              <AlertCircle className="w-3.5 h-3.5 text-red-550" />{validationErrors.coAuthors}
             </p>
           )}
         </div>
 
-        {/* Keywords & Tags Selection Panel */}
-        <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Article Keywords & Tags</label>
-            <span className="text-[10px] text-zinc-400 font-medium">Select tags associated with this magazine or enter new ones below.</span>
+        {/* Tags / Keywords Selection */}
+        <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Keywords & Tag Indices</label>
+            <span className="text-[10px] text-zinc-400 font-medium">Select tags associated with this magazine or submit custom terms.</span>
           </div>
 
           {loadingTags ? (
             <div className="flex items-center space-x-2 text-xs text-zinc-450 font-semibold py-1">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent)]" />
-              <span>Loading magazine tags...</span>
+              <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+              <span>Syncing tags database...</span>
             </div>
           ) : (
             <div className="space-y-4">
               {availableTags.length > 0 && (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <span className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider block font-mono">Available Tags (Click to toggle)</span>
                   <div className="flex flex-wrap gap-1.5">
                     {availableTags.map((tag) => {
@@ -384,8 +415,8 @@ export default function AdminNewArticle() {
                           }}
                           className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
                             isSelected 
-                              ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30' 
-                              : 'bg-zinc-50 text-zinc-650 border-zinc-200 hover:border-zinc-350'
+                              ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20' 
+                              : 'bg-zinc-50 dark:bg-zinc-950 text-zinc-600 border-zinc-200 hover:border-amber-500/20 hover:bg-amber-500/[0.01] dark:border-zinc-800'
                           }`}
                         >
                           {tag.name}
@@ -396,9 +427,9 @@ export default function AdminNewArticle() {
                 </div>
               )}
 
-              {/* Add Custom keyword input */}
-              <div className="space-y-1.5">
-                <span className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider block font-mono">Add Custom Keyword</span>
+              {/* Add Custom keyword */}
+              <div className="space-y-2">
+                <span className="text-[9px] font-bold text-zinc-455 uppercase tracking-wider block font-mono">Add Custom Keyword</span>
                 <div className="flex items-center space-x-2 max-w-md">
                   <input
                     type="text"
@@ -411,35 +442,35 @@ export default function AdminNewArticle() {
                       }
                     }}
                     placeholder="Type keyword and press Enter..."
-                    className="flex-grow text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                    className="flex-grow text-xs font-semibold px-3.5 py-2.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-505 transition-colors text-zinc-900 dark:text-zinc-200"
                   />
                   <button
                     type="button"
                     onClick={addCustomKeyword}
-                    className="px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-white bg-zinc-800 hover:bg-zinc-950 rounded-lg transition-colors cursor-pointer"
+                    className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 rounded-xl transition-all cursor-pointer shrink-0 shadow-sm"
                   >
                     Add
                   </button>
                 </div>
               </div>
 
-              {/* Selected custom keyword tags list */}
+              {/* Custom tags queue */}
               {selectedTags.some(t => typeof t === 'string') && (
-                <div className="space-y-1.5">
-                  <span className="text-[9px] font-bold text-zinc-450 uppercase tracking-wider block font-mono">Custom Keywords</span>
+                <div className="space-y-2">
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider block font-mono">Custom Keywords</span>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedTags.filter(t => typeof t === 'string').map((keyword, index) => (
                       <span 
                         key={index}
-                        className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-[10px] font-bold rounded-lg bg-[var(--accent-gold)]/10 text-amber-800 border border-[var(--accent-gold)]/30"
+                        className="inline-flex items-center space-x-1.5 px-2.5 py-1 text-[10px] font-bold rounded-lg bg-amber-500/[0.04] text-amber-700 dark:text-amber-400 border border-amber-500/20"
                       >
                         <span>{keyword}</span>
                         <button
                           type="button"
                           onClick={() => setSelectedTags(selectedTags.filter(t => t !== keyword))}
-                          className="hover:text-red-750 transition-colors cursor-pointer"
+                          className="hover:text-red-650 transition-colors cursor-pointer"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </span>
                     ))}
@@ -453,34 +484,34 @@ export default function AdminNewArticle() {
         {/* Abstract Box */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 font-mono">
               Abstract Synopsis *
             </label>
 
-            {/* Abstract Toggler */}
-            <div className="flex items-center space-x-3 text-xs">
+            {/* Abstract Visual / HTML selector */}
+            <div className="flex items-center space-x-3 text-[10px] font-bold uppercase tracking-wider">
               <button
                 type="button"
                 onClick={() => setAbstractMode('visual')}
-                className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                className={`transition-colors cursor-pointer ${
                   abstractMode === 'visual'
-                    ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
-                    : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300'
+                    ? 'text-amber-600 border-b-2 border-amber-500 pb-0.5'
+                    : 'text-zinc-400 hover:text-zinc-900'
                 }`}
               >
                 Visual Editor
               </button>
-              <span className="text-zinc-300 dark:text-zinc-700">|</span>
+              <span className="text-zinc-200 dark:text-zinc-800">|</span>
               <button
                 type="button"
                 onClick={() => setAbstractMode('html')}
-                className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                className={`transition-colors cursor-pointer ${
                   abstractMode === 'html'
-                    ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
-                    : 'text-zinc-400 hover:text-zinc-655 dark:hover:text-zinc-300'
+                    ? 'text-amber-600 border-b-2 border-amber-500 pb-0.5'
+                    : 'text-zinc-400 hover:text-zinc-900'
                 }`}
               >
-                Raw HTML Body
+                Raw HTML
               </button>
             </div>
           </div>
@@ -491,7 +522,7 @@ export default function AdminNewArticle() {
                 <RichEditor
                   value={abstract}
                   onChange={(content) => setAbstract(content)}
-                  placeholder="Enter abstract text..."
+                  placeholder="Enter manuscript abstract synopsis..."
                 />
               </div>
             ) : (
@@ -502,7 +533,7 @@ export default function AdminNewArticle() {
                   placeholder="<!-- Abstract HTML content -->"
                   rows={6}
                   style={{ color: '#ffffff' }}
-                  className="w-full flex-grow font-mono text-xs p-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                  className="w-full flex-grow font-mono text-xs p-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
             )}
@@ -515,34 +546,34 @@ export default function AdminNewArticle() {
         {/* Full Text Box */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 font-mono">
               Full Text Content *
             </label>
 
-            {/* Full Text Toggler */}
-            <div className="flex items-center space-x-3 text-xs">
+            {/* Content selector visual/html */}
+            <div className="flex items-center space-x-3 text-[10px] font-bold uppercase tracking-wider">
               <button
                 type="button"
                 onClick={() => setFullTextMode('visual')}
-                className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                className={`transition-colors cursor-pointer ${
                   fullTextMode === 'visual'
-                    ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
-                    : 'text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300'
+                    ? 'text-amber-600 border-b-2 border-amber-500 pb-0.5'
+                    : 'text-zinc-400 hover:text-zinc-900'
                 }`}
               >
                 Visual Editor
               </button>
-              <span className="text-zinc-300 dark:text-zinc-700">|</span>
+              <span className="text-zinc-200 dark:text-zinc-800">|</span>
               <button
                 type="button"
                 onClick={() => setFullTextMode('html')}
-                className={`text-[11px] font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                className={`transition-colors cursor-pointer ${
                   fullTextMode === 'html'
-                    ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] pb-0.5'
-                    : 'text-zinc-400 hover:text-zinc-655 dark:hover:text-zinc-300'
+                    ? 'text-amber-600 border-b-2 border-amber-500 pb-0.5'
+                    : 'text-zinc-400 hover:text-zinc-900'
                 }`}
               >
-                Raw HTML Body
+                Raw HTML
               </button>
             </div>
           </div>
@@ -553,7 +584,7 @@ export default function AdminNewArticle() {
                 <RichEditor
                   value={fullText}
                   onChange={(content) => setFullText(content)}
-                  placeholder="Enter full text content..."
+                  placeholder="Draft full manuscript contents..."
                 />
               </div>
             ) : (
@@ -564,7 +595,7 @@ export default function AdminNewArticle() {
                   placeholder="<!-- Full Text HTML content -->"
                   rows={12}
                   style={{ color: '#ffffff' }}
-                  className="w-full flex-grow font-mono text-xs p-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                  className="w-full flex-grow font-mono text-xs p-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
             )}
@@ -574,12 +605,12 @@ export default function AdminNewArticle() {
           </div>
         </div>
 
-        {/* PDF File upload & Auto Approve & Featured Image */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-200">
-          <div className="space-y-2">
+        {/* Upload Panels: PDF & Image cover */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-zinc-200 dark:border-zinc-900">
+          <div className="space-y-3">
             <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Pre-compiled PDF Document (Optional)</label>
-            <div className="flex items-center space-x-3">
-              <label className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer border border-zinc-300">
+            <div className="flex items-center space-x-3 font-sans">
+              <label className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-350 dark:hover:bg-zinc-800 transition-colors border border-zinc-200 dark:border-zinc-800 cursor-pointer shadow-sm">
                 <Upload className="w-4 h-4" />
                 <span>Choose PDF</span>
                 <input 
@@ -589,16 +620,16 @@ export default function AdminNewArticle() {
                   className="hidden"
                 />
               </label>
-              <span className="text-xs text-zinc-500 font-mono font-medium truncate max-w-xs">{pdfFileName || 'No file selected'}</span>
+              <span className="text-xs text-zinc-450 font-mono font-medium truncate max-w-xs">{pdfFileName || 'No file chosen'}</span>
             </div>
-            <p className="text-[10px] text-zinc-400 font-medium">If no pre-compiled PDF is uploaded, a custom, beautifully formatted PDF document will be dynamically compiled upon approval.</p>
+            <p className="text-[10px] text-zinc-400 font-medium leading-relaxed">If no PDF is uploaded, a beautifully formatted catalog PDF will be dynamically compiled upon approval.</p>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Featured Image (Optional)</label>
-            <div className="flex flex-col space-y-3">
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Cover / Header Image (Optional)</label>
+            <div className="flex flex-col space-y-3 font-sans">
               <div className="flex items-center space-x-3">
-                <label className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer border border-zinc-300">
+                <label className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-700 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-350 dark:hover:bg-zinc-800 transition-colors border border-zinc-200 dark:border-zinc-800 cursor-pointer shadow-sm">
                   <Upload className="w-4 h-4" />
                   <span>Choose Image</span>
                   <input 
@@ -608,69 +639,77 @@ export default function AdminNewArticle() {
                     className="hidden"
                   />
                 </label>
-                <span className="text-xs text-zinc-500 font-mono font-medium truncate max-w-xs">{featuredImageFileName || 'No image selected'}</span>
+                <span className="text-xs text-zinc-450 font-mono font-medium truncate max-w-xs">{featuredImageFileName || 'No image chosen'}</span>
               </div>
               {featuredImagePreview && (
-                <div className="relative w-full max-w-[200px] h-32 rounded-xl overflow-hidden border border-zinc-250/50 shadow-sm bg-zinc-50">
-                  <img src={featuredImagePreview} alt="Featured Preview" className="w-full h-full object-cover" />
+                <div className="relative w-full max-w-[200px] h-32 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-850 shadow-sm bg-zinc-50">
+                  <img src={featuredImagePreview} alt="Cover Preview" className="w-full h-full object-cover" />
                   <button
                     type="button"
                     onClick={handleRemoveFeaturedImage}
-                    className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 hover:bg-black/80 text-white transition-colors"
+                    className="absolute top-1.5 right-1.5 p-1 rounded-full bg-zinc-950/70 hover:bg-zinc-950 text-white transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )}
             </div>
-            <p className="text-[10px] text-zinc-400 font-medium">Add a cover or header image for this article. Falls back to the magazine cover image if not provided.</p>
+            <p className="text-[10px] text-zinc-400 font-medium leading-relaxed">Featured cover image. Falls back to magazine cover if blank.</p>
           </div>
 
           {canAutoApprove && (
-            <div className="md:col-span-2 flex items-center space-x-3 bg-zinc-50 p-4 rounded-2xl border border-zinc-200/60 self-start">
+            <div className="md:col-span-2 flex items-center space-x-3 bg-zinc-50/50 dark:bg-zinc-950/40 p-4 rounded-2xl border border-zinc-200/60 dark:border-zinc-850 self-start">
               <input 
                 type="checkbox"
                 id="autoApprove"
                 checked={autoApprove}
                 onChange={(e) => setAutoApprove(e.target.checked)}
-                className="w-4 h-4 rounded border-zinc-300 text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
+                className="w-4 h-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
               />
-              <div className="space-y-0.5 select-none cursor-pointer" onClick={() => setAutoApprove(!autoApprove)}>
-                <label htmlFor="autoApprove" className="text-xs font-bold text-zinc-950 uppercase tracking-wider block cursor-pointer">Auto-Approve & Compile PDF</label>
-                <span className="text-[10px] text-zinc-400 font-medium block">Publish the article immediately to the public catalog and compile PDF layout assets.</span>
+              <div className="space-y-0.5 select-none cursor-pointer text-left" onClick={() => setAutoApprove(!autoApprove)}>
+                <label htmlFor="autoApprove" className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider block cursor-pointer">Auto-Approve manuscript immediately</label>
+                <span className="text-[10px] text-zinc-400 font-medium block leading-relaxed">Instantly publish to public archive registries and compile dynamic PDF assets.</span>
               </div>
             </div>
           )}
         </div>
 
-        {/* Collapsible SEO Panel */}
+        {/* Article Assets Manager */}
+        <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-4">
+          <ArticleAssetBufferedDropzone
+            files={supplementaryFiles}
+            onFilesChanged={setSupplementaryFiles}
+          />
+        </div>
+
+        {/* Collapsible SEO block */}
         {canEditSeo && (
-          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-4">
+          <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-4">
             <button
               type="button"
               onClick={() => setSeoExpanded(!seoExpanded)}
-              className="w-full flex items-center justify-between font-bold text-zinc-900 focus:outline-none"
+              className="w-full flex items-center justify-between font-bold text-zinc-900 dark:text-white focus:outline-none cursor-pointer"
             >
               <span className="flex items-center space-x-2 text-xs uppercase tracking-wider text-zinc-500 font-mono">
-                <Eye className="w-4 h-4 text-[var(--accent-gold)]" />
-                <span>SEO & Metadata Settings</span>
+                <TagIcon className="w-4 h-4 text-amber-500" />
+                <span>SEO & Meta Configuration</span>
               </span>
-              <span className="text-xs font-semibold text-[var(--accent)] font-mono uppercase tracking-wider">
-                {seoExpanded ? 'Collapse' : 'Expand'}
+              <span className="text-[10px] font-bold text-amber-600 font-mono uppercase tracking-wider">
+                {seoExpanded ? 'Hide' : 'Show Settings'}
               </span>
             </button>
 
             {seoExpanded && (
-              <div className="pt-4 border-t border-zinc-100 space-y-4 animate-in fade-in duration-300">
+              <div className="pt-4 border-t border-zinc-100 dark:border-zinc-850 space-y-4 animate-in fade-in duration-300">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">SEO Title</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">SEO Meta Title</label>
                   <input
                     type="text"
                     value={seoTitle}
                     onChange={(e) => setSeoTitle(e.target.value)}
-                    placeholder="Leave blank to auto-generate (Article Title | Magazine Title)"
+                    placeholder="Article Title | Magazine Title"
                     maxLength={255}
-                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200"
                   />
                 </div>
 
@@ -684,9 +723,9 @@ export default function AdminNewArticle() {
                   <textarea
                     value={seoDescription}
                     onChange={(e) => setSeoDescription(e.target.value.slice(0, 500))}
-                    placeholder="Summarize the article content for search engines..."
+                    placeholder="Provide keywords description summary..."
                     rows={3}
-                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200"
                   />
                 </div>
 
@@ -696,9 +735,9 @@ export default function AdminNewArticle() {
                     type="text"
                     value={seoKeywords}
                     onChange={(e) => setSeoKeywords(e.target.value)}
-                    placeholder="e.g. deep learning, optimizers, neural networks"
+                    placeholder="optimizations, deep learning, networks"
                     maxLength={500}
-                    className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors"
+                    className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-505 transition-colors text-zinc-900 dark:text-zinc-200"
                   />
                 </div>
               </div>
@@ -707,27 +746,27 @@ export default function AdminNewArticle() {
         )}
 
         {/* Submit workspace buttons */}
-        <div className="flex items-center justify-end space-x-3 pt-6 border-t border-zinc-200">
+        <div className="flex items-center justify-end space-x-3 pt-6 border-t border-zinc-150 dark:border-zinc-900">
           <Link 
             href="/admin/articles"
-            className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-100 hover:bg-zinc-200 transition-colors cursor-pointer"
+            className="px-4.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 bg-zinc-100 dark:bg-zinc-900 dark:text-zinc-400 hover:bg-zinc-150 transition-colors cursor-pointer"
           >
             Cancel
           </Link>
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[var(--accent)] hover:bg-[var(--accent)]/95 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
           >
             {saving ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Publishing Article...</span>
+                <span>{savingStatus || 'Publishing Manuscript...'}</span>
               </>
             ) : (
               <>
                 <Save className="w-4 h-4" />
-                <span>Save Article</span>
+                <span>Save Manuscript</span>
               </>
             )}
           </button>

@@ -38,7 +38,6 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Collapse mobile navigation drawer on route changes
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
@@ -107,14 +106,12 @@ const Header = () => {
   };
 
   return (
-    <div className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${scrolled ? 'py-2' : 'py-0 md:py-4'}`}>
-
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className={`glass-header rounded-2xl px-4 sm:px-6 flex flex-col transition-all duration-500 shadow-lg transition-premium border ${scrolled ? 'border-[var(--card-border)]' : 'border-transparent'}`}>
-
-          {/* TOP ROW: BRAND, SEARCH, AND CONTROLS */}
-          <div className="flex items-center justify-between w-full h-[70px]">
-            {/* LEFT: BRAND IDENTITY */}
+    <div className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${scrolled ? 'bg-white/95 dark:bg-zinc-950/95 shadow-sm border-b border-zinc-150 dark:border-zinc-900/60 backdrop-blur-md' : 'bg-transparent'}`}>
+      <div className="w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col transition-all duration-500">
+          {/* Main Header Row */}
+          <div className="flex items-center justify-between w-full h-20">
+            {/* Left Brand Area */}
             <div className="flex items-center shrink-0">
               <Link href="/" className="flex items-center group">
                 <Image
@@ -122,42 +119,60 @@ const Header = () => {
                   alt="ScholarlyNest Logo"
                   width={690}
                   height={362}
-                  className="h-8 sm:h-12 md:h-16 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+                  className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-[1.02]"
                   priority
                 />
               </Link>
             </div>
 
-            {/* CENTER: SEARCH BAR (DESKTOP ONLY) */}
-            <div className="hidden lg:block w-64 xl:w-80 mx-4 relative z-50">
-              <GlobalSearchInput size="sm" placeholder="Search publications..." />
-            </div>
+            {/* Desktop Center Navigation Links */}
+            <nav className="hidden md:flex items-center space-x-8 text-[11px] font-sans font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              {PUBLIC_NAV_LINKS.map((link) => {
+                const isActive = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`transition-colors py-1.5 relative ${isActive ? 'text-amber-600 dark:text-amber-400' : 'hover:text-zinc-900 dark:hover:text-zinc-100'}`}
+                  >
+                    {link.label}
+                    {isActive && (
+                      <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-amber-500 rounded-full" />
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
 
-            {/* RIGHT: CONTROLS & AUTH */}
+            {/* Right Search Input & User Controls */}
             <div className="flex items-center space-x-3 sm:space-x-4">
+              {/* Search Bar (Desktop Only) */}
+              <div className="hidden lg:block w-56 xl:w-72 relative z-50">
+                <GlobalSearchInput size="sm" placeholder="Search registry..." />
+              </div>
 
-              {/* Theme Toggle Button */}
+              {/* Theme Selector */}
               <div className="relative">
                 <button
                   onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}
-                  className="p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors text-[var(--muted)] hover:text-[var(--foreground)] border border-transparent hover:border-[var(--muted-border)]"
+                  className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
                   aria-label="Change Color Theme"
                 >
                   {theme === 'light' && <Sun className="w-4 h-4 text-amber-500" />}
-                  {theme === 'dark' && <Moon className="w-4 h-4 text-[var(--accent-gold)]" />}
+                  {theme === 'dark' && <Moon className="w-4 h-4 text-amber-400" />}
                   {theme === 'system' && <Monitor className="w-4 h-4" />}
                 </button>
 
                 {themeDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-36 glass-panel rounded-xl shadow-xl overflow-hidden z-50 text-xs font-semibold p-1 animate-in fade-in duration-200">
+                  <div className="absolute right-0 mt-2 w-32 rounded-xl border border-zinc-200 bg-white/95 dark:border-zinc-800 dark:bg-zinc-900 p-1 shadow-lg z-50 text-[10px] font-sans font-bold uppercase tracking-wider animate-in fade-in duration-200 backdrop-blur-md">
                     {['light', 'dark', 'system'].map((t) => (
                       <button
                         key={t}
                         onClick={() => handleThemeChange(t)}
-                        className={`w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-left transition-colors ${theme === t ? 'bg-[var(--accent)] text-white' : 'hover:bg-black/5 dark:hover:bg-white/10 text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                        className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-left transition-colors ${theme === t ? 'bg-amber-500/5 text-amber-600 dark:text-amber-400 border border-amber-500/10' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border border-transparent'}`}
                       >
                         {t === 'light' && <Sun className="w-3.5 h-3.5 text-amber-500" />}
-                        {t === 'dark' && <Moon className="w-3.5 h-3.5 text-[var(--accent-gold)]" />}
+                        {t === 'dark' && <Moon className="w-3.5 h-3.5 text-amber-400" />}
                         {t === 'system' && <Monitor className="w-3.5 h-3.5" />}
                         <span className="capitalize">{t}</span>
                       </button>
@@ -166,45 +181,45 @@ const Header = () => {
                 )}
               </div>
 
-              {/* Auth panel */}
+              {/* User Account / Auth Dropdown */}
               {user ? (
                 <div className="relative">
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                    className="flex items-center space-x-2 px-1.5 py-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-full transition-colors border border-transparent hover:border-[var(--muted-border)] group"
+                    className="flex items-center space-x-2 px-1.5 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors border border-transparent"
                   >
-                    <div className="w-7 h-7 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-[10px] uppercase shadow-[0_0_10px_rgba(44,67,102,0.2)]">
+                    <div className="w-7 h-7 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 flex items-center justify-center font-sans font-bold text-[10px] uppercase border border-amber-500/20">
                       {user.name.charAt(0)}
                     </div>
-                    <span className="hidden sm:inline text-xs font-semibold pr-1 max-w-[100px] truncate text-[var(--foreground)]">
+                    <span className="hidden sm:inline text-xs font-semibold pr-1 max-w-[100px] truncate text-zinc-750 dark:text-zinc-200">
                       {user.name}
                     </span>
                   </button>
 
                   {userDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 glass-panel rounded-xl shadow-xl z-50 text-xs font-semibold p-1.5 animate-in fade-in duration-200">
-                      <div className="px-3 py-2 mb-1.5 bg-black/5 dark:bg-white/5 rounded-lg border border-[var(--muted-border)]">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--muted)] block mb-1">Access Level</span>
+                    <div className="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-200 bg-white/95 dark:border-zinc-800 dark:bg-zinc-900 p-1 shadow-lg z-50 text-[10px] font-sans font-bold uppercase tracking-wider animate-in fade-in duration-200 backdrop-blur-md">
+                      <div className="px-3 py-2 mb-1 bg-zinc-50 dark:bg-zinc-950 rounded-lg border border-zinc-100 dark:border-zinc-850">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block mb-1">Access Level</span>
                         <Badge variant="gold">{user.roles?.[0] ? getRoleLabel(user.roles[0].name) : 'User'}</Badge>
                       </div>
 
                       <Link
                         href="/admin"
                         onClick={() => setUserDropdownOpen(false)}
-                        className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg hover:bg-[var(--accent)] hover:text-white text-[var(--foreground)] transition-colors group"
+                        className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-amber-500/5 hover:text-amber-600 dark:hover:text-amber-400 text-zinc-700 dark:text-zinc-350 transition-colors"
                       >
-                        <LayoutDashboard className="w-3.5 h-3.5 text-[var(--muted)] group-hover:text-white" />
+                        <LayoutDashboard className="w-3.5 h-3.5 text-zinc-400" />
                         <span>Console Dashboard</span>
                       </Link>
 
-                      <div className="h-px bg-[var(--muted-border)] my-1.5"></div>
+                      <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1"></div>
 
                       <button
                         onClick={() => {
                           setUserDropdownOpen(false);
                           logout();
                         }}
-                        className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg hover:bg-red-500/10 text-red-600 dark:text-red-400 transition-colors"
+                        className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-red-500/5 text-red-600 dark:text-red-400 transition-colors"
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Log Out Session</span>
@@ -215,69 +230,37 @@ const Header = () => {
               ) : (
                 <div className="flex items-center space-x-2">
                   <Link href="/login" className="hidden sm:inline">
-                    <Button variant="ghost" size="sm" className="text-xs py-1.5 h-auto">Log In</Button>
+                    <Button variant="ghost" size="sm" className="text-[11px] py-1.5 h-auto">Log In</Button>
                   </Link>
                   <Link href="/register">
-                    <Button variant="gold" size="sm" className="text-xs py-3 h-auto bg-[var(--accent-gold)] hover:bg-[var(--accent-gold)]/90 text-white">Register</Button>
+                    <Button variant="gold" size="sm" className="text-[11px] py-2 h-auto text-white">Register</Button>
                   </Link>
                 </div>
               )}
 
-              {/* Mobile Menu Action */}
+              {/* Mobile Drawer Trigger */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 text-[var(--muted)] hover:text-[var(--foreground)] rounded-full focus:outline-none hover:bg-black/5 dark:hover:bg-white/5"
+                className="md:hidden p-2 text-zinc-400 hover:text-zinc-905 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900"
                 aria-label="Toggle Navigation Menu"
               >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               </button>
-
-            </div> {/* Closes RIGHT: CONTROLS & AUTH */}
-
-          </div> {/* Closes TOP ROW */}
-
-          {/* BOTTOM ROW: CENTERED NAVIGATION MENU */}
-          <div className="hidden lg:flex items-center justify-center w-full py-3 border-t border-[var(--card-border)]/60">
-            <nav className="flex items-center space-x-12 text-[12px] font-semibold uppercase tracking-widest">
-              {PUBLIC_NAV_LINKS.map((link) => {
-                const isActive = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`transition-colors py-1 relative ${isActive ? 'text-[var(--accent)] font-bold' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
-                  >
-                    {link.label}
-                    {isActive && (
-                      <span className="absolute -bottom-1.5 left-0 w-full h-[2px] bg-[var(--accent-gold)] rounded-full animate-fade-in" />
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
+            </div>
           </div>
-
         </div>
       </div>
 
-      {/* MOBILE DROPDOWN DRAWER */}
+      {/* Mobile Menu Panel */}
       {mobileMenuOpen && (
-        <div className="lg:hidden mx-auto w-full max-w-7xl px-4 mt-2">
-          <div className="glass-panel rounded-2xl p-4 space-y-4 shadow-xl border border-[var(--card-border)] bg-[var(--card-bg)] animate-in fade-in duration-300">
+        <div className="md:hidden w-full border-t border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950 py-4 px-6 animate-in slide-in-from-top-1 duration-200">
+          <div className="space-y-4">
+            {/* Search Input for Mobile */}
+            <div className="relative z-50">
+              <GlobalSearchInput size="sm" placeholder="Search registry..." />
+            </div>
 
-            {/* Mobile Search input */}
-            <form onSubmit={handleSearchSubmit} className="relative flex items-center">
-              <Search className="absolute left-3 w-4 h-4 text-[var(--muted)]" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-xl text-xs font-medium border border-[var(--muted-border)] bg-[var(--background)] focus:outline-none focus:border-[var(--accent-gold)]"
-              />
-            </form>
-
-            <div className="space-y-1">
+            <div className="flex flex-col space-y-2.5">
               {PUBLIC_NAV_LINKS.map(link => {
                 const isActive = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
                 return (
@@ -285,7 +268,7 @@ const Header = () => {
                     key={link.href}
                     href={link.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`block px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors ${isActive ? 'bg-[var(--accent)] text-white shadow-md' : 'text-[var(--muted)] hover:bg-black/5 dark:hover:bg-white/10 hover:text-[var(--foreground)]'}`}
+                    className={`block py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${isActive ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-500 hover:text-zinc-900'}`}
                   >
                     {link.label}
                   </Link>
@@ -293,22 +276,22 @@ const Header = () => {
               })}
             </div>
 
-            <div className="border-t border-[var(--muted-border)] pt-4">
+            <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4">
               {user ? (
                 <div className="flex flex-col space-y-3">
-                  <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-xs uppercase">
+                      <div className="w-8 h-8 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-450 flex items-center justify-center font-bold text-xs uppercase border border-amber-500/20">
                         {user.name.charAt(0)}
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-bold text-[var(--foreground)]">{user.name}</span>
-                        <span className="text-[10px] text-[var(--muted)]">{user.email}</span>
+                      <div className="flex flex-col text-left">
+                        <span className="text-xs font-bold text-zinc-850 dark:text-zinc-200">{user.name}</span>
+                        <span className="text-[10px] text-zinc-400 font-semibold">{user.email}</span>
                       </div>
                     </div>
                     <button
                       onClick={() => { logout(); setMobileMenuOpen(false); }}
-                      className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors"
+                      className="p-2 text-red-500 hover:bg-red-500/5 rounded-lg transition-colors"
                       aria-label="Logout"
                     >
                       <LogOut className="w-4 h-4" />
@@ -317,9 +300,9 @@ const Header = () => {
                   <Link
                     href="/admin"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="block w-full"
+                    className="block w-full text-center"
                   >
-                    <Button className="w-full py-2 text-xs" variant="secondary">Go to Console</Button>
+                    <Button className="w-full py-2 text-xs" variant="secondary">Dashboard Console</Button>
                   </Link>
                 </div>
               ) : (
@@ -328,16 +311,14 @@ const Header = () => {
                     <Button className="w-full py-2 text-xs" variant="secondary">Log In</Button>
                   </Link>
                   <Link href="/register" onClick={() => setMobileMenuOpen(false)} className="w-full">
-                    <Button className="w-full py-2 text-xs bg-[var(--accent-gold)] text-white hover:bg-[var(--accent-gold)]/90" variant="primary">Register</Button>
+                    <Button className="w-full py-2 text-xs bg-amber-600 text-white" variant="gold">Register</Button>
                   </Link>
                 </div>
               )}
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 };

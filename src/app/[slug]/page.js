@@ -50,7 +50,7 @@ export default function CustomFooterPage() {
     return (
       <div className="bg-[var(--background)] min-h-screen text-left">
         <PageBanner title="Loading..." description="Please wait while we retrieve the content." />
-        <div className="max-w-4xl mx-auto py-12 px-6">
+        <div className="w-full py-12 px-6">
           {/* Shimmer skeleton */}
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded-xl w-3/4"></div>
@@ -71,7 +71,7 @@ export default function CustomFooterPage() {
       <div className="bg-[var(--background)] min-h-screen text-left flex flex-col justify-between">
         <div>
           <PageBanner title="Page Not Found" description="The requested custom page could not be located." />
-          <div className="max-w-4xl mx-auto py-20 px-6 text-center space-y-4">
+          <div className="w-full py-20 px-6 text-center space-y-4">
             <h2 className="text-xl font-bold text-zinc-855 dark:text-zinc-200">Content Unavailable</h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               The link you followed may be broken, or the administrator may have marked this page as hidden.
@@ -103,7 +103,7 @@ export default function CustomFooterPage() {
         customLabels={{ [pageData.slug]: pageData.title }}
       />
 
-      <div className="flex-grow flex flex-col space-y-12 max-w-4xl mx-auto w-full pb-16 px-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-10">
+      <div className="flex-grow flex flex-col space-y-12 w-full pb-16 px-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-10">
         <article className="bg-white dark:bg-[#121211] border border-zinc-200/80 dark:border-zinc-800/60 rounded-2xl p-6 sm:p-10 shadow-sm">
           <h1 className="text-3xl font-serif font-bold mb-6 text-zinc-900 dark:text-white">{pageData.title}</h1>
           <div 

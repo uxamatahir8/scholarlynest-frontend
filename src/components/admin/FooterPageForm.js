@@ -9,9 +9,9 @@ import { Loader2, Save, X, Edit3, Code } from 'lucide-react';
 const RichEditor = dynamic(() => import('../ui/RichEditor'), {
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center p-12 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
-      <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
-      <span className="ml-3 text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono">Loading Editor Workspace...</span>
+    <div className="flex items-center justify-center p-12 bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+      <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+      <span className="ml-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono">Loading Editor Workspace...</span>
     </div>
   )
 });
@@ -110,48 +110,50 @@ export default function FooterPageForm({ categories, initialData, onSave, onCanc
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 text-left">
-      <div className="bg-white dark:bg-[#121211] p-6 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/60 shadow-sm space-y-4 animate-in fade-in">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-800 dark:text-zinc-200 flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/40">
-          <span>{initialData ? 'Edit Footer Page' : 'Create Custom Page'}</span>
-          <button type="button" onClick={onCancel} className="p-1 rounded-md text-zinc-400 hover:text-zinc-650 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors cursor-pointer">
+    <form onSubmit={handleSubmit} className="space-y-6 text-left font-sans">
+      <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-5 animate-in fade-in">
+        <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-850/80">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white">
+            {initialData ? 'Edit Footer Page' : 'Create Custom Page'}
+          </h2>
+          <button type="button" onClick={onCancel} className="p-1 rounded-md text-zinc-400 hover:text-zinc-655 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer">
             <X className="w-4 h-4" />
           </button>
-        </h2>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 mb-1.5">Page Title</label>
+          <div className="space-y-1">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 mb-1.5 font-mono">Page Title</label>
             <input
               type="text"
               value={title}
               onChange={handleTitleChange}
-              placeholder="e.g., Editorial Board"
-              className={`w-full px-3.5 py-2 bg-zinc-50 dark:bg-zinc-900/50 border ${errors.title ? 'border-red-500 focus:border-red-500' : 'border-zinc-200 dark:border-zinc-800/65 focus:border-[var(--accent)]'} rounded-xl text-xs font-semibold focus:outline-none transition-colors text-zinc-855 dark:text-zinc-250`}
+              placeholder="e.g. Editorial Board"
+              className={`w-full px-3.5 py-2.5 bg-zinc-50/50 dark:bg-zinc-950 border ${errors.title ? 'border-red-500 focus:border-red-500' : 'border-zinc-200 dark:border-zinc-800 focus:border-amber-500'} rounded-xl text-xs font-semibold focus:outline-none transition-colors text-zinc-900 dark:text-zinc-100`}
             />
             {errors.title && <p className="text-[10px] text-red-500 mt-1 font-semibold">{errors.title}</p>}
           </div>
 
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 mb-1.5">URL Slug</label>
+          <div className="space-y-1">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 mb-1.5 font-mono">URL Slug</label>
             <input
               type="text"
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
-              placeholder="e.g., editorial-board"
-              className={`w-full px-3.5 py-2 bg-zinc-50 dark:bg-zinc-900/50 border ${errors.slug ? 'border-red-500 focus:border-red-500' : 'border-zinc-200 dark:border-zinc-800/65 focus:border-[var(--accent)]'} rounded-xl text-xs font-semibold focus:outline-none transition-colors text-zinc-855 dark:text-zinc-250`}
+              placeholder="e.g. editorial-board"
+              className={`w-full px-3.5 py-2.5 bg-zinc-50/50 dark:bg-zinc-950 border ${errors.slug ? 'border-red-500 focus:border-red-500' : 'border-zinc-200 dark:border-zinc-800 focus:border-amber-500'} rounded-xl text-xs font-semibold focus:outline-none transition-colors text-zinc-900 dark:text-zinc-100`}
             />
             {errors.slug && <p className="text-[10px] text-red-500 mt-1 font-semibold">{errors.slug}</p>}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 mb-1.5">Footer Column Category</label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-1">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 mb-1.5 font-mono">Column Category</label>
             <select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full px-3.5 py-2 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/65 rounded-xl text-xs font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-800 dark:text-zinc-200"
+              className="w-full px-3.5 py-2.5 bg-zinc-50/50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-amber-500 transition-colors text-zinc-905 dark:text-zinc-200 cursor-pointer"
             >
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
@@ -162,13 +164,13 @@ export default function FooterPageForm({ categories, initialData, onSave, onCanc
             {errors.footer_category_id && <p className="text-[10px] text-red-500 mt-1 font-semibold">{errors.footer_category_id}</p>}
           </div>
 
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 mb-1.5">Sort Order</label>
+          <div className="space-y-1">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-455 dark:text-zinc-500 mb-1.5 font-mono">Sort Order</label>
             <input
               type="number"
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
-              className="w-full px-3.5 py-2 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/65 rounded-xl text-xs font-semibold focus:outline-none focus:border-[var(--accent)] transition-colors text-zinc-800 dark:text-zinc-200"
+              className="w-full px-3.5 py-2.5 bg-zinc-50/50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100"
             />
           </div>
 
@@ -178,24 +180,24 @@ export default function FooterPageForm({ categories, initialData, onSave, onCanc
                 type="checkbox"
                 checked={isVisible}
                 onChange={(e) => setIsVisible(e.target.checked)}
-                className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-800 text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
+                className="w-4 h-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
               />
-              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Visible in Global Footer</span>
+              <span className="text-xs font-semibold text-zinc-705 dark:text-zinc-300">Visible in Footer</span>
             </label>
           </div>
         </div>
 
-        {/* Toolbar with Editor Mode Toggler */}
+        {/* Editor Toolbar with visual toggles */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400">Page Content</label>
-          <div className="inline-flex rounded-xl p-1 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/50 self-start sm:self-auto">
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono">Page Content Markup</label>
+          <div className="inline-flex rounded-xl p-1 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-850 self-start sm:self-auto text-[10px] font-bold uppercase tracking-wider">
             <button
               type="button"
               onClick={() => setEditorMode('visual')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 editorMode === 'visual'
-                  ? 'bg-white shadow text-[var(--accent)]'
-                  : 'text-zinc-550 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                  ? 'bg-white shadow text-amber-600 dark:bg-zinc-900 dark:text-amber-400'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
               }`}
             >
               <Edit3 className="w-3.5 h-3.5" />
@@ -204,19 +206,19 @@ export default function FooterPageForm({ categories, initialData, onSave, onCanc
             <button
               type="button"
               onClick={() => setEditorMode('html')}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer ${
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 editorMode === 'html'
-                  ? 'bg-white shadow text-[var(--accent)]'
-                  : 'text-zinc-550 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                  ? 'bg-white shadow text-amber-600 dark:bg-zinc-900 dark:text-amber-400'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
               }`}
             >
               <Code className="w-3.5 h-3.5" />
-              <span>Raw HTML Markup</span>
+              <span>Raw HTML</span>
             </button>
           </div>
         </div>
 
-        {/* Dynamic Editor Area */}
+        {/* Editor workspace */}
         <div>
           {editorMode === 'visual' ? (
             <div className="animate-in fade-in duration-200 bg-white border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
@@ -228,7 +230,7 @@ export default function FooterPageForm({ categories, initialData, onSave, onCanc
                     setErrors(prev => ({ ...prev, content: '' }));
                   }
                 }}
-                placeholder="Start drafting your dynamic footer page content..."
+                placeholder="Start drafting page content..."
               />
             </div>
           ) : (
@@ -244,28 +246,29 @@ export default function FooterPageForm({ categories, initialData, onSave, onCanc
                 placeholder="<!-- Add custom HTML blocks here -->"
                 rows={12}
                 style={{ color: '#ffffff' }}
-                className={`w-full p-4 bg-zinc-900 border ${errors.content ? 'border-red-500 focus:border-red-500' : 'border-zinc-800 focus:border-[var(--accent)]'} rounded-xl font-mono text-xs text-white focus:outline-none focus:ring-1 focus:ring-[var(--accent)] transition-colors`}
+                className={`w-full p-4 bg-zinc-900 border ${errors.content ? 'border-red-500 focus:border-red-500' : 'border-zinc-800 focus:border-amber-500'} rounded-xl font-mono text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500 transition-colors`}
               />
             </div>
           )}
-          <p className="text-[10px] text-zinc-450 dark:text-zinc-500 mt-1 font-semibold">
-            HTML layout blocks are fully supported. Script tags are automatically stripped on output for security.
+          <p className="text-[9px] text-zinc-450 dark:text-zinc-500 mt-1.5 font-semibold text-left font-mono uppercase tracking-wider">
+            * Note: Script tags are stripped on output for execution security.
           </p>
-          {errors.content && <p className="text-[10px] text-red-500 mt-1 font-semibold">{errors.content}</p>}
+          {errors.content && <p className="text-[10px] text-red-550 mt-1 font-semibold">{errors.content}</p>}
         </div>
 
-        <div className="flex justify-end space-x-2 pt-3 border-t border-zinc-100 dark:border-zinc-800/40">
+        {/* Submit triggers */}
+        <div className="flex justify-end space-x-2 pt-3 border-t border-zinc-100 dark:border-zinc-850/80">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-150 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-350 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+            className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-350 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center space-x-2 px-5 py-2 bg-[var(--accent)] hover:opacity-90 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer"
+            className="inline-flex items-center space-x-2 px-5 py-2 bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-250 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
           >
             {isSubmitting ? (
               <>

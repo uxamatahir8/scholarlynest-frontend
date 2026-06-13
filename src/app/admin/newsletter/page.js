@@ -218,7 +218,7 @@ export default function NewsletterAdmin() {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto text-left relative">
+    <div className="space-y-6 w-full text-left relative">
       {/* Navigation Headers */}
       <div className="flex items-center justify-between pb-4 border-b border-zinc-200 dark:border-zinc-800/60">
         <Link href="/admin" className="inline-flex items-center text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-[var(--accent)] transition-colors">

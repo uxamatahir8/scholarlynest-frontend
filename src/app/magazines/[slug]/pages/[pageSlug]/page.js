@@ -118,7 +118,7 @@ export default function MagazineCustomPageShell() {
 
         {/* Content container */}
         <div className="absolute inset-0 flex items-end">
-          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pb-8 sm:pb-12 flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6">
+          <div className="w-full px-4 sm:px-6 lg:px-8 pb-8 sm:pb-12 flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6">
             
             {/* Left: Metadata info */}
             <div className="space-y-3 text-center sm:text-left max-w-3xl">
@@ -153,7 +153,7 @@ export default function MagazineCustomPageShell() {
       </div>
 
       {/* 2. DYNAMIC WORKSPACE GRID (Sidebar + Content Panel) */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
+      <div className="w-full px-4 sm:px-6 lg:px-8 mt-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* STICKY SIDEBAR */}

@@ -102,7 +102,7 @@ export default function ContactPage() {
         customLabels={{ contact: 'Contact Us' }}
       />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pb-16">
 
         {/* CONTAINER GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-16">

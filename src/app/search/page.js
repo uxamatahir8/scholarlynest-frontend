@@ -212,7 +212,7 @@ function SearchResultsContent() {
       {/* 1. Page Header Banner */}
       <div className="relative pt-32 pb-16 bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-900 z-20">
         <div className="absolute inset-0 bg-mesh opacity-20 pointer-events-none" />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-30 space-y-4">
+        <div className="w-full px-4 sm:px-6 relative z-30 space-y-4">
           <Link href="/" className="inline-flex items-center space-x-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--accent)] dark:text-[var(--accent-gold)] hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer">
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Return Home</span>
@@ -240,7 +240,7 @@ function SearchResultsContent() {
       </div>
 
       {/* 2. Main Content Dashboard */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-12 grid grid-cols-1 gap-8">
+      <div className="w-full px-4 sm:px-6 mt-12 grid grid-cols-1 gap-8">
         {/* Category Tabs & Total Indicator */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-200 dark:border-zinc-850 pb-4 gap-4">
           <div className="flex rounded-xl p-1 bg-black/5 dark:bg-white/5 border border-[var(--muted-border)]/60 max-w-md">
