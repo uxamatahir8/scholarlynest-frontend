@@ -106,7 +106,7 @@ const Header = () => {
   };
 
   return (
-    <div className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${scrolled ? 'bg-white/95 dark:bg-zinc-950/95 shadow-sm border-b border-zinc-150 dark:border-zinc-900/60 backdrop-blur-md' : 'bg-transparent'}`}>
+    <div className={`fixed-header-offset fixed top-0 left-0 w-full z-50 transition-all duration-500 ${scrolled ? 'scrolled bg-white/95 dark:bg-zinc-950/95 shadow-sm border-b border-zinc-150 dark:border-zinc-900/60 backdrop-blur-md' : 'bg-transparent'}`}>
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col transition-all duration-500">
           {/* Main Header Row */}

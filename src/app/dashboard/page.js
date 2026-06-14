@@ -10,7 +10,7 @@ import UniversityGateModal from '../../components/dashboard/UniversityGateModal'
 import { Loader2, ShieldAlert, Award, Calendar, BookOpen, Clock } from 'lucide-react';
 import Link from 'next/link';
 
-export default function AdminOverview() {
+export default function Dashboard() {
   const { user, loading: authLoading, hasPermission, hasRole } = useAuth();
   const { toast } = useToast();
 
@@ -72,7 +72,7 @@ export default function AdminOverview() {
   if (authLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-48 space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-605" />
+        <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
         <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">
           Syncing Account Context...
         </span>
@@ -124,7 +124,7 @@ export default function AdminOverview() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-150 dark:border-zinc-900 pb-6">
         <div className="space-y-1">
           <div className="flex items-center space-x-2">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold font-mono uppercase bg-amber-500/10 text-amber-605 dark:text-amber-400 border border-amber-550/10">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold font-mono uppercase bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-550/10">
               {userRoleDisplay}
             </span>
             {user.university_name && (
@@ -141,7 +141,7 @@ export default function AdminOverview() {
           </p>
         </div>
         <div className="flex items-center space-x-2 text-[10px] font-bold text-zinc-450 dark:text-zinc-500 font-mono uppercase tracking-wider bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200/60 dark:border-zinc-850 px-3.5 py-2 rounded-xl self-start sm:self-auto shadow-sm">
-          <Calendar className="w-3.5 h-3.5 text-amber-550" />
+          <Calendar className="w-3.5 h-3.5 text-amber-500" />
           <span>{currentDate}</span>
         </div>
       </div>
@@ -159,7 +159,7 @@ export default function AdminOverview() {
         <QuickActions isAdmin={isAdminOrEditor} />
 
         {/* Welcome Info Card */}
-        <div className="p-6 border border-zinc-200/80 dark:border-zinc-855 bg-white/40 dark:bg-zinc-900/10 rounded-2xl shadow-sm space-y-4">
+        <div className="p-6 border border-zinc-200/80 dark:border-zinc-850 bg-white/40 dark:bg-zinc-900/10 rounded-2xl shadow-sm space-y-4">
           <h4 className="font-serif text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center space-x-2">
             <Award className="w-4 h-4 text-amber-500" />
             <span>Open Science Advocate Pledge</span>
@@ -169,11 +169,11 @@ export default function AdminOverview() {
           </p>
           <div className="flex flex-wrap gap-4 text-[9px] font-bold uppercase tracking-widest font-mono text-zinc-400 dark:text-zinc-500">
             <span className="flex items-center">
-              <BookOpen className="w-3.5 h-3.5 mr-1.5 text-amber-555" />
+              <BookOpen className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
               No Paywalls
             </span>
             <span className="flex items-center">
-              <Clock className="w-3.5 h-3.5 mr-1.5 text-amber-555" />
+              <Clock className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
               Fast Track Peer-Review
             </span>
           </div>

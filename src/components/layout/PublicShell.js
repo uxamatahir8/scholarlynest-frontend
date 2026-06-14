@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import Header from '../Header';
 import Footer from '../global/Footer';
 import NewsletterRibbon from '../global/NewsletterRibbon';
+import TopAnnounceRibbon from './TopAnnounceRibbon';
 
 export default function PublicShell({ children, pathname }) {
   const isHome = pathname === '/';
@@ -12,6 +13,7 @@ export default function PublicShell({ children, pathname }) {
 
   return (
     <>
+      <TopAnnounceRibbon />
       <Suspense fallback={<div className="h-16 border-b border-zinc-200 bg-white dark:border-zinc-900 dark:bg-zinc-950" />}>
         <Header />
       </Suspense>
