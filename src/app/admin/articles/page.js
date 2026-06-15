@@ -129,12 +129,14 @@ export default function AdminArticlesBoard() {
   const handlePublishSubmit = async (publishData) => {
     try {
       const payload = {
-        status: 'published',
         published_year: publishData.published_year,
-        published_month: publishData.published_month
+        published_month: publishData.published_month,
+        doi: publishData.doi,
+        page_start: publishData.page_start,
+        page_end: publishData.page_end
       };
 
-      await api.patch(`/admin/articles/${articleToPublish.id}/review`, payload);
+      await api.post(`/admin/articles/${articleToPublish.id}/publish`, payload);
       
       toast(`Article published successfully for ${publishData.published_month} ${publishData.published_year}.`, 'success');
       setIsPublishModalOpen(false);
@@ -189,6 +191,8 @@ export default function AdminArticlesBoard() {
 
   // Selected article for review modal
   const [selectedArticle, setSelectedArticle] = useState(null);
+  const [workflowContext, setWorkflowContext] = useState(null);
+  const [loadingWorkflow, setLoadingWorkflow] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [activeReviewTab, setActiveReviewTab] = useState('abstract'); // 'abstract' | 'fulltext' | 'share_stats'
   const [rejectionReason, setRejectionReason] = useState('');
@@ -242,12 +246,22 @@ export default function AdminArticlesBoard() {
     }
   }, [currentPage, statusFilter, selectedMagazineId, debouncedSearchQuery, user, authLoading]);
 
-  const openReviewModal = (article) => {
+  const openReviewModal = async (article) => {
     setSelectedArticle(article);
+    setWorkflowContext(null);
     setRejectionReason('');
     setActiveReviewTab('abstract');
     setIsRejectionDropdownOpen(false);
     setIsReviewModalOpen(true);
+    setLoadingWorkflow(true);
+    try {
+      const res = await api.get(`/admin/articles/${article.id}/workflow`);
+      setWorkflowContext(res.data?.article || null);
+    } catch (err) {
+      console.error('Failed to load workflow context', err);
+    } finally {
+      setLoadingWorkflow(false);
+    }
   };
 
   const handleReviewAction = async (status) => {
@@ -597,9 +611,9 @@ export default function AdminArticlesBoard() {
               </div>
 
               {/* Tabs controls */}
-              <div className="flex rounded-xl p-1 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-850 w-full max-w-sm self-start">
-                {['abstract', 'fulltext', 'share_stats'].map((tab) => {
-                  const label = tab === 'abstract' ? 'Abstract' : tab === 'fulltext' ? 'Full Text' : 'Share Metrics';
+              <div className="flex rounded-xl p-1 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-850 w-full max-w-lg self-start">
+                {['abstract', 'fulltext', 'workflow', 'share_stats'].map((tab) => {
+                  const label = tab === 'abstract' ? 'Abstract' : tab === 'fulltext' ? 'Full Text' : tab === 'workflow' ? 'Workflow' : 'Share Metrics';
                   return (
                     <button
                       key={tab}
@@ -634,6 +648,75 @@ export default function AdminArticlesBoard() {
                   </div>
                 ) : activeReviewTab === 'fulltext' ? (
                   <div className="prose prose-sm max-w-none text-zinc-850 dark:text-zinc-350 leading-relaxed font-serif text-sm" dangerouslySetInnerHTML={{ __html: selectedArticle.full_text }} />
+                ) : activeReviewTab === 'workflow' ? (
+                  <div className="space-y-4 text-left font-sans">
+                    {loadingWorkflow ? (
+                      <div className="flex items-center space-x-2 text-xs text-zinc-450 font-semibold py-8 justify-center">
+                        <Loader2 className="w-4 h-4 animate-spin text-amber-600" />
+                        <span>Loading workflow timeline...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850">
+                            <h4 className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono mb-2">Sub Editors</h4>
+                            {(workflowContext?.sub_editor_assignments || []).length === 0 ? (
+                              <p className="text-xs text-zinc-450">No sub editor assigned.</p>
+                            ) : workflowContext.sub_editor_assignments.map((item) => (
+                              <div key={item.id} className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                                {item.sub_editor?.name || 'Sub Editor'} <span className="text-zinc-400">({item.status})</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850">
+                            <h4 className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono mb-2">Reviewers</h4>
+                            {(workflowContext?.reviewer_assignments || []).length === 0 ? (
+                              <p className="text-xs text-zinc-450">No reviewer assigned.</p>
+                            ) : workflowContext.reviewer_assignments.map((item) => (
+                              <div key={item.id} className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                                {item.reviewer?.name || 'Reviewer'} <span className="text-zinc-400">({item.status})</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850">
+                            <h4 className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono mb-2">Editorial Decisions</h4>
+                            {(workflowContext?.editorial_decisions || []).length === 0 ? (
+                              <p className="text-xs text-zinc-450">No final decision recorded.</p>
+                            ) : workflowContext.editorial_decisions.map((item) => (
+                              <div key={item.id} className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                                {item.decision?.replaceAll('_', ' ')} <span className="text-zinc-400">via {item.decision_source?.replaceAll('_', ' ')}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850">
+                            <h4 className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono mb-2">Production</h4>
+                            {(workflowContext?.production_assignments || []).length === 0 ? (
+                              <p className="text-xs text-zinc-450">No production assignment.</p>
+                            ) : workflowContext.production_assignments.map((item) => (
+                              <div key={item.id} className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                                {item.role?.replaceAll('_', ' ')}: {item.user?.name || 'Assignee'} <span className="text-zinc-400">({item.status})</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850">
+                          <h4 className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono mb-2">Audit Trail</h4>
+                          {(workflowContext?.audit_logs || []).length === 0 ? (
+                            <p className="text-xs text-zinc-450">No workflow events recorded.</p>
+                          ) : workflowContext.audit_logs.slice(0, 8).map((item) => (
+                            <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-zinc-100 dark:border-zinc-850 last:border-0">
+                              <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{item.event?.replaceAll('_', ' ')}</span>
+                              <span className="text-[10px] text-zinc-400 font-mono">{new Date(item.created_at).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 ) : (
                   <div className="space-y-4 text-left font-sans">
                     <div className="flex items-center justify-between border-b border-zinc-150 dark:border-zinc-800 pb-3">
