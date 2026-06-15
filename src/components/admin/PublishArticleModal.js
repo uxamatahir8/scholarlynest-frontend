@@ -1,15 +1,34 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, CheckCircle2, Loader2, X } from 'lucide-react';
+import api from '../../utils/api';
 
-export default function PublishArticleModal({ isOpen, onClose, onSubmit, articleTitle }) {
+export default function PublishArticleModal({ isOpen, onClose, onSubmit, articleTitle, magazineId }) {
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedMonth, setSelectedMonth] = useState('January');
+  const [magazineIssueId, setMagazineIssueId] = useState('');
+  const [issues, setIssues] = useState([]);
   const [doi, setDoi] = useState('');
   const [pageStart, setPageStart] = useState('');
   const [pageEnd, setPageEnd] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !magazineId) return;
+
+    const loadIssues = async () => {
+      try {
+        const res = await api.get('/admin/issues', { params: { magazine_id: magazineId, per_page: 100 } });
+        setIssues(res.data?.data || []);
+      } catch (err) {
+        console.error('Failed to load magazine issues', err);
+        setIssues([]);
+      }
+    };
+
+    loadIssues();
+  }, [isOpen, magazineId]);
 
   if (!isOpen) return null;
 
@@ -31,6 +50,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
       await onSubmit({
         published_year: parseInt(selectedYear, 10),
         published_month: selectedMonth,
+        magazine_issue_id: magazineIssueId ? parseInt(magazineIssueId, 10) : null,
         doi: doi.trim() || null,
         page_start: pageStart ? parseInt(pageStart, 10) : null,
         page_end: pageEnd ? parseInt(pageEnd, 10) : null
@@ -85,6 +105,24 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
             </div>
 
             <div className="h-px bg-zinc-100 dark:bg-zinc-850" />
+
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">
+                Issue
+              </label>
+              <select
+                value={magazineIssueId}
+                onChange={(e) => setMagazineIssueId(e.target.value)}
+                className="w-full text-xs font-semibold px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100"
+              >
+                <option value="">No issue selected</option>
+                {issues.map((issue) => (
+                  <option key={issue.id} value={issue.id}>
+                    Volume {issue.volume_number}, Issue {issue.issue_number}{issue.special_title ? ` - ${issue.special_title}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Select Year */}

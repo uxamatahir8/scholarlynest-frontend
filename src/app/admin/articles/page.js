@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../..
 import { useAuth } from '../../../context/AuthContext';
 import Pagination from '../../../components/ui/Pagination';
 import PublishArticleModal from '../../../components/admin/PublishArticleModal';
+import WorkflowActionPanel from '../../../components/admin/WorkflowActionPanel';
 import {
   PUBLISHABLE_STATUSES,
   REJECTED_STATUSES,
@@ -65,6 +66,7 @@ export default function AdminArticlesBoard() {
       const payload = {
         published_year: publishData.published_year,
         published_month: publishData.published_month,
+        magazine_issue_id: publishData.magazine_issue_id,
         doi: publishData.doi,
         page_start: publishData.page_start,
         page_end: publishData.page_end
@@ -196,6 +198,19 @@ export default function AdminArticlesBoard() {
     } finally {
       setLoadingWorkflow(false);
     }
+  };
+
+  const refreshWorkflowContext = async () => {
+    const articleId = selectedArticle?.id || workflowContext?.id;
+    if (!articleId) return;
+
+    const res = await api.get(`/admin/articles/${articleId}/workflow`);
+    const nextArticle = res.data?.article || null;
+    setWorkflowContext(nextArticle);
+    if (nextArticle) {
+      setSelectedArticle((prev) => ({ ...prev, ...nextArticle }));
+    }
+    fetchArticles();
   };
 
   const handleReviewAction = async (status) => {
@@ -591,6 +606,17 @@ export default function AdminArticlesBoard() {
                       </div>
                     ) : (
                       <>
+                        <WorkflowActionPanel
+                          article={workflowContext || selectedArticle}
+                          workflowContext={workflowContext}
+                          user={user}
+                          hasRole={hasRole}
+                          hasPermission={hasPermission}
+                          toast={toast}
+                          onWorkflowChanged={refreshWorkflowContext}
+                          onOpenPublish={() => openPublishModal(workflowContext || selectedArticle)}
+                        />
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850">
                             <h4 className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono mb-2">Sub Editors</h4>
@@ -841,6 +867,7 @@ export default function AdminArticlesBoard() {
         onClose={() => setIsPublishModalOpen(false)}
         onSubmit={handlePublishSubmit}
         articleTitle={articleToPublish?.title}
+        magazineId={articleToPublish?.magazine_id}
       />
 
     </div>
