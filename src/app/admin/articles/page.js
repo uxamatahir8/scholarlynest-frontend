@@ -29,10 +29,85 @@ const getFullImageUrl = (path) => {
   return `${domain}${cleanPath}`;
 };
 
+const STATUS_META = {
+  draft: ['Draft', 'zinc'],
+  pending: ['Submitted', 'blue'],
+  submitted: ['Submitted', 'blue'],
+  under_review: ['Under Review', 'indigo'],
+  assigned_to_sub_editor: ['Assigned to Sub Editor', 'violet'],
+  reviewer_assigned: ['Reviewer Assigned', 'cyan'],
+  review_in_progress: ['Review in Progress', 'cyan'],
+  revision_required: ['Revision Required', 'amber'],
+  minor_revision_required: ['Minor Revision Required', 'amber'],
+  major_revision_required: ['Major Revision Required', 'orange'],
+  minor_review_rejected: ['Revision Required', 'amber'],
+  resubmitted: ['Resubmitted', 'sky'],
+  approved: ['Accepted', 'emerald'],
+  accepted: ['Accepted', 'emerald'],
+  rejected: ['Rejected', 'red'],
+  fully_rejected: ['Rejected', 'red'],
+  copy_editing: ['Copy Editing', 'teal'],
+  proofreading: ['Proofreading', 'teal'],
+  ready_for_publication: ['Ready for Publication', 'purple'],
+  published: ['Published', 'purple'],
+  withdrawn: ['Withdrawn', 'zinc'],
+  archived: ['Archived', 'zinc'],
+};
+
+const STATUS_TONE_CLASSES = {
+  amber: 'bg-amber-500/[0.04] text-amber-600 border-amber-500/10',
+  blue: 'bg-blue-500/[0.04] text-blue-600 border-blue-500/10',
+  cyan: 'bg-cyan-500/[0.04] text-cyan-600 border-cyan-500/10',
+  emerald: 'bg-emerald-500/[0.04] text-emerald-600 border-emerald-500/10',
+  indigo: 'bg-indigo-500/[0.04] text-indigo-600 border-indigo-500/10',
+  orange: 'bg-orange-500/[0.04] text-orange-600 border-orange-500/10',
+  purple: 'bg-purple-500/[0.04] text-purple-600 border-purple-500/10',
+  red: 'bg-red-500/[0.04] text-red-500 border-red-500/10',
+  sky: 'bg-sky-500/[0.04] text-sky-600 border-sky-500/10',
+  teal: 'bg-teal-500/[0.04] text-teal-600 border-teal-500/10',
+  violet: 'bg-violet-500/[0.04] text-violet-600 border-violet-500/10',
+  zinc: 'bg-zinc-500/[0.04] text-zinc-500 border-zinc-500/10',
+};
+
+const STATUS_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'submitted', label: 'Submitted' },
+  { id: 'under_review', label: 'Under Review' },
+  { id: 'assigned_to_sub_editor', label: 'Sub Editor' },
+  { id: 'reviewer_assigned', label: 'Reviewer' },
+  { id: 'review_in_progress', label: 'In Review' },
+  { id: 'revision_required', label: 'Revisions' },
+  { id: 'resubmitted', label: 'Resubmitted' },
+  { id: 'accepted', label: 'Accepted' },
+  { id: 'ready_for_publication', label: 'Ready' },
+  { id: 'published', label: 'Published' },
+  { id: 'rejected', label: 'Rejected' },
+];
+
+const REVIEWABLE_STATUSES = new Set([
+  'pending',
+  'submitted',
+  'under_review',
+  'assigned_to_sub_editor',
+  'reviewer_assigned',
+  'review_in_progress',
+  'resubmitted',
+]);
+
+const REVISION_STATUSES = new Set([
+  'revision_required',
+  'minor_revision_required',
+  'major_revision_required',
+  'minor_review_rejected',
+]);
+
+const REJECTED_STATUSES = new Set(['rejected', 'fully_rejected']);
+const PUBLISHABLE_STATUSES = new Set(['approved', 'accepted', 'ready_for_publication']);
+
 export default function AdminArticlesBoard() {
   const { toast } = useToast();
   const { user, hasPermission, hasRole, loading: authLoading } = useAuth();
-  const isEditor = hasRole('magazine_editor') || hasRole('magazine-editor');
+  const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
 
   const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || hasPermission('articles.auto-approve') || isEditor) : false;
 
@@ -42,17 +117,6 @@ export default function AdminArticlesBoard() {
   
   // Status filter state: 'all' | pipeline statuses
   const [statusFilter, setStatusFilter] = useState('all');
-
-  const statusTabs = [
-    { id: 'all', label: 'All' },
-    { id: 'submitted', label: 'Submitted' },
-    { id: 'under_review', label: 'Under Review' },
-    { id: 'approved', label: 'Approved' },
-    { id: 'published', label: 'Published' },
-    { id: 'minor_review_rejected', label: 'Review Rejections' },
-    { id: 'fully_rejected', label: 'Fully Rejected' },
-    { id: 'resubmitted', label: 'Resubmitted' },
-  ];
 
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [articleToPublish, setArticleToPublish] = useState(null);
@@ -187,7 +251,7 @@ export default function AdminArticlesBoard() {
   };
 
   const handleReviewAction = async (status) => {
-    if (['minor_review_rejected', 'fully_rejected'].includes(status) && !rejectionReason.trim()) {
+    if (['minor_review_rejected', 'fully_rejected', 'rejected'].includes(status) && !rejectionReason.trim()) {
       toast('Please supply a reason for rejecting this publication.', 'error');
       return;
     }
@@ -196,7 +260,7 @@ export default function AdminArticlesBoard() {
       setSubmittingReview(true);
       const payload = {
         status,
-        rejection_reason: ['minor_review_rejected', 'fully_rejected'].includes(status) ? rejectionReason : null
+        rejection_reason: ['minor_review_rejected', 'fully_rejected', 'rejected'].includes(status) ? rejectionReason : null
       };
 
       await api.patch(`/admin/articles/${selectedArticle.id}/review`, payload);
@@ -213,56 +277,12 @@ export default function AdminArticlesBoard() {
   };
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'submitted':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-blue-500/[0.04] text-blue-600 border border-blue-500/10">
-            Submitted
-          </span>
-        );
-      case 'under_review':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-indigo-500/[0.04] text-indigo-600 border border-indigo-500/10">
-            Under Review
-          </span>
-        );
-      case 'approved':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-emerald-500/[0.04] text-emerald-600 border border-emerald-500/10">
-            Approved
-          </span>
-        );
-      case 'published':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-purple-500/[0.04] text-purple-600 border border-purple-500/10">
-            Published
-          </span>
-        );
-      case 'minor_review_rejected':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-amber-500/[0.04] text-amber-600 border border-amber-500/10">
-            Review Rejection
-          </span>
-        );
-      case 'fully_rejected':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-red-500/[0.04] text-red-500 border border-red-500/10">
-            Fully Rejected
-          </span>
-        );
-      case 'resubmitted':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-sky-500/[0.04] text-sky-600 border border-sky-500/10">
-            Resubmitted
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-zinc-500/[0.04] text-zinc-500 border border-zinc-500/10">
-            {status || 'Unknown'}
-          </span>
-        );
-    }
+    const [label, tone = 'zinc'] = STATUS_META[status] || [(status || 'Unknown').replaceAll('_', ' '), 'zinc'];
+    return (
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase border ${STATUS_TONE_CLASSES[tone] || STATUS_TONE_CLASSES.zinc}`}>
+        {label}
+      </span>
+    );
   };
 
   const getAbsoluteFileUrl = (art) => {
@@ -328,7 +348,7 @@ export default function AdminArticlesBoard() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 font-sans">
         {/* Status selection */}
         <div className="flex flex-wrap gap-1 rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/40 w-full lg:max-w-5xl">
-          {statusTabs.map((tab) => (
+          {STATUS_FILTERS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
@@ -474,7 +494,7 @@ export default function AdminArticlesBoard() {
                         </Link>
                       )}
 
-                      {isAdminOrEditor && !isEditor && art.status === 'approved' && (
+                      {isAdminOrEditor && !isEditor && PUBLISHABLE_STATUSES.has(art.status) && (
                         <button
                           onClick={() => openPublishModal(art)}
                           className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-purple-650 hover:underline cursor-pointer"
@@ -647,7 +667,7 @@ export default function AdminArticlesBoard() {
                   </div>
                 )}
               </div>              {/* Review actions / comments */}
-              {['submitted', 'under_review', 'resubmitted'].includes(selectedArticle.status) ? (
+              {REVIEWABLE_STATUSES.has(selectedArticle.status) ? (
                 isAdminOrEditor ? (
                   <div className="pt-4 border-t border-zinc-150 dark:border-zinc-850 space-y-4 text-left font-sans">
                     <div className="space-y-1">
@@ -787,7 +807,7 @@ export default function AdminArticlesBoard() {
                   <h4 className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono">Historical Record</h4>
                   <div className="mt-2 flex items-center space-x-3">
                     {getStatusBadge(selectedArticle.status)}
-                    {['minor_review_rejected', 'fully_rejected'].includes(selectedArticle.status) && (
+                    {(REVISION_STATUSES.has(selectedArticle.status) || REJECTED_STATUSES.has(selectedArticle.status)) && (
                       <p className="text-xs text-zinc-500 font-medium">Rejection Reason: <strong className="text-zinc-900 dark:text-zinc-200">{selectedArticle.rejection_reason || 'None provided.'}</strong></p>
                     )}
                   </div>

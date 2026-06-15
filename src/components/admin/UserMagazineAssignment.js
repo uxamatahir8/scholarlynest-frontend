@@ -5,14 +5,16 @@ export default function UserMagazineAssignment({ selectedRoleId, roles, value, o
   const [magazines, setMagazines] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Find if selectedRoleId corresponds to the magazine_editor role
-  const isMagazineEditor = React.useMemo(() => {
+  const assignmentRole = React.useMemo(() => {
     const role = roles.find(r => r.id === Number(selectedRoleId));
-    return role && (role.name === 'magazine_editor' || role.name === 'magazine-editor');
+    const normalizedName = role?.name?.replaceAll('-', '_');
+    return ['editor', 'sub_editor', 'reviewer', 'publisher', 'magazine_editor'].includes(normalizedName)
+      ? normalizedName
+      : null;
   }, [selectedRoleId, roles]);
 
   useEffect(() => {
-    if (!isMagazineEditor) {
+    if (!assignmentRole) {
       return;
     }
 
@@ -30,9 +32,9 @@ export default function UserMagazineAssignment({ selectedRoleId, roles, value, o
     };
 
     fetchMagazines();
-  }, [isMagazineEditor]);
+  }, [assignmentRole]);
 
-  if (!isMagazineEditor) {
+  if (!assignmentRole) {
     return null;
   }
 
@@ -50,8 +52,11 @@ export default function UserMagazineAssignment({ selectedRoleId, roles, value, o
   return (
     <div className="space-y-2 mt-4 font-roboto">
       <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] block">
-        Assigned Editorial Jurisdictions
+        Assigned Magazine Scope
       </span>
+      <p className="text-[11px] text-[var(--muted)] leading-relaxed">
+        Scope this {assignmentRole.replaceAll('_', ' ')} account to the selected magazines.
+      </p>
       {loading ? (
         <div className="text-[11px] text-[var(--muted)] animate-pulse py-2">
           Loading magazines...

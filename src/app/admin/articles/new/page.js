@@ -282,9 +282,9 @@ export default function AdminNewArticle() {
         await api.patch(`/admin/articles/${newArticle.id}/review`, {
           status: 'approved'
         });
-        toast('Article created, approved, and PDF compiled successfully!', 'success');
+        toast('Article created, accepted, and PDF compiled successfully!', 'success');
       } else {
-        toast('Article created successfully and is now pending review.', 'success');
+        toast('Article created successfully and is now submitted for review.', 'success');
       }
 
       router.push('/admin/articles');

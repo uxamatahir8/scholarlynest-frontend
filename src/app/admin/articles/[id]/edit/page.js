@@ -28,6 +28,41 @@ const getFullImageUrl = (path) => {
   return `${domain}${cleanPath}`;
 };
 
+const EDITABLE_STATUS_OPTIONS = [
+  { value: 'submitted', label: 'Submitted' },
+  { value: 'under_review', label: 'Under Review' },
+  { value: 'approved', label: 'Accepted' },
+  { value: 'published', label: 'Published' },
+  { value: 'minor_review_rejected', label: 'Revision Required' },
+  { value: 'fully_rejected', label: 'Rejected' },
+  { value: 'resubmitted', label: 'Resubmitted' },
+];
+
+const STATUS_LABELS = {
+  draft: 'Draft',
+  pending: 'Submitted',
+  submitted: 'Submitted',
+  under_review: 'Under Review',
+  assigned_to_sub_editor: 'Assigned to Sub Editor',
+  reviewer_assigned: 'Reviewer Assigned',
+  review_in_progress: 'Review in Progress',
+  revision_required: 'Revision Required',
+  minor_revision_required: 'Minor Revision Required',
+  major_revision_required: 'Major Revision Required',
+  minor_review_rejected: 'Revision Required',
+  resubmitted: 'Resubmitted',
+  approved: 'Accepted',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  fully_rejected: 'Rejected',
+  copy_editing: 'Copy Editing',
+  proofreading: 'Proofreading',
+  ready_for_publication: 'Ready for Publication',
+  published: 'Published',
+  withdrawn: 'Withdrawn',
+  archived: 'Archived',
+};
+
 const RichEditor = dynamic(() => import('../../../../../components/ui/RichEditor'), {
   ssr: false,
   loading: () => (
@@ -64,7 +99,7 @@ export default function AdminEditArticle() {
   const [featuredImagePreview, setFeaturedImagePreview] = useState('');
   const [existingFeaturedImage, setExistingFeaturedImage] = useState('');
   const [deleteFeaturedImage, setDeleteFeaturedImage] = useState(false);
-  const [status, setStatus] = useState('pending');
+  const [status, setStatus] = useState('submitted');
   const [articleOwnerId, setArticleOwnerId] = useState(null);
 
   const [seoTitle, setSeoTitle] = useState('');
@@ -439,9 +474,12 @@ export default function AdminEditArticle() {
                 onChange={(e) => setStatus(e.target.value)}
                 className="w-full text-xs font-semibold px-3 py-3.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200 cursor-pointer"
               >
-                <option value="pending">Pending Review</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
+                {!EDITABLE_STATUS_OPTIONS.some(option => option.value === status) && (
+                  <option value={status}>{STATUS_LABELS[status] || status.replaceAll('_', ' ')}</option>
+                )}
+                {EDITABLE_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
               </select>
             </div>
 
