@@ -14,6 +14,13 @@ import { useAuth } from '../../../../../context/AuthContext';
 import CoAuthorRepeater from '../../../../../components/article/CoAuthorRepeater';
 import ArticleAssetDropzone from '../../../../../components/article/ArticleAssetDropzone';
 import {
+  appendAcademicMetadata,
+  currentUserAuthor,
+  emptyAcademicMetadata,
+  normalizeAuthorRows,
+  validateAuthors,
+} from '../../../../../components/article/academicArticleForm';
+import {
   EDITABLE_STATUS_OPTIONS,
   STATUS_LABELS,
 } from '../../../../../components/admin/articleWorkflow';
@@ -70,6 +77,7 @@ export default function AdminEditArticle() {
   const [deleteFeaturedImage, setDeleteFeaturedImage] = useState(false);
   const [status, setStatus] = useState('submitted');
   const [articleOwnerId, setArticleOwnerId] = useState(null);
+  const [academicMetadata, setAcademicMetadata] = useState(emptyAcademicMetadata);
 
   const [seoTitle, setSeoTitle] = useState('');
   const [seoDescription, setSeoDescription] = useState('');
@@ -101,6 +109,10 @@ export default function AdminEditArticle() {
   const [assets, setAssets] = useState([]);
   const [validationErrors, setValidationErrors] = useState({});
   const [coAuthors, setCoAuthors] = useState([]);
+
+  const updateAcademicMetadata = (field, value) => {
+    setAcademicMetadata((prev) => ({ ...prev, [field]: value }));
+  };
 
   // 1. Fetch Magazines list
   useEffect(() => {
@@ -138,6 +150,17 @@ export default function AdminEditArticle() {
         setStatus(article.status);
         setArticleOwnerId(article.user_id);
         setAssets(article.assets || []);
+        setAcademicMetadata({
+          articleCategory: article.article_category || '',
+          articleType: article.article_type || '',
+          subjectArea: article.subject_area || '',
+          language: article.language || 'English',
+          ethicalApprovalStatement: article.ethical_approval_statement || '',
+          conflictOfInterestStatement: article.conflict_of_interest_statement || '',
+          fundingStatement: article.funding_statement || '',
+          dataAvailabilityStatement: article.data_availability_statement || '',
+          authorContributionStatement: article.author_contribution_statement || '',
+        });
 
         setSeoTitle(article.seo_title || '');
         setSeoDescription(article.seo_description || '');
@@ -150,13 +173,23 @@ export default function AdminEditArticle() {
 
         // Prepopulate co-authors
         if (article.article_authors && Array.isArray(article.article_authors)) {
-          setCoAuthors(article.article_authors.map(author => ({
+          setCoAuthors(normalizeAuthorRows(article.article_authors.map(author => ({
             name: author.co_author_name,
             email: author.co_author_email,
+            affiliation: author.affiliation || author.university_name || '',
             university_name: author.university_name || '',
+            department: author.department || '',
+            country: author.country || '',
+            orcid: author.orcid || '',
+            author_order: author.author_order || 1,
+            is_owner: !!author.is_owner,
+            is_corresponding: !!author.is_corresponding,
+            contribution_statement: author.contribution_statement || '',
             can_edit: !!author.can_edit,
             create_account: !!author.account_provisioned || !!author.user_id
-          })));
+          }))));
+        } else if (user && !isSuperAdmin) {
+          setCoAuthors([currentUserAuthor(user)]);
         }
       } catch (err) {
         console.error(err);
@@ -266,23 +299,7 @@ export default function AdminEditArticle() {
       errors.fullText = 'Article full text is required.';
     }
 
-    // Super admin must assign at least one author
-    if (isSuperAdmin) {
-      const validAuthors = coAuthors.filter(
-        a => a.name.trim() && a.email.trim()
-      );
-      if (validAuthors.length === 0) {
-        errors.coAuthors = 'As a super admin, you must add at least one author with name and email.';
-      }
-    }
-
-    const hasSelfEmail = coAuthors.some(
-      author => author.email.trim().toLowerCase() === user?.email?.trim().toLowerCase()
-    );
-    if (hasSelfEmail) {
-      toast('You cannot list yourself as a co-author.', 'error');
-      errors.coAuthors = 'Primary author cannot be listed as a co-author.';
-    }
+    Object.assign(errors, validateAuthors(coAuthors, { isSuperAdmin, user }));
 
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -306,6 +323,7 @@ export default function AdminEditArticle() {
       formData.append('abstract', abstract);
       formData.append('full_text', fullText);
       formData.append('status', status);
+      appendAcademicMetadata(formData, academicMetadata);
       if (pdfFile) {
         formData.append('pdf_file', pdfFile);
       }
@@ -316,7 +334,9 @@ export default function AdminEditArticle() {
         formData.append('delete_featured_image', 'true');
       }
       formData.append('tags', JSON.stringify(selectedTags));
-      formData.append('co_authors', JSON.stringify(coAuthors));
+      const normalizedAuthors = normalizeAuthorRows(coAuthors);
+      formData.append('authors', JSON.stringify(normalizedAuthors));
+      formData.append('co_authors', JSON.stringify(normalizedAuthors));
       if (canEditSeo) {
         formData.append('seo_title', seoTitle);
         formData.append('seo_description', seoDescription);
@@ -464,6 +484,53 @@ export default function AdminEditArticle() {
               {validationErrors.title && (
                 <p className="text-[10px] font-semibold text-red-500">{validationErrors.title}</p>
               )}
+            </div>
+          </div>
+
+          {/* Academic Metadata */}
+          <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-4">
+            <div className="border-b border-zinc-100 dark:border-zinc-850 pb-3">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider font-serif">Academic Metadata</h3>
+              <p className="text-[10px] text-zinc-400 mt-1 font-semibold leading-relaxed">Classify the manuscript and record required academic declarations.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Article Type</label>
+                <input value={academicMetadata.articleType} onChange={(e) => updateAcademicMetadata('articleType', e.target.value)} placeholder="Research Article" className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Category</label>
+                <input value={academicMetadata.articleCategory} onChange={(e) => updateAcademicMetadata('articleCategory', e.target.value)} placeholder="Original Research" className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Subject Area</label>
+                <input value={academicMetadata.subjectArea} onChange={(e) => updateAcademicMetadata('subjectArea', e.target.value)} placeholder="Biomedical Engineering" className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Language</label>
+                <input value={academicMetadata.language} onChange={(e) => updateAcademicMetadata('language', e.target.value)} placeholder="English" className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                ['ethicalApprovalStatement', 'Ethical Approval Statement'],
+                ['conflictOfInterestStatement', 'Conflict of Interest Statement'],
+                ['fundingStatement', 'Funding Statement'],
+                ['dataAvailabilityStatement', 'Data Availability Statement'],
+                ['authorContributionStatement', 'Author Contribution Statement'],
+              ].map(([field, label]) => (
+                <div key={field} className="space-y-1 md:last:col-span-2">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">{label}</label>
+                  <textarea
+                    value={academicMetadata[field]}
+                    onChange={(e) => updateAcademicMetadata(field, e.target.value)}
+                    rows={2}
+                    className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200"
+                  />
+                </div>
+              ))}
             </div>
           </div>
 
