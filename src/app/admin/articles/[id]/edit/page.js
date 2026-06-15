@@ -13,6 +13,10 @@ import { useToast } from '../../../../../context/ToastContext';
 import { useAuth } from '../../../../../context/AuthContext';
 import CoAuthorRepeater from '../../../../../components/article/CoAuthorRepeater';
 import ArticleAssetDropzone from '../../../../../components/article/ArticleAssetDropzone';
+import {
+  EDITABLE_STATUS_OPTIONS,
+  STATUS_LABELS,
+} from '../../../../../components/admin/articleWorkflow';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -26,41 +30,6 @@ const getFullImageUrl = (path) => {
   const domain = apiBase.replace(/\/api$/, '');
   const cleanPath = path.startsWith('/') ? path : '/' + path;
   return `${domain}${cleanPath}`;
-};
-
-const EDITABLE_STATUS_OPTIONS = [
-  { value: 'submitted', label: 'Submitted' },
-  { value: 'under_review', label: 'Under Review' },
-  { value: 'approved', label: 'Accepted' },
-  { value: 'published', label: 'Published' },
-  { value: 'minor_review_rejected', label: 'Revision Required' },
-  { value: 'fully_rejected', label: 'Rejected' },
-  { value: 'resubmitted', label: 'Resubmitted' },
-];
-
-const STATUS_LABELS = {
-  draft: 'Draft',
-  pending: 'Submitted',
-  submitted: 'Submitted',
-  under_review: 'Under Review',
-  assigned_to_sub_editor: 'Assigned to Sub Editor',
-  reviewer_assigned: 'Reviewer Assigned',
-  review_in_progress: 'Review in Progress',
-  revision_required: 'Revision Required',
-  minor_revision_required: 'Minor Revision Required',
-  major_revision_required: 'Major Revision Required',
-  minor_review_rejected: 'Revision Required',
-  resubmitted: 'Resubmitted',
-  approved: 'Accepted',
-  accepted: 'Accepted',
-  rejected: 'Rejected',
-  fully_rejected: 'Rejected',
-  copy_editing: 'Copy Editing',
-  proofreading: 'Proofreading',
-  ready_for_publication: 'Ready for Publication',
-  published: 'Published',
-  withdrawn: 'Withdrawn',
-  archived: 'Archived',
 };
 
 const RichEditor = dynamic(() => import('../../../../../components/ui/RichEditor'), {

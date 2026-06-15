@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
+import {
+  normalizeRoleName,
+  roleRequiresMagazineAssignment,
+} from './articleWorkflow';
 
 export default function UserMagazineAssignment({ selectedRoleId, roles, value, onChange }) {
   const [magazines, setMagazines] = useState([]);
@@ -7,8 +11,8 @@ export default function UserMagazineAssignment({ selectedRoleId, roles, value, o
 
   const assignmentRole = React.useMemo(() => {
     const role = roles.find(r => r.id === Number(selectedRoleId));
-    const normalizedName = role?.name?.replaceAll('-', '_');
-    return ['editor', 'sub_editor', 'reviewer', 'publisher', 'magazine_editor'].includes(normalizedName)
+    const normalizedName = normalizeRoleName(role?.name);
+    return roleRequiresMagazineAssignment(normalizedName)
       ? normalizedName
       : null;
   }, [selectedRoleId, roles]);
