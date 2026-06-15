@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import 'quill/dist/quill.snow.css';
 
-export default function QuillEditor({ value, onChange, placeholder = 'Start writing details...' }) {
+export default function QuillEditor({ value, onChange, placeholder = 'Start writing details...', readOnly = false }) {
   const containerRef = useRef(null);
   const quillRef = useRef(null);
   const isUpdatingRef = useRef(false);
@@ -23,8 +23,9 @@ export default function QuillEditor({ value, onChange, placeholder = 'Start writ
     const quill = new QuillConstructor(editorDiv, {
       theme: 'snow',
       placeholder: placeholder,
+      readOnly: readOnly,
       modules: {
-        toolbar: [
+        toolbar: readOnly ? false : [
           [{ 'header': [1, 2, 3, false] }],
           ['bold', 'italic', 'underline', 'strike'],
           [{ 'list': 'ordered'}, { 'list': 'bullet' }],
@@ -32,6 +33,7 @@ export default function QuillEditor({ value, onChange, placeholder = 'Start writ
         ]
       }
     });
+
 
     quillRef.current = quill;
 

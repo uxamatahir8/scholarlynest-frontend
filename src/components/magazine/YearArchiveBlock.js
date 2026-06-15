@@ -184,7 +184,12 @@ export default function YearArchiveBlock({ groupedArticles = {}, magazineSlug, o
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[9px] font-sans font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500">
                     <span className="flex items-center gap-1"><BookOpenText className="h-3.5 w-3.5" />Research Article</span>
                     <span className="flex items-center gap-1"><User className="h-3.5 w-3.5" />{article.user?.name || 'ScholarlyNest Author'}</span>
-                    <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{formatDate(article.published_at || article.created_at)}</span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {article.published_month && article.published_year
+                        ? `${article.published_month} ${article.published_year}`
+                        : formatDate(article.published_at || article.created_at)}
+                    </span>
                     {article.pdf_path && <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-450"><FileText className="h-3.5 w-3.5" />PDF available</span>}
                   </div>
                   

@@ -13,6 +13,7 @@ import { Button } from '../../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 import { useAuth } from '../../../context/AuthContext';
 import Pagination from '../../../components/ui/Pagination';
+import PublishArticleModal from '../../../components/admin/PublishArticleModal';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -30,16 +31,55 @@ const getFullImageUrl = (path) => {
 
 export default function AdminArticlesBoard() {
   const { toast } = useToast();
-  const { user, hasPermission, loading: authLoading } = useAuth();
+  const { user, hasPermission, hasRole, loading: authLoading } = useAuth();
+  const isEditor = hasRole('magazine_editor') || hasRole('magazine-editor');
 
-  const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || hasPermission('articles.auto-approve')) : false;
+  const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || hasPermission('articles.auto-approve') || isEditor) : false;
 
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Status filter state: 'all' | 'pending' | 'approved' | 'rejected'
+  // Status filter state: 'all' | pipeline statuses
   const [statusFilter, setStatusFilter] = useState('all');
+
+  const statusTabs = [
+    { id: 'all', label: 'All' },
+    { id: 'submitted', label: 'Submitted' },
+    { id: 'under_review', label: 'Under Review' },
+    { id: 'approved', label: 'Approved' },
+    { id: 'published', label: 'Published' },
+    { id: 'minor_review_rejected', label: 'Review Rejections' },
+    { id: 'fully_rejected', label: 'Fully Rejected' },
+    { id: 'resubmitted', label: 'Resubmitted' },
+  ];
+
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [articleToPublish, setArticleToPublish] = useState(null);
+
+  const openPublishModal = (article) => {
+    setArticleToPublish(article);
+    setIsPublishModalOpen(true);
+  };
+
+  const handlePublishSubmit = async (publishData) => {
+    try {
+      const payload = {
+        status: 'published',
+        published_year: publishData.published_year,
+        published_month: publishData.published_month
+      };
+
+      await api.patch(`/admin/articles/${articleToPublish.id}/review`, payload);
+      
+      toast(`Article published successfully for ${publishData.published_month} ${publishData.published_year}.`, 'success');
+      setIsPublishModalOpen(false);
+      fetchArticles();
+    } catch (err) {
+      console.error(err);
+      toast('Failed to finalize article publication.', 'error');
+    }
+  };
 
   // Live search and magazine filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,6 +129,7 @@ export default function AdminArticlesBoard() {
   const [activeReviewTab, setActiveReviewTab] = useState('abstract'); // 'abstract' | 'fulltext' | 'share_stats'
   const [rejectionReason, setRejectionReason] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [isRejectionDropdownOpen, setIsRejectionDropdownOpen] = useState(false);
 
   // Fetch articles based on filter
   const fetchArticles = async () => {
@@ -141,11 +182,12 @@ export default function AdminArticlesBoard() {
     setSelectedArticle(article);
     setRejectionReason('');
     setActiveReviewTab('abstract');
+    setIsRejectionDropdownOpen(false);
     setIsReviewModalOpen(true);
   };
 
   const handleReviewAction = async (status) => {
-    if (status === 'rejected' && !rejectionReason.trim()) {
+    if (['minor_review_rejected', 'fully_rejected'].includes(status) && !rejectionReason.trim()) {
       toast('Please supply a reason for rejecting this publication.', 'error');
       return;
     }
@@ -154,7 +196,7 @@ export default function AdminArticlesBoard() {
       setSubmittingReview(true);
       const payload = {
         status,
-        rejection_reason: status === 'rejected' ? rejectionReason : null
+        rejection_reason: ['minor_review_rejected', 'fully_rejected'].includes(status) ? rejectionReason : null
       };
 
       await api.patch(`/admin/articles/${selectedArticle.id}/review`, payload);
@@ -172,22 +214,52 @@ export default function AdminArticlesBoard() {
 
   const getStatusBadge = (status) => {
     switch (status) {
+      case 'submitted':
+        return (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-blue-500/[0.04] text-blue-600 border border-blue-500/10">
+            Submitted
+          </span>
+        );
+      case 'under_review':
+        return (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-indigo-500/[0.04] text-indigo-600 border border-indigo-500/10">
+            Under Review
+          </span>
+        );
       case 'approved':
         return (
           <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-emerald-500/[0.04] text-emerald-600 border border-emerald-500/10">
             Approved
           </span>
         );
-      case 'rejected':
+      case 'published':
+        return (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-purple-500/[0.04] text-purple-600 border border-purple-500/10">
+            Published
+          </span>
+        );
+      case 'minor_review_rejected':
+        return (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-amber-500/[0.04] text-amber-600 border border-amber-500/10">
+            Review Rejection
+          </span>
+        );
+      case 'fully_rejected':
         return (
           <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-red-500/[0.04] text-red-500 border border-red-500/10">
-            Rejected
+            Fully Rejected
+          </span>
+        );
+      case 'resubmitted':
+        return (
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-sky-500/[0.04] text-sky-600 border border-sky-500/10">
+            Resubmitted
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-amber-500/[0.04] text-amber-600 border border-amber-500/10">
-            Pending
+          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-zinc-500/[0.04] text-zinc-500 border border-zinc-500/10">
+            {status || 'Unknown'}
           </span>
         );
     }
@@ -255,18 +327,18 @@ export default function AdminArticlesBoard() {
       {/* Filter Tabs & Search row */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 font-sans">
         {/* Status selection */}
-        <div className="flex rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/40 w-full lg:max-w-md">
-          {['all', 'pending', 'approved', 'rejected'].map((tab) => (
+        <div className="flex flex-wrap gap-1 rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/40 w-full lg:max-w-5xl">
+          {statusTabs.map((tab) => (
             <button
-              key={tab}
-              onClick={() => setStatusFilter(tab)}
-              className={`flex-1 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                statusFilter === tab
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
+              className={`px-3 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                statusFilter === tab.id
                   ? 'bg-white shadow text-amber-600 dark:bg-zinc-950 dark:text-amber-400'
                   : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
               }`}
             >
-              {tab}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -392,7 +464,7 @@ export default function AdminArticlesBoard() {
                     )}
                     <td className="px-6 py-4">{getStatusBadge(art.status)}</td>
                     <td className="px-6 py-4 text-right space-x-3.5">
-                      {hasPermission('articles.edit-own') && (
+                      {hasPermission('articles.edit-own') && !isEditor && (
                         <Link
                           href={`/admin/articles/${art.id}/edit`}
                           className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-blue-605 hover:underline cursor-pointer"
@@ -400,6 +472,16 @@ export default function AdminArticlesBoard() {
                           <Edit className="w-3.5 h-3.5" />
                           <span>Edit</span>
                         </Link>
+                      )}
+
+                      {isAdminOrEditor && !isEditor && art.status === 'approved' && (
+                        <button
+                          onClick={() => openPublishModal(art)}
+                          className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-purple-650 hover:underline cursor-pointer"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>Publish</span>
+                        </button>
                       )}
 
                       <button
@@ -564,49 +646,133 @@ export default function AdminArticlesBoard() {
                     )}
                   </div>
                 )}
-              </div>
-
-              {/* Review actions / comments */}
-              {selectedArticle.status === 'pending' ? (
+              </div>              {/* Review actions / comments */}
+              {['submitted', 'under_review', 'resubmitted'].includes(selectedArticle.status) ? (
                 isAdminOrEditor ? (
                   <div className="pt-4 border-t border-zinc-150 dark:border-zinc-850 space-y-4 text-left font-sans">
                     <div className="space-y-1">
-                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 font-mono">Editorial Verdict Form</h4>
-                      <p className="text-[10px] text-zinc-450 font-medium">Record verdict. A reason must be written if rejecting this submission.</p>
+                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-455 font-mono">Editorial Verdict Form</h4>
+                      <p className="text-[10px] text-zinc-455 font-medium">Record verdict. A reason must be written if rejecting this submission.</p>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-405 font-mono block">Rejection Feedback / Justification</label>
-                      <textarea
-                        value={rejectionReason}
-                        onChange={(e) => setRejectionReason(e.target.value)}
-                        placeholder="Feedback written here is visible to authors..."
-                        rows={2}
-                        className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors"
-                      />
-                    </div>
+                    {isEditor ? (
+                      <>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-405 font-mono block">
+                            Editorial Review Feedback / Rejection Reason * <span className="text-red-500">(Required for Rejections)</span>
+                          </label>
+                          <textarea
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            placeholder="Feedback written here is visible to authors..."
+                            rows={3}
+                            className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-905"
+                          />
+                        </div>
 
-                    <div className="flex items-center justify-end space-x-2.5">
-                      <button
-                        type="button"
-                        disabled={submittingReview}
-                        onClick={() => handleReviewAction('rejected')}
-                        className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-red-650 bg-red-500/[0.04] border border-red-500/20 hover:bg-red-500/[0.08] transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        <X className="w-4 h-4" />
-                        <span>Reject manuscript</span>
-                      </button>
-                      
-                      <button
-                        type="button"
-                        disabled={submittingReview}
-                        onClick={() => handleReviewAction('approved')}
-                        className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        {submittingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        <span>Approve & Compile PDF</span>
-                      </button>
-                    </div>
+                        <div className="flex items-center justify-end space-x-2.5">
+                          {/* Split dropdown menu trigger */}
+                          <div className="relative inline-block text-left">
+                            <button
+                              type="button"
+                              disabled={submittingReview}
+                              onClick={() => setIsRejectionDropdownOpen(!isRejectionDropdownOpen)}
+                              className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-red-655 bg-red-500/[0.04] border border-red-500/20 hover:bg-red-500/[0.08] transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <span>Issue Rejection</span>
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                            {isRejectionDropdownOpen && (
+                              <>
+                                <div 
+                                  className="fixed inset-0 z-40" 
+                                  onClick={() => setIsRejectionDropdownOpen(false)} 
+                                />
+                                <div className="absolute right-0 bottom-full mb-2 w-56 rounded-xl shadow-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 z-50 py-1 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-150 text-left">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsRejectionDropdownOpen(false);
+                                      handleReviewAction('minor_review_rejected');
+                                    }}
+                                    className="w-full text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-amber-605 hover:bg-amber-500/[0.04] flex items-center space-x-2 transition-colors cursor-pointer"
+                                  >
+                                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                                    <span>Minor Revisions</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsRejectionDropdownOpen(false);
+                                      handleReviewAction('fully_rejected');
+                                    }}
+                                    className="w-full text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-red-505 hover:bg-red-500/[0.04] flex items-center space-x-2 transition-colors cursor-pointer border-t border-zinc-100 dark:border-zinc-900"
+                                  >
+                                    <X className="w-3.5 h-3.5 shrink-0" />
+                                    <span>Fully Reject</span>
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled={submittingReview}
+                            onClick={() => handleReviewAction('approved')}
+                            className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-sm transition-colors cursor-pointer disabled:opacity-50 font-sans"
+                          >
+                            {submittingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            <span>Approve Manuscript</span>
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-405 font-mono block">Rejection Feedback / Justification</label>
+                          <textarea
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            placeholder="Feedback written here is visible to authors..."
+                            rows={2}
+                            className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-905"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-end space-x-2.5">
+                          <button
+                            type="button"
+                            disabled={submittingReview}
+                            onClick={() => handleReviewAction('minor_review_rejected')}
+                            className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-500/[0.04] border border-amber-500/20 hover:bg-amber-500/[0.08] transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <AlertCircle className="w-4 h-4" />
+                            <span>Minor Revisions</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={submittingReview}
+                            onClick={() => handleReviewAction('fully_rejected')}
+                            className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-red-655 bg-red-500/[0.04] border border-red-500/20 hover:bg-red-500/[0.08] transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <X className="w-4 h-4" />
+                            <span>Fully Reject</span>
+                          </button>
+                          
+                          <button
+                            type="button"
+                            disabled={submittingReview}
+                            onClick={() => handleReviewAction('approved')}
+                            className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-sm transition-colors cursor-pointer disabled:opacity-50 font-sans"
+                          >
+                            {submittingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            <span>Approve & Compile PDF</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="pt-4 border-t border-zinc-150 dark:border-zinc-850 text-left font-sans">
@@ -621,7 +787,7 @@ export default function AdminArticlesBoard() {
                   <h4 className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono">Historical Record</h4>
                   <div className="mt-2 flex items-center space-x-3">
                     {getStatusBadge(selectedArticle.status)}
-                    {selectedArticle.status === 'rejected' && (
+                    {['minor_review_rejected', 'fully_rejected'].includes(selectedArticle.status) && (
                       <p className="text-xs text-zinc-500 font-medium">Rejection Reason: <strong className="text-zinc-900 dark:text-zinc-200">{selectedArticle.rejection_reason || 'None provided.'}</strong></p>
                     )}
                   </div>
@@ -632,6 +798,13 @@ export default function AdminArticlesBoard() {
           </div>
         </div>
       )}
+
+      <PublishArticleModal
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        onSubmit={handlePublishSubmit}
+        articleTitle={articleToPublish?.title}
+      />
 
     </div>
   );

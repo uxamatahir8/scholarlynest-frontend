@@ -1,0 +1,154 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Calendar, CheckCircle2, Loader2, X } from 'lucide-react';
+
+export default function PublishArticleModal({ isOpen, onClose, onSubmit, articleTitle }) {
+  const [selectedYear, setSelectedYear] = useState('2026');
+  const [selectedMonth, setSelectedMonth] = useState('January');
+  const [submitting, setSubmitting] = useState(false);
+
+  if (!isOpen) return null;
+
+  // Generate years dynamically up to the 2026 threshold
+  const years = [];
+  for (let y = 2026; y >= 2012; y--) {
+    years.push(String(y));
+  }
+
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        published_year: parseInt(selectedYear, 10),
+        published_month: selectedMonth
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {/* Glass backdrop */}
+      <div 
+        onClick={onClose}
+        className="absolute inset-0 bg-zinc-950/45 backdrop-blur-md transition-opacity duration-300 animate-in fade-in"
+      />
+      
+      {/* Modal Container */}
+      <div className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col font-sans">
+        
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-850 flex items-center justify-between">
+          <div className="text-left space-y-1">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 font-mono">
+              Production Stage
+            </span>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase leading-none font-sans">
+              Publish Manuscript
+            </h3>
+          </div>
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="p-1 rounded-lg text-zinc-405 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit}>
+          <div className="p-6 space-y-5 text-left">
+            <div className="space-y-1">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-mono block">
+                Manuscript Title
+              </span>
+              <p className="text-xs font-serif font-bold text-zinc-800 dark:text-zinc-200 leading-normal">
+                {articleTitle}
+              </p>
+            </div>
+
+            <div className="h-px bg-zinc-100 dark:bg-zinc-850" />
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Select Year */}
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">
+                  Select Year
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    required
+                    className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-105 cursor-pointer appearance-none font-sans"
+                  >
+                    {years.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Select Month */}
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">
+                  Select Month
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    required
+                    className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-105 cursor-pointer appearance-none font-sans"
+                  >
+                    {months.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Footer */}
+          <div className="px-6 py-4.5 bg-zinc-50/50 dark:bg-zinc-950/20 border-t border-zinc-100 dark:border-zinc-850 flex items-center justify-end space-x-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center space-x-1.5 px-4.5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-sm transition-colors cursor-pointer disabled:opacity-50 font-sans"
+            >
+              {submitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              )}
+              <span>Finalize Publication</span>
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  );
+}

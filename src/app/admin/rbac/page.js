@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
 import api from '../../../utils/api';
+import UserMagazineAssignment from '../../../components/admin/UserMagazineAssignment';
 import {
   ShieldAlert, Users, Lock, Key, ShieldCheck,
   Settings, UserCheck, RefreshCw, Save, CheckCircle,
@@ -44,6 +45,8 @@ export default function RbacManager() {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRoleId, setNewUserRoleId] = useState('');
   const [newUserUniversityName, setNewUserUniversityName] = useState('');
+  const [selectedUserMagazineIds, setSelectedUserMagazineIds] = useState([]);
+  const [newUserMagazineIds, setNewUserMagazineIds] = useState([]);
 
   // Create Role states
   const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
@@ -102,19 +105,27 @@ export default function RbacManager() {
   const handleOpenUserModal = (user) => {
     setEditingUser(user);
     setSelectedUserRoleId(user.role_id || '');
+    setSelectedUserMagazineIds(user.magazines?.map(m => m.id) || []);
   };
 
   const handleSaveUserRole = async () => {
     if (!editingUser) return;
     setUpdating(true);
     try {
-      const res = await api.patch(`/admin/rbac/users/${editingUser.id}/role`, {
-        role_id: Number(selectedUserRoleId)
+      const res = await api.patch(`/admin/rbac/users/${editingUser.id}`, {
+        role_id: Number(selectedUserRoleId),
+        magazine_ids: selectedUserMagazineIds
       });
       toast(`Access privileges updated for ${editingUser.name}.`, 'success');
 
       // Update local state
-      setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, role_id: res.data.role_id, role: res.data.role, roles: res.data.roles } : u));
+      setUsers(prev => prev.map(u => u.id === editingUser.id ? { 
+        ...u, 
+        role_id: res.data.role_id, 
+        role: res.data.role, 
+        roles: res.data.roles,
+        magazines: res.data.magazines
+      } : u));
       setEditingUser(null);
     } catch (err) {
       const errMsg = err.response?.data?.message || 'Failed to update user role.';
@@ -198,13 +209,17 @@ export default function RbacManager() {
       setSelectedRole(prev => prev.id === roleId ? { ...prev, permissions: res.data.permissions } : prev);
       toast('Permissions updated successfully.', 'success');
     } catch (err) {
-      toast('Failed to update permissions.', 'error');
+      toast(err.response?.data?.message || 'Failed to update permissions.', 'error');
     }
   };
 
   // Toggle boolean checkbox permission
   const handleToggleCheckboxPermission = (permissionName, allowed) => {
     if (!selectedRole) return;
+    if (selectedRole.is_system) {
+      toast('System role permissions cannot be changed.', 'error');
+      return;
+    }
     let targetPermissions = selectedRole.permissions.map(p => p.name);
     if (allowed) {
       if (!targetPermissions.includes(permissionName)) {
@@ -219,6 +234,10 @@ export default function RbacManager() {
   // Toggle ownership scope permission (None / Own / All)
   const handleScopeChange = (resourceName, scope) => {
     if (!selectedRole) return;
+    if (selectedRole.is_system) {
+      toast('System role permissions cannot be changed.', 'error');
+      return;
+    }
     let targetPermissions = selectedRole.permissions.map(p => p.name);
 
     // Filter out existing scope permissions for this resource
@@ -272,6 +291,7 @@ export default function RbacManager() {
         email: newUserEmail,
         role_id: Number(newUserRoleId),
         university_name: newUserUniversityName,
+        magazine_ids: newUserMagazineIds,
       });
       toast(`User ${newUserName} created successfully. Welcome credentials email dispatched.`, 'success');
       setShowCreateModal(false);
@@ -279,6 +299,7 @@ export default function RbacManager() {
       setNewUserEmail('');
       setNewUserRoleId('');
       setNewUserUniversityName('');
+      setNewUserMagazineIds([]);
       await fetchData();
     } catch (err) {
       const errMsg = err.response?.data?.message || 'Failed to create user.';
@@ -364,7 +385,10 @@ export default function RbacManager() {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              setNewUserMagazineIds([]);
+              setShowCreateModal(true);
+            }}
             className="flex items-center gap-1.5 text-xs py-2 h-auto cursor-pointer shadow-md"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -540,12 +564,12 @@ export default function RbacManager() {
                       </div>
                     </CardHeader>
 
-                    {selectedRole.name === 'super_admin' ? (
+                    {selectedRole.is_system ? (
                       <CardContent className="py-12 text-center space-y-3">
                         <Lock className="w-12 h-12 text-[var(--accent-gold)] mx-auto" />
-                        <h4 className="text-sm font-bold text-[var(--foreground)]">Absolute Override Layer Enabled</h4>
+                        <h4 className="text-sm font-bold text-[var(--foreground)]">System Role Locked</h4>
                         <p className="text-xs text-[var(--muted)] max-w-sm mx-auto leading-relaxed">
-                          The Super Administrator possesses dynamic bypasses for all security check middleware. Permissions cannot be modified for this default role.
+                          This role is part of the manuscript workflow baseline. Its name, label, and permission set are managed by the platform and cannot be modified here.
                         </p>
                       </CardContent>
                     ) : (
@@ -977,6 +1001,13 @@ export default function RbacManager() {
                   );
                 })}
               </div>
+
+              <UserMagazineAssignment
+                selectedRoleId={selectedUserRoleId}
+                roles={roles}
+                value={selectedUserMagazineIds}
+                onChange={setSelectedUserMagazineIds}
+              />
             </div>
 
             <div className="pt-4 border-t border-[var(--muted-border)] flex items-center justify-end space-x-3">
@@ -1124,6 +1155,13 @@ export default function RbacManager() {
                   <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newUserRoleId}</span>
                 )}
               </div>
+
+              <UserMagazineAssignment
+                selectedRoleId={newUserRoleId}
+                roles={roles}
+                value={newUserMagazineIds}
+                onChange={setNewUserMagazineIds}
+              />
             </div>
 
             <div className="pt-4 border-t border-[var(--muted-border)] flex items-center justify-end space-x-3">

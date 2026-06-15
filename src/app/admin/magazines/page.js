@@ -15,6 +15,7 @@ import { useAuth } from '../../../context/AuthContext';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import Pagination from '../../../components/ui/Pagination';
+import MagazineFormFields from '../../../components/admin/MagazineFormFields';
 
 const QuillEditor = dynamic(() => import('../../../components/ui/QuillEditor'), { 
   ssr: false,
@@ -27,7 +28,8 @@ const QuillEditor = dynamic(() => import('../../../components/ui/QuillEditor'), 
 
 export default function AdminMagazines() {
   const { toast } = useToast();
-  const { user, hasPermission, loading: authLoading } = useAuth();
+  const { user, hasPermission, hasRole, loading: authLoading } = useAuth();
+  const isEditor = hasRole('magazine_editor') || hasRole('magazine-editor');
   
   const [magazines, setMagazines] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,7 @@ export default function AdminMagazines() {
   const [description, setDescription] = useState('');
   const [aboutText, setAboutText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editorId, setEditorId] = useState('');
 
   // SEO-only states
   const [seoTitle, setSeoTitle] = useState('');
@@ -93,6 +96,7 @@ export default function AdminMagazines() {
     setCoverImageFileName('');
     setDescription('');
     setAboutText('');
+    setEditorId('');
     setSeoTitle('');
     setSeoDescription('');
     setSeoKeywords('');
@@ -108,6 +112,7 @@ export default function AdminMagazines() {
     setCoverImageFileName('');
     setDescription(mag.description || '');
     setAboutText(mag.about_text || '');
+    setEditorId(mag.editors?.[0]?.id || '');
     setSeoTitle(mag.seo_title || '');
     setSeoDescription(mag.seo_description || '');
     setSeoKeywords(mag.seo_keywords || '');
@@ -136,6 +141,7 @@ export default function AdminMagazines() {
       formData.append('title', title);
       formData.append('description', description || '');
       formData.append('about_text', aboutText || '');
+      formData.append('editor_id', editorId || '');
 
       if (coverImageFile) {
         formData.append('cover_image', coverImageFile);
@@ -247,7 +253,7 @@ export default function AdminMagazines() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--foreground)]">Magazines Directory Manager</h1>
           <p className="text-xs text-[var(--muted)] font-medium mt-1">Create, update, and manage ScholarlyNest publication issues, covers, and layouts.</p>
         </div>
-        {hasPermission('magazines.create') && (
+        {hasPermission('magazines.create') && !isEditor && (
           <Button
             onClick={openCreateModal}
             variant="primary"
@@ -278,7 +284,7 @@ export default function AdminMagazines() {
         <div className="text-center py-20 glass-panel border border-[var(--muted-border)]/60 rounded-2xl">
           <BookOpen className="w-12 h-12 mx-auto text-[var(--muted)] mb-3" />
           <p className="text-sm font-semibold text-[var(--muted)]">No magazines are currently cataloged.</p>
-          {hasPermission('magazines.create') && (
+          {hasPermission('magazines.create') && !isEditor && (
             <button onClick={openCreateModal} className="mt-3 text-xs font-bold uppercase tracking-wider text-[var(--accent-gold)] hover:underline cursor-pointer">Register One Now</button>
           )}
         </div>
@@ -338,15 +344,15 @@ export default function AdminMagazines() {
                 </div>
 
                 {/* Footer controls */}
-                {(hasPermission('magazines.edit') || hasPermission('magazines.delete') || hasPermission('seo.magazines')) && (
+                {(hasPermission('magazines.edit') || hasPermission('magazines.delete') || hasPermission('seo.magazines') || isEditor) && (
                   <div className="px-5 py-3.5 bg-black/5 dark:bg-white/5 border-t border-[var(--muted-border)]/60 flex items-center justify-between">
-                    {hasPermission('magazines.edit') ? (
+                    {(hasPermission('magazines.edit') || isEditor) ? (
                       <button
                         onClick={() => openEditModal(mag)}
                         className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors cursor-pointer"
                       >
                         <Edit2 className="w-3 h-3" />
-                        <span>Edit</span>
+                        <span>{isEditor ? 'View Settings' : 'Edit'}</span>
                       </button>
                     ) : (hasPermission('seo.magazines') ? (
                       <button
@@ -358,7 +364,7 @@ export default function AdminMagazines() {
                       </button>
                     ) : <div />)}
                     
-                    {hasPermission('magazines.delete') && (
+                    {hasPermission('magazines.delete') && !isEditor && (
                       <button
                         onClick={() => triggerDelete(mag.id)}
                         className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors cursor-pointer"
@@ -412,21 +418,29 @@ export default function AdminMagazines() {
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  disabled={isEditor}
                   placeholder="e.g. Journal of Computing Telemetry"
-                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
+
+              <MagazineFormFields
+                value={editorId}
+                onChange={setEditorId}
+                disabled={isEditor}
+              />
 
               <div className="space-y-3 p-3 bg-black/5 dark:bg-white/5 border border-[var(--muted-border)]/50 rounded-xl">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] font-mono block">Upload Cover Image</label>
                   <div className="flex items-center space-x-3">
-                    <label className="inline-flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-[var(--foreground)] bg-[var(--background)] hover:bg-[var(--foreground)]/5 transition-colors cursor-pointer border border-[var(--muted-border)]">
+                    <label className={`inline-flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider text-[var(--foreground)] bg-[var(--background)] hover:bg-[var(--foreground)]/5 transition-colors cursor-pointer border border-[var(--muted-border)] ${isEditor ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}>
                       <Upload className="w-3.5 h-3.5" />
                       <span>Choose File</span>
                       <input 
                         type="file"
                         accept="image/*"
+                        disabled={isEditor}
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
                             setCoverImageFile(e.target.files[0]);
@@ -446,8 +460,9 @@ export default function AdminMagazines() {
                     type="text"
                     value={coverImage}
                     onChange={(e) => setCoverImage(e.target.value)}
+                    disabled={isEditor}
                     placeholder="/images/nature_computing.png"
-                    className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                    className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -457,9 +472,10 @@ export default function AdminMagazines() {
                 <textarea 
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  disabled={isEditor}
                   placeholder="A short overview describing target science sectors..."
                   rows={2}
-                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -469,6 +485,7 @@ export default function AdminMagazines() {
                   <QuillEditor 
                     value={aboutText} 
                     onChange={setAboutText} 
+                    readOnly={isEditor}
                     placeholder="Details regarding editorial governance, board directory members, scope, history, etc..."
                   />
                 </div>
@@ -483,8 +500,9 @@ export default function AdminMagazines() {
                       type="text"
                       value={seoTitle}
                       onChange={(e) => setSeoTitle(e.target.value)}
+                      disabled={isEditor}
                       placeholder="Leave blank to auto-generate"
-                      className="w-full text-xs font-semibold px-3 py-2 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                      className="w-full text-xs font-semibold px-3 py-2 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
                   <div className="space-y-1">
@@ -492,9 +510,10 @@ export default function AdminMagazines() {
                     <textarea 
                       value={seoDescription}
                       onChange={(e) => setSeoDescription(e.target.value)}
+                      disabled={isEditor}
                       placeholder="Enter meta description..."
                       rows={2}
-                      className="w-full text-xs font-semibold px-3 py-2 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                      className="w-full text-xs font-semibold px-3 py-2 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
                   <div className="space-y-1">
@@ -503,8 +522,9 @@ export default function AdminMagazines() {
                       type="text"
                       value={seoKeywords}
                       onChange={(e) => setSeoKeywords(e.target.value)}
+                      disabled={isEditor}
                       placeholder="e.g. computing, telemetry, registry"
-                      className="w-full text-xs font-semibold px-3 py-2 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                      className="w-full text-xs font-semibold px-3 py-2 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -512,29 +532,43 @@ export default function AdminMagazines() {
 
               {/* Submit panel */}
               <div className="pt-4 border-t border-[var(--muted-border)]/65 flex items-center justify-end space-x-3">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsModalOpen(false)}
-                  className="text-xs border border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 cursor-pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={saving}
-                  variant="primary"
-                  size="sm"
-                  className="inline-flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
-                >
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  <span>{modalMode === 'create' ? 'Catalog Issue' : 'Save Changes'}</span>
-                </Button>
+                {isEditor ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setIsModalOpen(false)}
+                    className="inline-flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    <span>Close</span>
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsModalOpen(false)}
+                      className="text-xs border border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 cursor-pointer"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={saving}
+                      variant="primary"
+                      size="sm"
+                      className="inline-flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {saving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                      <span>{modalMode === 'create' ? 'Catalog Issue' : 'Save Changes'}</span>
+                    </Button>
+                  </>
+                )}
               </div>
 
             </form>
@@ -567,8 +601,9 @@ export default function AdminMagazines() {
                   type="text"
                   value={seoTitle}
                   onChange={(e) => setSeoTitle(e.target.value)}
+                  disabled={isEditor}
                   placeholder="Leave blank to auto-generate"
-                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
               <div className="space-y-1">
@@ -576,9 +611,10 @@ export default function AdminMagazines() {
                 <textarea 
                   value={seoDescription}
                   onChange={(e) => setSeoDescription(e.target.value)}
+                  disabled={isEditor}
                   placeholder="Enter meta description..."
                   rows={4}
-                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
               <div className="space-y-1">
@@ -587,36 +623,51 @@ export default function AdminMagazines() {
                   type="text"
                   value={seoKeywords}
                   onChange={(e) => setSeoKeywords(e.target.value)}
+                  disabled={isEditor}
                   placeholder="e.g. computing, telemetry, registry"
-                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors"
+                  className="w-full text-xs font-semibold px-3 py-2.5 bg-[var(--background)] border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
 
               {/* Submit panel */}
               <div className="pt-4 border-t border-[var(--muted-border)]/65 flex items-center justify-end space-x-3">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsSeoModalOpen(false)}
-                  className="text-xs border border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 cursor-pointer"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={savingSeo}
-                  variant="primary"
-                  size="sm"
-                  className="inline-flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
-                >
-                  {savingSeo ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  <span>Save SEO</span>
-                </Button>
+                {isEditor ? (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setIsSeoModalOpen(false)}
+                    className="inline-flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    <span>Close</span>
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsSeoModalOpen(false)}
+                      className="text-xs border border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 cursor-pointer"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={savingSeo}
+                      variant="primary"
+                      size="sm"
+                      className="inline-flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {savingSeo ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                      <span>Save SEO</span>
+                    </Button>
+                  </>
+                )}
               </div>
 
             </form>
