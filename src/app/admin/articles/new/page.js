@@ -280,7 +280,7 @@ export default function AdminNewArticle() {
       if (autoApprove && newArticle && newArticle.id) {
         setSavingStatus('Approving and compiling PDF...');
         await api.patch(`/admin/articles/${newArticle.id}/review`, {
-          status: 'approved'
+          status: 'accepted'
         });
         toast('Article created, accepted, and PDF compiled successfully!', 'success');
       } else {
@@ -667,7 +667,7 @@ export default function AdminNewArticle() {
                 className="w-4 h-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
               />
               <div className="space-y-0.5 select-none cursor-pointer text-left" onClick={() => setAutoApprove(!autoApprove)}>
-                <label htmlFor="autoApprove" className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider block cursor-pointer">Auto-Approve manuscript immediately</label>
+                <label htmlFor="autoApprove" className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider block cursor-pointer">Auto-Accept manuscript immediately</label>
                 <span className="text-[10px] text-zinc-400 font-medium block leading-relaxed">Instantly publish to public archive registries and compile dynamic PDF assets.</span>
               </div>
             </div>

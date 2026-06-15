@@ -56,10 +56,12 @@ export const STATUS_FILTERS = [
 export const EDITABLE_STATUS_OPTIONS = [
   { value: 'submitted', label: 'Submitted' },
   { value: 'under_review', label: 'Under Review' },
-  { value: 'approved', label: 'Accepted' },
+  { value: 'accepted', label: 'Accepted' },
   { value: 'published', label: 'Published' },
-  { value: 'minor_review_rejected', label: 'Revision Required' },
-  { value: 'fully_rejected', label: 'Rejected' },
+  { value: 'revision_required', label: 'Revision Required' },
+  { value: 'minor_revision_required', label: 'Minor Revision Required' },
+  { value: 'major_revision_required', label: 'Major Revision Required' },
+  { value: 'rejected', label: 'Rejected' },
   { value: 'resubmitted', label: 'Resubmitted' },
 ];
 

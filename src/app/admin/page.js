@@ -48,8 +48,8 @@ export default function AdminOverview() {
           // Author parallel pagination queries
           const [totalRes, approvedRes, pendingRes] = await Promise.all([
             api.get('/admin/articles', { params: { per_page: 1 } }),
-            api.get('/admin/articles', { params: { status: 'approved', per_page: 1 } }),
-            api.get('/admin/articles', { params: { status: 'pending', per_page: 1 } })
+            api.get('/admin/articles', { params: { status: 'accepted', per_page: 1 } }),
+            api.get('/admin/articles', { params: { status: 'submitted', per_page: 1 } })
           ]);
           setStats({
             total: totalRes.data.total || 0,

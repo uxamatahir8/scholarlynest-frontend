@@ -632,7 +632,7 @@ export default function RbacManager() {
                                     onChange={(e) => handleToggleCheckboxPermission('articles.auto-approve', e.target.checked)}
                                     className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)]"
                                   />
-                                  <span className="text-xs font-semibold text-[var(--foreground)]">Auto-Approve & Compile PDF</span>
+                                  <span className="text-xs font-semibold text-[var(--foreground)]">Auto-Accept & Compile PDF</span>
                                 </label>
 
                                 <label className="flex items-center space-x-2.5 cursor-pointer">

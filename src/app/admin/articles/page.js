@@ -21,6 +21,7 @@ import {
   REVIEWABLE_STATUSES,
   REVISION_STATUSES,
   STATUS_FILTERS,
+  STATUS_LABELS,
   STATUS_META,
   STATUS_TONE_CLASSES,
 } from '../../../components/admin/articleWorkflow';
@@ -214,8 +215,8 @@ export default function AdminArticlesBoard() {
   };
 
   const handleReviewAction = async (status) => {
-    if (['minor_review_rejected', 'fully_rejected', 'rejected'].includes(status) && !rejectionReason.trim()) {
-      toast('Please supply a reason for rejecting this publication.', 'error');
+    if (['revision_required', 'minor_revision_required', 'major_revision_required', 'rejected'].includes(status) && !rejectionReason.trim()) {
+      toast('Please supply feedback for this decision.', 'error');
       return;
     }
 
@@ -223,12 +224,12 @@ export default function AdminArticlesBoard() {
       setSubmittingReview(true);
       const payload = {
         status,
-        rejection_reason: ['minor_review_rejected', 'fully_rejected', 'rejected'].includes(status) ? rejectionReason : null
+        rejection_reason: ['revision_required', 'minor_revision_required', 'major_revision_required', 'rejected'].includes(status) ? rejectionReason : null
       };
 
       await api.patch(`/admin/articles/${selectedArticle.id}/review`, payload);
       
-      toast(`Article review updated to: ${status}.`, 'success');
+      toast(`Article review updated to: ${STATUS_LABELS[status] || status}.`, 'success');
       setIsReviewModalOpen(false);
       fetchArticles();
     } catch (err) {
@@ -756,7 +757,7 @@ export default function AdminArticlesBoard() {
                                     type="button"
                                     onClick={() => {
                                       setIsRejectionDropdownOpen(false);
-                                      handleReviewAction('minor_review_rejected');
+                                      handleReviewAction('minor_revision_required');
                                     }}
                                     className="w-full text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-amber-605 hover:bg-amber-500/[0.04] flex items-center space-x-2 transition-colors cursor-pointer"
                                   >
@@ -767,12 +768,12 @@ export default function AdminArticlesBoard() {
                                     type="button"
                                     onClick={() => {
                                       setIsRejectionDropdownOpen(false);
-                                      handleReviewAction('fully_rejected');
+                                      handleReviewAction('rejected');
                                     }}
                                     className="w-full text-left px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-red-505 hover:bg-red-500/[0.04] flex items-center space-x-2 transition-colors cursor-pointer border-t border-zinc-100 dark:border-zinc-900"
                                   >
                                     <X className="w-3.5 h-3.5 shrink-0" />
-                                    <span>Fully Reject</span>
+                                    <span>Reject</span>
                                   </button>
                                 </div>
                               </>
@@ -782,11 +783,11 @@ export default function AdminArticlesBoard() {
                           <button
                             type="button"
                             disabled={submittingReview}
-                            onClick={() => handleReviewAction('approved')}
+                            onClick={() => handleReviewAction('accepted')}
                             className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-sm transition-colors cursor-pointer disabled:opacity-50 font-sans"
                           >
                             {submittingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                            <span>Approve Manuscript</span>
+                            <span>Accept Manuscript</span>
                           </button>
                         </div>
                       </>
@@ -807,7 +808,7 @@ export default function AdminArticlesBoard() {
                           <button
                             type="button"
                             disabled={submittingReview}
-                            onClick={() => handleReviewAction('minor_review_rejected')}
+                            onClick={() => handleReviewAction('minor_revision_required')}
                             className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-500/[0.04] border border-amber-500/20 hover:bg-amber-500/[0.08] transition-colors cursor-pointer disabled:opacity-50"
                           >
                             <AlertCircle className="w-4 h-4" />
@@ -817,21 +818,21 @@ export default function AdminArticlesBoard() {
                           <button
                             type="button"
                             disabled={submittingReview}
-                            onClick={() => handleReviewAction('fully_rejected')}
+                            onClick={() => handleReviewAction('rejected')}
                             className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-red-655 bg-red-500/[0.04] border border-red-500/20 hover:bg-red-500/[0.08] transition-colors cursor-pointer disabled:opacity-50"
                           >
                             <X className="w-4 h-4" />
-                            <span>Fully Reject</span>
+                            <span>Reject</span>
                           </button>
                           
                           <button
                             type="button"
                             disabled={submittingReview}
-                            onClick={() => handleReviewAction('approved')}
+                            onClick={() => handleReviewAction('accepted')}
                             className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-sm transition-colors cursor-pointer disabled:opacity-50 font-sans"
                           >
                             {submittingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                            <span>Approve & Compile PDF</span>
+                            <span>Accept & Compile PDF</span>
                           </button>
                         </div>
                       </>

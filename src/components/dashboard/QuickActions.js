@@ -46,8 +46,8 @@ export default function QuickActions({ isAdmin }) {
     },
     {
       title: 'Moderate Manuscripts',
-      description: 'Approve, reject, or request revisions for pending submissions.',
-      href: '/admin/articles?status=pending',
+      description: 'Accept, reject, or request revisions for submitted manuscripts.',
+      href: '/admin/articles?status=submitted',
       icon: <ClipboardCheck className="w-5 h-5" />,
       color: 'text-amber-600 dark:text-amber-400 bg-amber-500/5 border-amber-500/10'
     },
