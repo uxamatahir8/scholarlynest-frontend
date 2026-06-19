@@ -24,7 +24,8 @@ import {
   MessageSquare,
   Loader2,
   ClipboardCheck,
-  UserCheck
+  UserCheck,
+  Newspaper
 } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
@@ -167,7 +168,7 @@ export default function AdminLayout({ children }) {
     if (pathname && pathname.startsWith('/admin/cms')) {
       setCmsDropdownOpen(true);
     }
-    if (pathname && (pathname.startsWith('/admin/magazines') || pathname.startsWith('/admin/articles'))) {
+    if (pathname && (pathname.startsWith('/admin/magazines') || pathname.startsWith('/admin/articles') || pathname.startsWith('/admin/issues'))) {
       setMagazineDropdownOpen(true);
     }
   }, [pathname]);
@@ -187,11 +188,12 @@ export default function AdminLayout({ children }) {
   const isOverviewActive = pathname === '/admin';
   const isRbacActive = pathname ? pathname.startsWith('/admin/rbac') : false;
   const isCmsActive = pathname ? (pathname.startsWith('/admin/cms') || pathname.startsWith('/admin/footer-cms')) : false;
-  const isMagazineActive = pathname ? (pathname.startsWith('/admin/magazines') || pathname.startsWith('/admin/articles')) : false;
+  const isMagazineActive = pathname ? (pathname.startsWith('/admin/magazines') || pathname.startsWith('/admin/articles') || pathname.startsWith('/admin/issues')) : false;
   const isSubEditorDeskActive = pathname ? pathname.startsWith('/admin/sub-editor') : false;
   const isReviewerDeskActive = pathname ? pathname.startsWith('/admin/reviewer') : false;
 
   const showMagazinePortal = hasPermission('magazines.view-any') || hasPermission('magazines.view-own') || hasPermission('articles.view-any') || hasPermission('articles.view-own');
+  const showIssueManager = hasRole('publisher') || hasRole('super_admin') || hasRole('admin');
   const showSubEditorDesk = hasRole('sub_editor') || hasRole('super_admin') || hasRole('admin');
   const showReviewerDesk = hasRole('reviewer') || hasRole('super_admin') || hasRole('admin');
   const showRbac = hasPermission('roles.view-any');
@@ -322,6 +324,15 @@ export default function AdminLayout({ children }) {
                       >
                         <span className="w-1 h-1 rounded-full bg-current" />
                         <span>Magazine Tags</span>
+                      </Link>
+                    )}
+                    {showIssueManager && (
+                      <Link
+                        href="/admin/issues"
+                        className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/issues' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                      >
+                        <Newspaper className="w-3.5 h-3.5" />
+                        <span>Issue Manager</span>
                       </Link>
                     )}
                   </div>
