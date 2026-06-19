@@ -197,8 +197,12 @@ export default function AdminLayout({ children }) {
   const isProofreaderDeskActive = pathname ? pathname.startsWith('/admin/proofreader') : false;
   const isPublisherDeskActive = pathname ? pathname.startsWith('/admin/publisher') : false;
 
+  const isEditorRole = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
   const showIssueManager = hasRole('publisher') || hasRole('super_admin') || hasRole('admin');
-  const showMagazinePortal = showIssueManager || hasPermission('magazines.view-any') || hasPermission('magazines.view-own');
+  const showMagazineDirectory = hasPermission('magazines.view-any') || hasPermission('magazines.view-own');
+  const showArticleBoard = hasPermission('articles.view-any') || isEditorRole;
+  const showMagazineTags = hasRole('super_admin') || hasRole('admin');
+  const showMagazinePortal = showIssueManager || showMagazineDirectory || showArticleBoard || showMagazineTags;
   const showSubEditorDesk = hasRole('sub_editor') || hasRole('super_admin') || hasRole('admin');
   const showReviewerDesk = hasRole('reviewer') || hasRole('super_admin') || hasRole('admin');
   const showCopyEditorDesk = hasRole('copy_editor') || hasRole('super_admin') || hasRole('admin');
@@ -282,7 +286,7 @@ export default function AdminLayout({ children }) {
               <span>Console Overview</span>
             </Link>
 
-            {hasPermission('articles.view-own') && !hasPermission('articles.view-any') && (
+            {hasRole('author') && hasPermission('articles.view-own') && !hasPermission('articles.view-any') && (
               <Link
                 href="/admin/articles"
                 className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${pathname === '/admin/articles' ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
@@ -307,7 +311,7 @@ export default function AdminLayout({ children }) {
 
                 {magazineDropdownOpen && (
                   <div className="pl-4 pr-1 py-1 space-y-1 border-l border-zinc-800 ml-5 animate-in slide-in-from-top-1 duration-200">
-                    {(hasPermission('magazines.view-any') || hasPermission('magazines.view-own')) && (
+                    {showMagazineDirectory && (
                       <Link
                         href="/admin/magazines"
                         className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/magazines' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
@@ -316,7 +320,7 @@ export default function AdminLayout({ children }) {
                         <span>Magazines Directory</span>
                       </Link>
                     )}
-                    {(hasPermission('articles.view-any') || hasPermission('articles.view-own')) && (
+                    {showArticleBoard && (
                       <Link
                         href="/admin/articles"
                         className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/articles' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
@@ -325,7 +329,7 @@ export default function AdminLayout({ children }) {
                         <span>Magazine Articles</span>
                       </Link>
                     )}
-                    {(hasPermission('articles.view-any') || hasPermission('articles.view-own') || hasPermission('magazines.view-any') || hasPermission('magazines.view-own')) && (
+                    {showMagazineTags && (
                       <Link
                         href="/admin/magazines/tags"
                         className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/magazines/tags' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}

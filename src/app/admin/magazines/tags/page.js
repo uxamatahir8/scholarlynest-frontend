@@ -12,7 +12,8 @@ import Pagination from '../../../../components/ui/Pagination';
 
 export default function AdminMagazineTags() {
   const { toast } = useToast();
-  const { hasRole } = useAuth();
+  const { user, hasRole, loading: authLoading } = useAuth();
+  const canUseTagManager = hasRole('super_admin') || hasRole('admin');
   const canDeleteRecords = hasRole('super_admin');
 
   const [magazines, setMagazines] = useState([]);
@@ -49,6 +50,7 @@ export default function AdminMagazineTags() {
 
   // Fetch Magazines
   const fetchMagazines = async () => {
+    if (!canUseTagManager) return;
     try {
       setLoadingMagazines(true);
       const response = await api.get('/magazines', { params: { all: true } });
@@ -66,6 +68,7 @@ export default function AdminMagazineTags() {
 
   // Fetch Tags
   const fetchTags = async () => {
+    if (!canUseTagManager) return;
     try {
       setLoadingTags(true);
       setError(null);

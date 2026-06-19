@@ -30,6 +30,7 @@ export default function AdminMagazines() {
   const { toast } = useToast();
   const { user, hasPermission, hasRole, loading: authLoading } = useAuth();
   const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const canManageMagazinePages = hasRole('super_admin') || hasRole('admin') || isEditor;
   const canDeleteRecords = hasRole('super_admin');
   
   const [magazines, setMagazines] = useState([]);
@@ -69,7 +70,7 @@ export default function AdminMagazines() {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get('/magazines', {
+      const response = await api.get('/admin/magazines', {
         params: { page, per_page: 8 }
       });
       setMagazines(response.data.data || []);
@@ -302,7 +303,7 @@ export default function AdminMagazines() {
               >
                 {/* Header image cover preview */}
                 <Link 
-                  href={`/admin/magazines/${mag.slug}/pages`}
+                  href={canManageMagazinePages ? `/admin/magazines/${mag.slug}/pages` : `/magazines/${mag.slug}`}
                   className="block h-40 w-full relative bg-[var(--background)] border-b border-[var(--muted-border)]/60 overflow-hidden cursor-pointer"
                 >
                   {mag.cover_image ? (
@@ -320,20 +321,22 @@ export default function AdminMagazines() {
                 {/* Body */}
                 <div className="p-5 flex-grow flex flex-col justify-between space-y-4">
                   <div className="space-y-1">
-                    <Link href={`/admin/magazines/${mag.slug}/pages`} className="block hover:underline">
+                    <Link href={canManageMagazinePages ? `/admin/magazines/${mag.slug}/pages` : `/magazines/${mag.slug}`} className="block hover:underline">
                       <h3 className="text-base font-bold text-[var(--foreground)] leading-snug line-clamp-1 cursor-pointer">{mag.title}</h3>
                     </Link>
                     <p className="text-xs text-[var(--muted)] line-clamp-2 leading-relaxed font-medium">{mag.description || 'No description summary drafted.'}</p>
                   </div>
 
                   <div className="flex items-center space-x-2 pt-2 border-t border-[var(--muted-border)]/50">
-                    <Link 
-                      href={`/admin/magazines/${mag.slug}/pages`}
-                      className="flex-1 inline-flex items-center justify-center space-x-1.5 px-3 py-2 rounded-lg bg-[var(--background)] hover:bg-[var(--foreground)]/5 text-[var(--foreground)] text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer border border-[var(--muted-border)]"
-                    >
-                      <Settings className="w-3.5 h-3.5 text-[var(--accent-gold)]" />
-                      <span>Pages</span>
-                    </Link>
+                    {canManageMagazinePages && (
+                      <Link 
+                        href={`/admin/magazines/${mag.slug}/pages`}
+                        className="flex-1 inline-flex items-center justify-center space-x-1.5 px-3 py-2 rounded-lg bg-[var(--background)] hover:bg-[var(--foreground)]/5 text-[var(--foreground)] text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer border border-[var(--muted-border)]"
+                      >
+                        <Settings className="w-3.5 h-3.5 text-[var(--accent-gold)]" />
+                        <span>Pages</span>
+                      </Link>
+                    )}
                     <Link 
                       href={`/magazines/${mag.slug}`}
                       target="_blank"

@@ -28,8 +28,9 @@ export default function AdminMagazinePages() {
   const router = useRouter();
   const slug = params ? params.slug : null;
   const { toast } = useToast();
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, loading: authLoading } = useAuth();
   const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const canManageMagazinePages = hasRole('super_admin') || hasRole('admin') || isEditor;
   const canDeleteRecords = hasRole('super_admin');
 
   const [magazine, setMagazine] = useState(null);
@@ -51,11 +52,15 @@ export default function AdminMagazinePages() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const fetchMagazineDetails = async () => {
-    if (!slug) return;
+    if (!slug || authLoading || !user) return;
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get(`/magazines/${slug}`);
+      if (!canManageMagazinePages) {
+        setError('You do not have access to magazine page management.');
+        return;
+      }
+      const response = await api.get(`/admin/magazines/${slug}`);
       setMagazine(response.data);
     } catch (err) {
       console.error(err);
@@ -67,7 +72,7 @@ export default function AdminMagazinePages() {
 
   useEffect(() => {
     fetchMagazineDetails();
-  }, [slug]);
+  }, [slug, user, authLoading, canManageMagazinePages]);
 
   const openCreateModal = () => {
     setModalMode('create');
