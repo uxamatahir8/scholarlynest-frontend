@@ -22,7 +22,9 @@ import {
   Settings,
   Mail,
   MessageSquare,
-  Loader2
+  Loader2,
+  ClipboardCheck,
+  UserCheck
 } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
@@ -186,8 +188,12 @@ export default function AdminLayout({ children }) {
   const isRbacActive = pathname ? pathname.startsWith('/admin/rbac') : false;
   const isCmsActive = pathname ? (pathname.startsWith('/admin/cms') || pathname.startsWith('/admin/footer-cms')) : false;
   const isMagazineActive = pathname ? (pathname.startsWith('/admin/magazines') || pathname.startsWith('/admin/articles')) : false;
+  const isSubEditorDeskActive = pathname ? pathname.startsWith('/admin/sub-editor') : false;
+  const isReviewerDeskActive = pathname ? pathname.startsWith('/admin/reviewer') : false;
 
   const showMagazinePortal = hasPermission('magazines.view-any') || hasPermission('magazines.view-own') || hasPermission('articles.view-any') || hasPermission('articles.view-own');
+  const showSubEditorDesk = hasRole('sub_editor') || hasRole('super_admin') || hasRole('admin');
+  const showReviewerDesk = hasRole('reviewer') || hasRole('super_admin') || hasRole('admin');
   const showRbac = hasPermission('roles.view-any');
   const showContactSettings = hasPermission('settings.view-any') || hasPermission('settings.manage') || hasPermission('footer.manage');
   const showContactMessages = hasPermission('settings.view-any') || hasPermission('settings.manage') || hasPermission('footer.manage');
@@ -321,6 +327,26 @@ export default function AdminLayout({ children }) {
                   </div>
                 )}
               </div>
+            )}
+
+            {showSubEditorDesk && (
+              <Link
+                href="/admin/sub-editor"
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isSubEditorDeskActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
+              >
+                <ClipboardCheck className="w-4 h-4" />
+                <span>Sub Editor Desk</span>
+              </Link>
+            )}
+
+            {showReviewerDesk && (
+              <Link
+                href="/admin/reviewer"
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isReviewerDeskActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
+              >
+                <UserCheck className="w-4 h-4" />
+                <span>Reviewer Desk</span>
+              </Link>
             )}
 
             {showRbac && (

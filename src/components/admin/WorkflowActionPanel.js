@@ -316,33 +316,53 @@ export default function WorkflowActionPanel({
         </section>
       )}
 
-      {isReviewer && myReviewerAssignment && (
+      {isSubEditor && mySubEditorAssignment && mySubEditorAssignment.status === 'completed' && (
+        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
+          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Sub Editor Recommendation</h4>
+          <p className="text-xs text-zinc-500">This recommendation has already been submitted. It can be edited only if the Editor reopens the assignment.</p>
+        </section>
+      )}
+
+      {isReviewer && myReviewerAssignment && myReviewerAssignment.status === 'completed' && (
+        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
+          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Reviewer Scorecard</h4>
+          <p className="text-xs text-zinc-500">This review has already been submitted. It can be edited only if the Editor reopens the assignment.</p>
+        </section>
+      )}
+
+      {isReviewer && myReviewerAssignment && myReviewerAssignment.status !== 'completed' && (
         <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
           <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Reviewer Scorecard</h4>
           {myReviewerAssignment.status === 'pending' && (
             <PanelButton icon={CheckCircle2} loading={busyAction === 'accept-review'} onClick={() => runAction('accept-review', () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/accept`), 'Review assignment accepted.')}>Accept Review</PanelButton>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <select value={reviewForm.recommendation} onChange={(e) => setReviewForm({ ...reviewForm, recommendation: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-              {recommendationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-            {['originality', 'methodology', 'citation_accuracy'].map((key) => (
-              <input key={key} type="number" min="1" max="5" value={reviewForm[key]} onChange={(e) => setReviewForm({ ...reviewForm, [key]: Number(e.target.value) })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" placeholder={key.replaceAll('_', ' ')} />
-            ))}
-          </div>
-          <textarea value={reviewForm.comments_for_author} onChange={(e) => setReviewForm({ ...reviewForm, comments_for_author: e.target.value })} rows={2} placeholder="Comments for author..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-          <textarea value={reviewForm.confidential_comments} onChange={(e) => setReviewForm({ ...reviewForm, confidential_comments: e.target.value })} rows={2} placeholder="Confidential comments for editor..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-          {fileInput('reviewed_manuscript', 'Reviewed Manuscript')}
-          <PanelButton loading={busyAction === 'submit-review'} onClick={() => runAction('submit-review', () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/submit-review`, buildFormData({
-            recommendation: reviewForm.recommendation,
-            comments_for_author: reviewForm.comments_for_author,
-            confidential_comments: reviewForm.confidential_comments,
-            scorecard: {
-              originality: reviewForm.originality,
-              methodology: reviewForm.methodology,
-              citation_accuracy: reviewForm.citation_accuracy,
-            },
-          }, { reviewed_manuscript: files.reviewed_manuscript }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Review submitted.')}>Submit Review</PanelButton>
+          {myReviewerAssignment.status === 'pending' ? (
+            <p className="text-xs text-zinc-500">Accept the invitation before submitting the review.</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <select value={reviewForm.recommendation} onChange={(e) => setReviewForm({ ...reviewForm, recommendation: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+                  {recommendationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+                {['originality', 'methodology', 'citation_accuracy'].map((key) => (
+                  <input key={key} type="number" min="1" max="5" value={reviewForm[key]} onChange={(e) => setReviewForm({ ...reviewForm, [key]: Number(e.target.value) })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" placeholder={key.replaceAll('_', ' ')} />
+                ))}
+              </div>
+              <textarea value={reviewForm.comments_for_author} onChange={(e) => setReviewForm({ ...reviewForm, comments_for_author: e.target.value })} rows={2} placeholder="Comments for author..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
+              <textarea value={reviewForm.confidential_comments} onChange={(e) => setReviewForm({ ...reviewForm, confidential_comments: e.target.value })} rows={2} placeholder="Confidential comments for editor..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
+              {fileInput('reviewed_manuscript', 'Reviewed Manuscript')}
+              <PanelButton loading={busyAction === 'submit-review'} onClick={() => runAction('submit-review', () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/submit-review`, buildFormData({
+                recommendation: reviewForm.recommendation,
+                comments_for_author: reviewForm.comments_for_author,
+                confidential_comments: reviewForm.confidential_comments,
+                scorecard: {
+                  originality: reviewForm.originality,
+                  methodology: reviewForm.methodology,
+                  citation_accuracy: reviewForm.citation_accuracy,
+                },
+              }, { reviewed_manuscript: files.reviewed_manuscript }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Review submitted.')}>Submit Review</PanelButton>
+            </>
+          )}
         </section>
       )}
 
