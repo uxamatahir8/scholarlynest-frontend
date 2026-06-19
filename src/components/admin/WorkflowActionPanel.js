@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Check, CheckCircle2, ClipboardCheck, FileCheck2, Loader2, Send, UserPlus } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, ClipboardCheck, Download, FileCheck2, Loader2, Send, Upload, UserPlus } from 'lucide-react';
 import api from '../../utils/api';
 import {
   PUBLISHABLE_STATUSES,
@@ -57,6 +57,14 @@ function PanelButton({ children, icon: Icon = Send, loading, ...props }) {
   );
 }
 
+function fileDownloadUrl(path) {
+  if (!path) return '#';
+  if (path.startsWith('http')) return path;
+  const apiBase = (api.defaults.baseURL || '').replace(/\/$/, '');
+  const suffix = path.startsWith('/api/') ? path.replace(/^\/api/, '') : path;
+  return `${apiBase}${suffix}`;
+}
+
 export default function WorkflowActionPanel({
   article,
   workflowContext,
@@ -78,6 +86,12 @@ export default function WorkflowActionPanel({
   const [reviewForm, setReviewForm] = useState({ recommendation: 'minor_revision', comments_for_author: '', confidential_comments: '', originality: 3, methodology: 3, citation_accuracy: 3 });
   const [decisionForm, setDecisionForm] = useState({ decision: 'accepted', decision_source: 'mixed_editorial_decision', comments_for_author: '', internal_notes: '' });
   const [postForm, setPostForm] = useState({ action_type: 'correction', reason: '', notice_text: '' });
+  const [files, setFiles] = useState({
+    plagiarism_report: null,
+    annotated_manuscript: null,
+    reviewed_manuscript: null,
+    production_file: null,
+  });
 
   const isAdmin = hasRole('super_admin') || hasRole('admin');
   const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
@@ -157,6 +171,30 @@ export default function WorkflowActionPanel({
     }
   };
 
+  const buildFormData = (payload, fileMap = {}) => {
+    const formData = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        formData.append(key, typeof value === 'object' && !(value instanceof File) ? JSON.stringify(value) : value);
+      }
+    });
+    Object.entries(fileMap).forEach(([key, file]) => {
+      if (file) formData.append(key, file);
+    });
+    return formData;
+  };
+
+  const fileInput = (key, label) => (
+    <div className="space-y-1">
+      <FieldLabel>{label}</FieldLabel>
+      <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 cursor-pointer">
+        <Upload className="w-3.5 h-3.5" />
+        <span>{files[key]?.name || 'Choose file'}</span>
+        <input type="file" className="hidden" onChange={(e) => setFiles((prev) => ({ ...prev, [key]: e.target.files?.[0] || null }))} />
+      </label>
+    </div>
+  );
+
   const hasScreeningFields = screenForm.decision === 'reject' ? screenForm.comments.trim() : true;
   const canScreen = canEditorial && ['submitted', 'pending'].includes(article.status);
   const canFinalDecision = canEditorial && REVIEWABLE_STATUSES.has(article.status);
@@ -207,14 +245,15 @@ export default function WorkflowActionPanel({
             </div>
           </div>
           <textarea value={screenForm.comments} onChange={(e) => setScreenForm({ ...screenForm, comments: e.target.value })} placeholder="Screening notes or rejection reason..." rows={2} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
+          {fileInput('plagiarism_report', 'Plagiarism Report')}
           <PanelButton
             icon={ClipboardCheck}
             loading={busyAction === 'screen'}
             disabled={!hasScreeningFields}
-            onClick={() => runAction('screen', () => api.post(`/admin/articles/${article.id}/screen`, {
+            onClick={() => runAction('screen', () => api.post(`/admin/articles/${article.id}/screen`, buildFormData({
               ...screenForm,
               plagiarism_score: screenForm.plagiarism_score === '' ? null : Number(screenForm.plagiarism_score),
-            }), 'Screening result saved.')}
+            }, { plagiarism_report: files.plagiarism_report }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Screening result saved.')}
           >
             Save Screening
           </PanelButton>
@@ -272,7 +311,8 @@ export default function WorkflowActionPanel({
           </select>
           <textarea value={subEditorForm.comments} onChange={(e) => setSubEditorForm({ ...subEditorForm, comments: e.target.value })} rows={2} placeholder="Comments for author..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
           <textarea value={subEditorForm.internal_notes} onChange={(e) => setSubEditorForm({ ...subEditorForm, internal_notes: e.target.value })} rows={2} placeholder="Internal notes for editor..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-          <PanelButton loading={busyAction === 'sub-editor-recommendation'} onClick={() => runAction('sub-editor-recommendation', () => api.post(`/admin/sub-editor-assignments/${mySubEditorAssignment.id}/submit-recommendation`, subEditorForm), 'Recommendation submitted.')}>Submit Recommendation</PanelButton>
+          {fileInput('annotated_manuscript', 'Annotated Manuscript')}
+          <PanelButton loading={busyAction === 'sub-editor-recommendation'} onClick={() => runAction('sub-editor-recommendation', () => api.post(`/admin/sub-editor-assignments/${mySubEditorAssignment.id}/submit-recommendation`, buildFormData(subEditorForm, { annotated_manuscript: files.annotated_manuscript }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Recommendation submitted.')}>Submit Recommendation</PanelButton>
         </section>
       )}
 
@@ -292,7 +332,8 @@ export default function WorkflowActionPanel({
           </div>
           <textarea value={reviewForm.comments_for_author} onChange={(e) => setReviewForm({ ...reviewForm, comments_for_author: e.target.value })} rows={2} placeholder="Comments for author..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
           <textarea value={reviewForm.confidential_comments} onChange={(e) => setReviewForm({ ...reviewForm, confidential_comments: e.target.value })} rows={2} placeholder="Confidential comments for editor..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-          <PanelButton loading={busyAction === 'submit-review'} onClick={() => runAction('submit-review', () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/submit-review`, {
+          {fileInput('reviewed_manuscript', 'Reviewed Manuscript')}
+          <PanelButton loading={busyAction === 'submit-review'} onClick={() => runAction('submit-review', () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/submit-review`, buildFormData({
             recommendation: reviewForm.recommendation,
             comments_for_author: reviewForm.comments_for_author,
             confidential_comments: reviewForm.confidential_comments,
@@ -301,7 +342,7 @@ export default function WorkflowActionPanel({
               methodology: reviewForm.methodology,
               citation_accuracy: reviewForm.citation_accuracy,
             },
-          }), 'Review submitted.')}>Submit Review</PanelButton>
+          }, { reviewed_manuscript: files.reviewed_manuscript }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Review submitted.')}>Submit Review</PanelButton>
         </section>
       )}
 
@@ -355,7 +396,8 @@ export default function WorkflowActionPanel({
         <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
           <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">My Production Task</h4>
           <p className="text-xs text-zinc-500">Current task: {myProductionAssignment.role?.replaceAll('_', ' ')} ({myProductionAssignment.status})</p>
-          <PanelButton icon={Check} loading={busyAction === 'complete-production'} onClick={() => runAction('complete-production', () => api.post(`/admin/production-assignments/${myProductionAssignment.id}/complete`), 'Production task completed.')}>Complete Task</PanelButton>
+          {fileInput('production_file', myProductionAssignment.role === 'proofreader' ? 'Proof File' : 'Copy-Edited File')}
+          <PanelButton icon={Check} loading={busyAction === 'complete-production'} onClick={() => runAction('complete-production', () => api.post(`/admin/production-assignments/${myProductionAssignment.id}/complete`, buildFormData({}, { production_file: files.production_file }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Production task completed.')}>Complete Task</PanelButton>
         </section>
       )}
 
@@ -379,10 +421,28 @@ export default function WorkflowActionPanel({
         </section>
       )}
 
-      <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850">
-        <p className="text-[10px] text-zinc-450 leading-relaxed">
-          File upload controls for annotated, reviewed, copy-edited, proof, and publication files are hidden until the backend exposes `article_files` upload endpoints.
-        </p>
+      <div className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
+        <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Article Files</h4>
+        {(article.files || []).length === 0 ? (
+          <p className="text-xs text-zinc-500">No files are visible for your role.</p>
+        ) : (
+          <div className="space-y-2">
+            {(article.files || []).map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-850">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">{item.original_name}</p>
+                  <p className="text-[10px] text-zinc-450 font-mono">
+                    {item.file_type?.replaceAll('_', ' ')} · {item.uploader?.name || 'Unknown'} · {item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}
+                  </p>
+                </div>
+                <a href={fileDownloadUrl(item.download_url)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 hover:underline">
+                  <Download className="w-3.5 h-3.5" />
+                  Open
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

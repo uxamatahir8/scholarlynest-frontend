@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Calendar, CheckCircle2, Loader2, X } from 'lucide-react';
+import { Calendar, CheckCircle2, Loader2, Upload, X } from 'lucide-react';
 import api from '../../utils/api';
 
 export default function PublishArticleModal({ isOpen, onClose, onSubmit, articleTitle, magazineId }) {
@@ -12,6 +12,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
   const [doi, setDoi] = useState('');
   const [pageStart, setPageStart] = useState('');
   const [pageEnd, setPageEnd] = useState('');
+  const [publicationPdf, setPublicationPdf] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -53,7 +54,8 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
         magazine_issue_id: magazineIssueId ? parseInt(magazineIssueId, 10) : null,
         doi: doi.trim() || null,
         page_start: pageStart ? parseInt(pageStart, 10) : null,
-        page_end: pageEnd ? parseInt(pageEnd, 10) : null
+        page_end: pageEnd ? parseInt(pageEnd, 10) : null,
+        publication_pdf: publicationPdf,
       });
     } catch (err) {
       console.error(err);
@@ -204,6 +206,17 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
                   className="w-full text-xs font-semibold px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">
+                Final Publication PDF
+              </label>
+              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 cursor-pointer">
+                <Upload className="w-3.5 h-3.5" />
+                <span>{publicationPdf?.name || 'Choose PDF'}</span>
+                <input type="file" accept="application/pdf" className="hidden" onChange={(e) => setPublicationPdf(e.target.files?.[0] || null)} />
+              </label>
             </div>
           </div>
 

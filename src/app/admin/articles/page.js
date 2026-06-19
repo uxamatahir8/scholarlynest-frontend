@@ -64,16 +64,18 @@ export default function AdminArticlesBoard() {
 
   const handlePublishSubmit = async (publishData) => {
     try {
-      const payload = {
-        published_year: publishData.published_year,
-        published_month: publishData.published_month,
-        magazine_issue_id: publishData.magazine_issue_id,
-        doi: publishData.doi,
-        page_start: publishData.page_start,
-        page_end: publishData.page_end
-      };
+      const payload = new FormData();
+      payload.append('published_year', publishData.published_year);
+      payload.append('published_month', publishData.published_month);
+      if (publishData.magazine_issue_id) payload.append('magazine_issue_id', publishData.magazine_issue_id);
+      if (publishData.doi) payload.append('doi', publishData.doi);
+      if (publishData.page_start) payload.append('page_start', publishData.page_start);
+      if (publishData.page_end) payload.append('page_end', publishData.page_end);
+      if (publishData.publication_pdf) payload.append('publication_pdf', publishData.publication_pdf);
 
-      await api.post(`/admin/articles/${articleToPublish.id}/publish`, payload);
+      await api.post(`/admin/articles/${articleToPublish.id}/publish`, payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       
       toast(`Article published successfully for ${publishData.published_month} ${publishData.published_year}.`, 'success');
       setIsPublishModalOpen(false);
@@ -193,7 +195,8 @@ export default function AdminArticlesBoard() {
     setLoadingWorkflow(true);
     try {
       const res = await api.get(`/admin/articles/${article.id}/workflow`);
-      setWorkflowContext(res.data?.article || null);
+      const nextArticle = res.data?.article ? { ...res.data.article, files: res.data.files || res.data.article.files || [] } : null;
+      setWorkflowContext(nextArticle);
     } catch (err) {
       console.error('Failed to load workflow context', err);
     } finally {
@@ -206,7 +209,7 @@ export default function AdminArticlesBoard() {
     if (!articleId) return;
 
     const res = await api.get(`/admin/articles/${articleId}/workflow`);
-    const nextArticle = res.data?.article || null;
+    const nextArticle = res.data?.article ? { ...res.data.article, files: res.data.files || res.data.article.files || [] } : null;
     setWorkflowContext(nextArticle);
     if (nextArticle) {
       setSelectedArticle((prev) => ({ ...prev, ...nextArticle }));
