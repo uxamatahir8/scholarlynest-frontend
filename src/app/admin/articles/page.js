@@ -112,7 +112,8 @@ export default function AdminArticlesBoard() {
     const fetchMagazines = async () => {
       try {
         setLoadingMagazines(true);
-        const response = await api.get('/magazines', { params: { all: true } });
+        const endpoint = hasPermission('magazines.view-any') || hasPermission('magazines.view-own') ? '/admin/magazines' : '/magazines';
+        const response = await api.get(endpoint, { params: { all: true } });
         setMagazines(response.data || []);
       } catch (err) {
         console.error('Failed to fetch magazines for filter', err);
@@ -121,7 +122,7 @@ export default function AdminArticlesBoard() {
       }
     };
     fetchMagazines();
-  }, []);
+  }, [hasPermission]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -471,13 +472,13 @@ export default function AdminArticlesBoard() {
                         </button>
                       )}
 
-                      <button
-                        onClick={() => openReviewModal(art)}
+                      <Link
+                        href={`/admin/articles/${art.id}/workflow`}
                         className="inline-flex items-center space-x-1.5 text-[10px] font-bold uppercase text-amber-600 hover:underline cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
-                        <span>{isAdminOrEditor ? "Review" : "View"}</span>
-                      </button>
+                        <span>{isAdminOrEditor ? "Manage Workflow" : "View Workflow"}</span>
+                      </Link>
 
                       {art.pdf_path && (
                         <a

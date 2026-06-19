@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Calendar, CheckCircle2, ClipboardCheck, FileText, Loader2, RefreshCw } from 'lucide-react';
 import api from '../../utils/api';
@@ -181,6 +182,15 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
             <ClipboardCheck className="h-3.5 w-3.5" />
             {history ? 'View Task' : 'Open Task'}
           </button>
+          {article.id && (
+            <Link
+              href={`/admin/articles/${article.id}/workflow`}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-700 transition-colors hover:bg-amber-500/[0.1]"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Open Workflow
+            </Link>
+          )}
           {isReviewerDashboard && assignment.status === 'pending' && (
             <button
               type="button"
