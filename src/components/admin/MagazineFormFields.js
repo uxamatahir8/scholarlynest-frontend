@@ -8,7 +8,7 @@ export default function MagazineFormFields({ value, onChange, disabled = false }
   useEffect(() => {
     const fetchEditors = async () => {
       try {
-        const res = await api.get('/admin/users?role=magazine_editor');
+        const res = await api.get('/admin/users?role=editor');
         setEditors(res.data || []);
       } catch (err) {
         console.error('Failed to fetch magazine editors', err);

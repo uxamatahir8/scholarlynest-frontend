@@ -42,6 +42,10 @@ export default function AdminNewArticle() {
   const [coAuthors, setCoAuthors] = useState([]);
   const [academicMetadata, setAcademicMetadata] = useState(emptyAcademicMetadata);
   const [magazines, setMagazines] = useState([]);
+  const [articleTypes, setArticleTypes] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [subjectAreas, setSubjectAreas] = useState([]);
+  const [languages, setLanguages] = useState([]);
   const [loadingMagazines, setLoadingMagazines] = useState(true);
   const [supplementaryFiles, setSupplementaryFiles] = useState([]);
   const [savingStatus, setSavingStatus] = useState('');
@@ -66,10 +70,7 @@ export default function AdminNewArticle() {
     }
   }, [canAutoApprove]);
 
-  useEffect(() => {
-    if (!user || isSuperAdmin || coAuthors.length > 0) return;
-    setCoAuthors([currentUserAuthor(user)]);
-  }, [user, isSuperAdmin, coAuthors.length]);
+
 
   const updateAcademicMetadata = (field, value) => {
     setAcademicMetadata((prev) => ({ ...prev, [field]: value }));
@@ -110,6 +111,44 @@ export default function AdminNewArticle() {
       }
     };
     fetchMagazinesList();
+  }, []);
+
+  useEffect(() => {
+    const fetchClassifications = async () => {
+      try {
+        const [typesRes, catsRes, areasRes, langsRes] = await Promise.all([
+          api.get('/article-types?active_only=1'),
+          api.get('/article-categories?active_only=1'),
+          api.get('/subject-areas?active_only=1'),
+          api.get('/languages?active_only=1')
+        ]);
+        setArticleTypes(typesRes.data || []);
+        setCategories(catsRes.data || []);
+        setSubjectAreas(areasRes.data || []);
+        setLanguages(langsRes.data || []);
+
+        setAcademicMetadata(prev => {
+          const updated = { ...prev };
+          if (typesRes.data?.length > 0 && !updated.articleType) {
+            updated.articleType = typesRes.data[0].name;
+          }
+          if (catsRes.data?.length > 0 && !updated.articleCategory) {
+            updated.articleCategory = catsRes.data[0].name;
+          }
+          if (areasRes.data?.length > 0 && !updated.subjectArea) {
+            updated.subjectArea = areasRes.data[0].name;
+          }
+          if (langsRes.data?.length > 0 && (!updated.language || updated.language === 'English')) {
+            const englishLang = langsRes.data.find(l => l.name.toLowerCase() === 'english' || l.name.toLowerCase() === 'en');
+            updated.language = englishLang ? englishLang.name : langsRes.data[0].name;
+          }
+          return updated;
+        });
+      } catch (err) {
+        console.error('Failed to load classifications', err);
+      }
+    };
+    fetchClassifications();
   }, []);
 
   // Fetch Tags when magazine changes
@@ -378,19 +417,63 @@ export default function AdminNewArticle() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-1">
               <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Article Type</label>
-              <input value={academicMetadata.articleType} onChange={(e) => updateAcademicMetadata('articleType', e.target.value)} placeholder="Research Article" className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200" />
+              <select
+                value={academicMetadata.articleType}
+                onChange={(e) => updateAcademicMetadata('articleType', e.target.value)}
+                className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200"
+              >
+                {articleTypes.map(t => (
+                  <option key={t.id} value={t.name}>{t.name}</option>
+                ))}
+                {academicMetadata.articleType && !articleTypes.some(t => t.name === academicMetadata.articleType) && (
+                  <option value={academicMetadata.articleType}>{academicMetadata.articleType}</option>
+                )}
+              </select>
             </div>
             <div className="space-y-1">
               <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Category</label>
-              <input value={academicMetadata.articleCategory} onChange={(e) => updateAcademicMetadata('articleCategory', e.target.value)} placeholder="Original Research" className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200" />
+              <select
+                value={academicMetadata.articleCategory}
+                onChange={(e) => updateAcademicMetadata('articleCategory', e.target.value)}
+                className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200"
+              >
+                {categories.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
+                {academicMetadata.articleCategory && !categories.some(c => c.name === academicMetadata.articleCategory) && (
+                  <option value={academicMetadata.articleCategory}>{academicMetadata.articleCategory}</option>
+                )}
+              </select>
             </div>
             <div className="space-y-1">
               <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Subject Area</label>
-              <input value={academicMetadata.subjectArea} onChange={(e) => updateAcademicMetadata('subjectArea', e.target.value)} placeholder="Biomedical Engineering" className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200" />
+              <select
+                value={academicMetadata.subjectArea}
+                onChange={(e) => updateAcademicMetadata('subjectArea', e.target.value)}
+                className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200"
+              >
+                {subjectAreas.map(sa => (
+                  <option key={sa.id} value={sa.name}>{sa.name}</option>
+                ))}
+                {academicMetadata.subjectArea && !subjectAreas.some(sa => sa.name === academicMetadata.subjectArea) && (
+                  <option value={academicMetadata.subjectArea}>{academicMetadata.subjectArea}</option>
+                )}
+              </select>
             </div>
             <div className="space-y-1">
               <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Language</label>
-              <input value={academicMetadata.language} onChange={(e) => updateAcademicMetadata('language', e.target.value)} placeholder="English" className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200" />
+              <select
+                value={academicMetadata.language}
+                onChange={(e) => updateAcademicMetadata('language', e.target.value)}
+                className="w-full text-xs font-semibold px-3 py-2.5 bg-white dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 text-zinc-900 dark:text-zinc-200"
+              >
+                {languages.map(l => (
+                  <option key={l.id} value={l.name}>{l.name}</option>
+                ))}
+                {academicMetadata.language && !languages.some(l => l.name === academicMetadata.language) && (
+                  <option value={academicMetadata.language}>{academicMetadata.language}</option>
+                )}
+              </select>
             </div>
           </div>
 

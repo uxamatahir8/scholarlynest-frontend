@@ -62,29 +62,23 @@ export function validateAuthors(authors, { isSuperAdmin, user }) {
   const normalized = normalizeAuthorRows(authors).filter(author => author.name.trim() || author.email.trim());
   const emails = normalized.map(author => author.email).filter(Boolean);
 
-  if (normalized.length === 0) {
-    errors.coAuthors = 'At least one author is required.';
+  if (isSuperAdmin) {
+    if (normalized.length === 0) {
+      errors.coAuthors = 'At least one author is required.';
+    }
+
+    const ownerCount = normalized.filter(author => author.is_owner).length;
+    if (ownerCount !== 1) {
+      errors.coAuthors = 'Exactly one article owner is required.';
+    }
+
+    if (normalized.filter(author => author.is_corresponding).length < 1) {
+      errors.coAuthors = 'At least one corresponding author is required.';
+    }
   }
 
   if (emails.length !== new Set(emails).size) {
     errors.coAuthors = 'Author emails must be unique.';
-  }
-
-  const ownerCount = normalized.filter(author => author.is_owner).length;
-  if (ownerCount !== 1) {
-    errors.coAuthors = 'Exactly one article owner is required.';
-  }
-
-  if (normalized.filter(author => author.is_corresponding).length < 1) {
-    errors.coAuthors = 'At least one corresponding author is required.';
-  }
-
-  if (!isSuperAdmin) {
-    const currentEmail = (user?.email || '').trim().toLowerCase();
-    const owner = normalized.find(author => author.is_owner);
-    if (!owner || owner.email !== currentEmail) {
-      errors.coAuthors = 'The submitting author must be the article owner.';
-    }
   }
 
   return errors;

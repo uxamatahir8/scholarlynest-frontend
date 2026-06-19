@@ -92,7 +92,7 @@ export default function AdminOverview() {
             <Link href="/login" className="font-bold underline text-amber-600 dark:text-amber-400">
               sign in
             </Link>{' '}
-            to view your publisher dashboard.
+            to view your {isAdminOrEditor ? 'publisher' : 'author'} dashboard.
           </p>
         </div>
       </div>
@@ -115,7 +115,7 @@ export default function AdminOverview() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300 text-left font-sans">
-      <title>Publisher Dashboard - ScholarlyNest</title>
+      <title>{isAdminOrEditor ? 'Publisher Dashboard' : 'Author Dashboard'} - ScholarlyNest</title>
       
       {/* Decorative top modal check */}
       <UniversityGateModal />

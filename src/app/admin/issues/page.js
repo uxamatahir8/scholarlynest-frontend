@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { BookOpen, Calendar, CheckCircle2, FileText, Loader2, RefreshCw, Upload } from 'lucide-react';
 import api from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
@@ -30,6 +30,7 @@ function statusBadge(status) {
 export default function PublisherIssuesPage() {
   const { user, loading: authLoading, hasRole } = useAuth();
   const { toast } = useToast();
+  const formRef = useRef(null);
   const [issues, setIssues] = useState([]);
   const [magazines, setMagazines] = useState([]);
   const [eligibleArticles, setEligibleArticles] = useState([]);
@@ -95,6 +96,9 @@ export default function PublisherIssuesPage() {
   const resetForm = () => {
     setIssueForm({ ...emptyIssueForm, magazine_id: magazines[0]?.id ? String(magazines[0].id) : '' });
     setSelectedIssueId('');
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   };
 
   const editIssue = (issue) => {
@@ -111,6 +115,9 @@ export default function PublisherIssuesPage() {
       status: issue.status || (issue.is_published ? 'published' : 'draft'),
       cover_image: null,
     });
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   };
 
   const saveIssue = async (e) => {
@@ -245,7 +252,7 @@ export default function PublisherIssuesPage() {
         </section>
 
         <section className="space-y-6">
-          <form onSubmit={saveIssue} className="rounded-xl border border-zinc-150 bg-white p-5 shadow-sm dark:border-zinc-850 dark:bg-zinc-900 space-y-4">
+          <form ref={formRef} onSubmit={saveIssue} className="rounded-xl border border-zinc-150 bg-white p-5 shadow-sm dark:border-zinc-850 dark:bg-zinc-900 space-y-4">
             <div className="flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-amber-600" />
               <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">{issueForm.id ? 'Edit Issue' : 'Create Issue'}</h2>

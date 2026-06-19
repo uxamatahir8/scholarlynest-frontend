@@ -27,7 +27,10 @@ import {
   UserCheck,
   Newspaper,
   BriefcaseBusiness,
-  FileCheck2
+  FileCheck2,
+  Users,
+  Search,
+  ChevronDown
 } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
@@ -38,6 +41,9 @@ export default function AdminLayout({ children }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [cmsDropdownOpen, setCmsDropdownOpen] = useState(false);
   const [magazineDropdownOpen, setMagazineDropdownOpen] = useState(false);
+  const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [topSearchQuery, setTopSearchQuery] = useState('');
   const [notifications, setNotifications] = useState([
     { id: 1, title: 'Platform update deployed', desc: 'Sleek UI dynamically compiled globally.', time: '4h ago', unread: false },
   ]);
@@ -157,6 +163,12 @@ export default function AdminLayout({ children }) {
     router.push('/login');
   };
 
+  const handleSearchSubmit = () => {
+    if (topSearchQuery.trim()) {
+      router.push(`/admin/search-results?q=${encodeURIComponent(topSearchQuery.trim())}`);
+    }
+  };
+
   const markAllNotificationsRead = () => {
     setNotifications(notifications.map(n => ({ ...n, unread: false })));
   };
@@ -172,6 +184,9 @@ export default function AdminLayout({ children }) {
     }
     if (pathname && (pathname.startsWith('/admin/magazines') || pathname.startsWith('/admin/articles') || pathname.startsWith('/admin/issues'))) {
       setMagazineDropdownOpen(true);
+    }
+    if (pathname && pathname.startsWith('/admin/settings')) {
+      setSettingsDropdownOpen(true);
     }
   }, [pathname]);
 
@@ -196,13 +211,16 @@ export default function AdminLayout({ children }) {
   const isCopyEditorDeskActive = pathname ? pathname.startsWith('/admin/copy-editor') : false;
   const isProofreaderDeskActive = pathname ? pathname.startsWith('/admin/proofreader') : false;
   const isPublisherDeskActive = pathname ? pathname.startsWith('/admin/publisher') : false;
+  const isSettingsActive = pathname ? pathname.startsWith('/admin/settings') : false;
 
   const isEditorRole = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const showMySubEditors = isEditorRole || hasRole('super_admin') || hasRole('admin');
   const showIssueManager = hasRole('publisher') || hasRole('super_admin') || hasRole('admin');
-  const showMagazineDirectory = hasPermission('magazines.view-any') || hasPermission('magazines.view-own');
+  const showMagazineDirectory = (hasPermission('magazines.view-any') || hasPermission('magazines.view-own')) && !hasRole('author');
   const showArticleBoard = hasPermission('articles.view-any') || isEditorRole;
   const showMagazineTags = hasRole('super_admin') || hasRole('admin');
   const showMagazinePortal = showIssueManager || showMagazineDirectory || showArticleBoard || showMagazineTags;
+  const showAdvancedSettings = hasPermission('settings.manage') || hasRole('super_admin') || hasRole('admin');
   const showSubEditorDesk = hasRole('sub_editor') || hasRole('super_admin') || hasRole('admin');
   const showReviewerDesk = hasRole('reviewer') || hasRole('super_admin') || hasRole('admin');
   const showCopyEditorDesk = hasRole('copy_editor') || hasRole('super_admin') || hasRole('admin');
@@ -229,7 +247,7 @@ export default function AdminLayout({ children }) {
           PORTAL SIDEBAR (bg-zinc-900 slate framework)
           ========================================== */}
       <aside className={`
-        flex flex-col justify-between shrink-0 z-50 overflow-y-auto transition-all duration-300 ease-in-out bg-zinc-900 border-r border-zinc-800 text-zinc-300
+        flex flex-col shrink-0 z-50 transition-all duration-300 ease-in-out bg-zinc-900 border-r border-zinc-800 text-zinc-300 h-screen
         
         /* Mobile drawer overlay positioning */
         fixed top-0 bottom-0 left-0 w-64
@@ -239,8 +257,7 @@ export default function AdminLayout({ children }) {
         lg:relative lg:translate-x-0 lg:opacity-100 lg:pointer-events-auto
         ${sidebarOpen ? 'lg:w-64' : 'lg:w-0 lg:pointer-events-none lg:border-none'}
       `}>
-        
-        <div>
+
           {/* Header logo container */}
           <div className="h-20 px-6 border-b border-zinc-800/80 flex items-center justify-between">
             <Link href="/" className="flex items-center">
@@ -276,7 +293,8 @@ export default function AdminLayout({ children }) {
             </div>
           </div>
 
-          {/* Nav Links */}
+          {/* Scrollable Nav Links */}
+          <div className="flex-1 overflow-y-auto sidebar-scroll">
           <nav className="p-4 space-y-1.5 text-[10px] font-bold uppercase tracking-wider">
             <Link
               href="/admin"
@@ -359,6 +377,16 @@ export default function AdminLayout({ children }) {
               >
                 <ClipboardCheck className="w-4 h-4" />
                 <span>Sub Editor Desk</span>
+              </Link>
+            )}
+
+            {showMySubEditors && (
+              <Link
+                href="/admin/editor/sub-editors"
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${pathname === '/admin/editor/sub-editors' ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
+              >
+                <Users className="w-4 h-4" />
+                <span>My Sub Editors</span>
               </Link>
             )}
 
@@ -478,18 +506,73 @@ export default function AdminLayout({ children }) {
               </div>
             )}
 
-            <Link
-              href="/admin/settings"
-              className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${pathname === '/admin/settings' ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
-            >
-              <Settings className="w-4 h-4" />
-              <span>Security Settings</span>
-            </Link>
+            {showAdvancedSettings ? (
+              <div className="space-y-1">
+                <button
+                  onClick={() => setSettingsDropdownOpen(!settingsDropdownOpen)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 ${isSettingsActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Settings className="w-4 h-4" />
+                    <span>Settings</span>
+                  </div>
+                  <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${settingsDropdownOpen ? 'rotate-90 text-amber-500' : 'text-zinc-500'}`} />
+                </button>
+
+                {settingsDropdownOpen && (
+                  <div className="pl-4 pr-1 py-1 space-y-1 border-l border-zinc-800 ml-5 animate-in slide-in-from-top-1 duration-200">
+                    <Link
+                      href="/admin/settings"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/settings' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                      <span>Security Settings</span>
+                    </Link>
+                    <Link
+                      href="/admin/settings/types"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/settings/types' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                      <span>Article Types</span>
+                    </Link>
+                    <Link
+                      href="/admin/settings/categories"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/settings/categories' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                      <span>Categories</span>
+                    </Link>
+                    <Link
+                      href="/admin/settings/subject-areas"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/settings/subject-areas' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                      <span>Subject Areas</span>
+                    </Link>
+                    <Link
+                      href="/admin/settings/languages"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/settings/languages' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                      <span>Languages</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                href="/admin/settings"
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${pathname === '/admin/settings' ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
+              >
+                <Settings className="w-4 h-4" />
+                <span>Security Settings</span>
+              </Link>
+            )}
           </nav>
-        </div>
+          </div>
 
         {/* Bottom logout section */}
-        <div className="p-4 border-t border-zinc-800/80 bg-zinc-950/20">
+        <div className="p-4 border-t border-zinc-800/80 bg-zinc-950/20 shrink-0">
           <button
             onClick={handleLogout}
             className="w-full flex items-center space-x-3 px-3 py-3 rounded-xl text-[10px] font-bold text-red-500 hover:bg-red-500/10 hover:text-red-400 border border-transparent transition-colors cursor-pointer uppercase tracking-wider"
@@ -507,7 +590,7 @@ export default function AdminLayout({ children }) {
       <div className="flex-grow flex flex-col min-w-0 h-screen overflow-hidden z-10">
 
         {/* TOP BAR / PORTAL HEADER */}
-        <header className="h-20 border-b border-zinc-200/60 dark:border-zinc-900/60 px-6 sm:px-8 flex items-center justify-between sticky top-0 backdrop-blur-md bg-white/70 dark:bg-zinc-950/70 z-40">
+        <header className="py-5 border-b border-zinc-200/60 dark:border-zinc-900/60 px-6 sm:px-8 flex items-center justify-between sticky top-0 backdrop-blur-md bg-white/70 dark:bg-zinc-955/70 z-40">
 
           {/* Toggle button and breadcrumbs path */}
           <div className="flex items-center space-x-3">
@@ -526,6 +609,23 @@ export default function AdminLayout({ children }) {
                 {isOverviewActive ? 'Overview' : isRbacActive ? 'Access Control' : isCmsActive ? 'CMS Page Management' : isMagazineActive ? 'Magazine Portal' : isSubEditorDeskActive ? 'Sub Editor Desk' : isReviewerDeskActive ? 'Reviewer Desk' : isCopyEditorDeskActive ? 'Copy Editor Desk' : isProofreaderDeskActive ? 'Proofreader Desk' : isPublisherDeskActive ? 'Publisher Desk' : 'Console'}
               </span>
             </div>
+          </div>
+
+          {/* Search bar in the top bar */}
+          <div className="relative flex-grow max-w-xs mx-4 hidden sm:block">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+            <input
+              type="text"
+              placeholder="Search panel..."
+              value={topSearchQuery}
+              onChange={(e) => setTopSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearchSubmit();
+                }
+              }}
+              className="w-full text-xs font-semibold pl-8 pr-3 py-1.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-805 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-105"
+            />
           </div>
 
           {/* Action panels: notifications and color switches */}
@@ -577,12 +677,12 @@ export default function AdminLayout({ children }) {
                 <div className="absolute right-0 mt-3 w-80 rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 shadow-xl py-2 z-50 text-xs animate-in fade-in duration-200">
                   <div className="px-4 py-2.5 border-b border-zinc-100 dark:border-zinc-850 flex items-center justify-between">
                     <span className="font-bold text-zinc-800 dark:text-white text-[10px] uppercase tracking-wider">Notifications</span>
-                    <button onClick={markAllNotificationsRead} className="text-[9px] font-bold text-amber-600 hover:text-amber-505 uppercase tracking-wider">Mark read</button>
+                    <button onClick={markAllNotificationsRead} className="text-[9px] font-bold text-amber-605 hover:text-amber-550 uppercase tracking-wider">Mark read</button>
                   </div>
                   <div className="max-h-72 overflow-y-auto">
                     {notifications.map(n => (
                       <div key={n.id} className="px-5 py-4 border-b border-zinc-50 dark:border-zinc-850 flex flex-col space-y-1">
-                        <div className="flex justify-between font-bold text-zinc-800 dark:text-zinc-200">
+                        <div className="flex justify-between font-bold text-zinc-805 dark:text-zinc-205">
                           <span>{n.title}</span>
                           <span className="text-[9px] font-semibold text-zinc-400">{n.time}</span>
                         </div>
@@ -590,6 +690,49 @@ export default function AdminLayout({ children }) {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Profile Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                className="flex items-center space-x-2 px-3 py-2 bg-white/80 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-805 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-850/60 transition-colors cursor-pointer"
+              >
+                <div className="w-5 h-5 rounded-lg bg-amber-500/10 text-amber-605 dark:text-amber-450 flex items-center justify-center font-bold text-[9px] uppercase border border-amber-500/20">
+                  {user.name.charAt(0)}
+                </div>
+                <span className="hidden md:inline text-xs font-bold text-zinc-700 dark:text-zinc-300">
+                  {user.name}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-450" />
+              </button>
+
+              {profileDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-200 bg-white/95 dark:border-zinc-800 dark:bg-zinc-900 p-1.5 shadow-lg z-50 text-[10px] font-bold uppercase tracking-wider animate-in fade-in duration-200 backdrop-blur-md">
+                  <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-850 mb-1">
+                    <p className="text-[8px] text-zinc-400">Signed in as</p>
+                    <p className="text-xs font-bold text-zinc-850 dark:text-zinc-200 truncate mt-0.5">{user.name}</p>
+                  </div>
+                  <Link
+                    href="/admin/settings"
+                    onClick={() => setProfileDropdownOpen(false)}
+                    className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-left text-zinc-550 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:text-zinc-405 dark:hover:text-white transition-colors"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                    <span>Profile Settings</span>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setProfileDropdownOpen(false);
+                      handleLogout();
+                    }}
+                    className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-left text-red-505 hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
                 </div>
               )}
             </div>

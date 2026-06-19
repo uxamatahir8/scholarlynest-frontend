@@ -248,8 +248,80 @@ select option {
   top: 36px;
 }
 
+
 :root.has-top-ribbon .fixed-header-offset.scrolled {
   top: 0;
 }
 
+/* ========================================
+   Fancy Premium Sidebar Scrollbar
+   ======================================== */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(245, 158, 11, 0.25) transparent;
+  scroll-behavior: smooth;
+}
 
+/* WebKit (Chrome, Safari, Edge) */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.0);
+  border-radius: 100px;
+  transition: background 0.3s ease;
+}
+
+.sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.28);
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.55);
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:active {
+  background: rgba(245, 158, 11, 0.75);
+}
+
+/* ========================================
+   Public Header Dark Mode Fix
+   Adds subtle gradient so nav text is
+   readable before the user scrolls.
+   ======================================== */
+.dark .fixed-header-offset:not(.scrolled) {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.0) 100%
+  ) !important;
+}
+
+/* Ensure nav links stay white/visible in dark transparent header */
+.dark .fixed-header-offset:not(.scrolled) nav a {
+  color: rgba(255, 255, 255, 0.75);
+}
+.dark .fixed-header-offset:not(.scrolled) nav a:hover,
+.dark .fixed-header-offset:not(.scrolled) nav a.text-amber-600 {
+  color: #fbbf24;
+}
+
+/* Theme / user icon buttons look good on dark transparent bg */
+.dark .fixed-header-offset:not(.scrolled) button {
+  color: rgba(255, 255, 255, 0.7);
+}
+.dark .fixed-header-offset:not(.scrolled) button:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Register / Log In button text visible */
+.dark .fixed-header-offset:not(.scrolled) .text-zinc-500 {
+  color: rgba(255, 255, 255, 0.65) !important;
+}

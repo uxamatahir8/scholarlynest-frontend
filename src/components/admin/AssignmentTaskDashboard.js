@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Calendar, CheckCircle2, ClipboardCheck, FileText, Loader2, RefreshCw } from 'lucide-react';
+import {
+  AlertCircle, Calendar, CheckCircle2, ClipboardCheck, FileText,
+  Loader2, RefreshCw, ChevronLeft, ChevronRight
+} from 'lucide-react';
 import api from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -47,21 +50,94 @@ function EmptyState({ children }) {
   );
 }
 
+/** Pagination bar – matches the style used on other admin list pages */
+function PaginationBar({ currentPage, lastPage, total, perPage, onPageChange, loading }) {
+  if (lastPage <= 1) return null;
+
+  const from = (currentPage - 1) * perPage + 1;
+  const to   = Math.min(currentPage * perPage, total);
+
+  // Build compact page window: prev, current±2, next
+  const pages = [];
+  for (let i = 1; i <= lastPage; i++) {
+    if (i === 1 || i === lastPage || Math.abs(i - currentPage) <= 2) {
+      pages.push(i);
+    } else if (pages[pages.length - 1] !== '…') {
+      pages.push('…');
+    }
+  }
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-4 mt-4">
+      <p className="text-[10px] font-semibold text-zinc-400 font-mono">
+        Showing {from}–{to} of {total} assignments
+      </p>
+
+      <div className="flex items-center gap-1">
+        {/* Prev */}
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1 || loading}
+          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-850 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Page numbers */}
+        {pages.map((p, idx) =>
+          p === '…' ? (
+            <span key={`ellipsis-${idx}`} className="px-1 text-xs text-zinc-400 select-none">…</span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onPageChange(p)}
+              disabled={loading}
+              className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-[11px] font-bold border transition-colors disabled:opacity-40 ${
+                p === currentPage
+                  ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
+                  : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-850'
+              }`}
+            >
+              {p}
+            </button>
+          )
+        )}
+
+        {/* Next */}
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === lastPage || loading}
+          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-850 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AssignmentTaskDashboard({ kind, title, description, endpoint }) {
   const { user, hasRole, hasPermission } = useAuth();
   const { toast } = useToast();
+
   const [assignments, setAssignments] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busyAssignmentId, setBusyAssignmentId] = useState(null);
   const [error, setError] = useState('');
 
-  const isReviewerDashboard = kind === 'reviewer';
-  const isProductionDashboard = ['copy_editor', 'proofreader'].includes(kind);
-  const dashboardRoleLabel = kind === 'reviewer' ? 'Reviewers' : kind === 'copy_editor' ? 'Copy Editors' : kind === 'proofreader' ? 'Proofreaders' : 'Sub Editors';
-  const roleAllowed = hasRole('super_admin') || hasRole('admin') || hasRole(kind);
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [lastPage, setLastPage]       = useState(1);
+  const [total, setTotal]             = useState(0);
+  const [perPage, setPerPage]         = useState(15);
 
-  const fetchAssignments = useCallback(async () => {
+  const isReviewerDashboard   = kind === 'reviewer';
+  const isProductionDashboard = ['copy_editor', 'proofreader'].includes(kind);
+  const dashboardRoleLabel    = kind === 'reviewer' ? 'Reviewers' : kind === 'copy_editor' ? 'Copy Editors' : kind === 'proofreader' ? 'Proofreaders' : 'Sub Editors';
+  const roleAllowed           = hasRole('super_admin') || hasRole('admin') || hasRole(kind);
+
+  const fetchAssignments = useCallback(async (page = 1) => {
     if (!roleAllowed) {
       setLoading(false);
       return;
@@ -70,12 +146,25 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
     try {
       setError('');
       setLoading(true);
-      const res = await api.get(endpoint);
-      const data = res.data?.data || [];
-      setAssignments(data);
+
+      // Build URL – preserve any existing query params on endpoint (e.g. role=copy_editor)
+      const sep = endpoint.includes('?') ? '&' : '?';
+      const res = await api.get(`${endpoint}${sep}page=${page}&per_page=15`);
+
+      const newData     = res.data?.data      || [];
+      const newLastPage = res.data?.last_page  ?? 1;
+      const newTotal    = res.data?.total      ?? newData.length;
+      const newPerPage  = res.data?.per_page   ?? newData.length;
+
+      setAssignments(newData);
+      setCurrentPage(res.data?.current_page ?? page);
+      setLastPage(newLastPage);
+      setTotal(newTotal);
+      setPerPage(newPerPage);
+
       setSelectedId((current) => {
-        if (current && data.some((item) => item.id === current)) return current;
-        return data[0]?.id || null;
+        if (current && newData.some((item) => item.id === current)) return current;
+        return newData[0]?.id || null;
       });
     } catch (err) {
       console.error(err);
@@ -86,8 +175,17 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
   }, [endpoint, roleAllowed]);
 
   useEffect(() => {
-    fetchAssignments();
-  }, [fetchAssignments]);
+    setCurrentPage(1);
+    fetchAssignments(1);
+  }, [endpoint]);
+
+  const handlePageChange = (page) => {
+    if (page < 1 || page > lastPage || page === currentPage) return;
+    setCurrentPage(page);
+    fetchAssignments(page);
+    // Scroll the left panel back to top on page change
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const selectedAssignment = useMemo(
     () => assignments.find((item) => item.id === selectedId) || null,
@@ -109,7 +207,7 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
     try {
       await api.post(`/admin/reviewer-assignments/${assignment.id}/accept`);
       toast('Review invitation accepted.', 'success');
-      await fetchAssignments();
+      await fetchAssignments(currentPage);
       setSelectedId(assignment.id);
     } catch (err) {
       console.error(err);
@@ -120,10 +218,10 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
   };
 
   const renderAssignmentCard = (assignment, history = false) => {
-    const article = assignment.article || {};
-    const reviewerCount = article.reviewer_assignments?.length || 0;
+    const article        = assignment.article || {};
+    const reviewerCount  = article.reviewer_assignments?.length || 0;
     const completedReviews = article.reviewer_assignments?.filter((item) => item.status === 'completed').length || 0;
-    const isSelected = selectedAssignment?.id === assignment.id;
+    const isSelected     = selectedAssignment?.id === assignment.id;
 
     return (
       <article
@@ -216,22 +314,30 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-zinc-50 p-4 dark:bg-zinc-950 sm:p-6">
+    <div className="bg-zinc-50/10 p-4 dark:bg-zinc-950/10 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="flex flex-col gap-3 border-b border-zinc-200 pb-5 dark:border-zinc-850 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Academic Workflow</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-605">Academic Workflow</p>
             <h1 className="mt-1 text-2xl font-black tracking-tight text-zinc-950 dark:text-white">{title}</h1>
-            <p className="mt-2 max-w-2xl text-sm text-zinc-500">{description}</p>
+            <p className="mt-2 max-w-2xl text-sm text-zinc-555">{description}</p>
           </div>
-          <button
-            type="button"
-            onClick={fetchAssignments}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-850"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            {total > 0 && (
+              <span className="text-[10px] font-bold font-mono text-zinc-400 uppercase tracking-wider">
+                {total} total
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => fetchAssignments(currentPage)}
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-250 dark:hover:bg-zinc-850 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </header>
 
         {loading ? (
@@ -242,7 +348,9 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
           <EmptyState>{error}</EmptyState>
         ) : (
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">
+            {/* Left panel – assignment list */}
             <div className="space-y-6">
+              {/* Active / in-progress assignments */}
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
@@ -257,9 +365,10 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
                 )}
               </section>
 
+              {/* Completed history */}
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Completed History</h2>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-805 dark:text-zinc-205">Completed History</h2>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{completedAssignments.length} completed</span>
                 </div>
                 {completedAssignments.length === 0 ? (
@@ -268,9 +377,20 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
                   <div className="space-y-3">{completedAssignments.map((assignment) => renderAssignmentCard(assignment, true))}</div>
                 )}
               </section>
+
+              {/* Pagination controls */}
+              <PaginationBar
+                currentPage={currentPage}
+                lastPage={lastPage}
+                total={total}
+                perPage={perPage}
+                onPageChange={handlePageChange}
+                loading={loading}
+              />
             </div>
 
-            <section className="min-w-0 rounded-xl border border-zinc-150 bg-white p-4 shadow-sm dark:border-zinc-850 dark:bg-zinc-900">
+            {/* Right panel – selected assignment details */}
+            <section className="min-w-0 rounded-xl border border-zinc-150 bg-white p-4 shadow-sm dark:border-zinc-850 dark:bg-zinc-900 xl:sticky xl:top-6 self-start">
               {selectedAssignment?.article ? (
                 <div className="space-y-4">
                   <div className="border-b border-zinc-100 pb-4 dark:border-zinc-850">
@@ -283,7 +403,7 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
                     user={user}
                     hasRole={hasRole}
                     hasPermission={hasPermission}
-                    onWorkflowChanged={fetchAssignments}
+                    onWorkflowChanged={() => fetchAssignments(currentPage)}
                     onOpenPublish={() => {}}
                     toast={toast}
                   />
