@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Check, CheckCircle2, ClipboardCheck, Download, FileCheck2, Loader2, Send, Upload, UserPlus } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, ClipboardCheck, Download, FileCheck2, History, Loader2, Send, Upload, UserPlus } from 'lucide-react';
 import api from '../../utils/api';
 import {
   PUBLISHABLE_STATUSES,
@@ -459,6 +459,57 @@ export default function WorkflowActionPanel({
                   <Download className="w-3.5 h-3.5" />
                   Open
                 </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
+        <div className="flex items-center gap-2">
+          <History className="w-4 h-4 text-amber-600" />
+          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Version History</h4>
+        </div>
+        {(article.versions || []).length === 0 ? (
+          <p className="text-xs text-zinc-500">No version snapshots have been recorded yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {(article.versions || []).map((version) => (
+              <div key={version.id} className="rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-850 p-3 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-zinc-900 dark:text-zinc-100">
+                      v{version.version_number} · {version.label || 'Snapshot'}
+                    </p>
+                    <p className="text-[10px] text-zinc-450 font-mono">
+                      {version.status_snapshot?.replaceAll('_', ' ')} · {version.creator?.name || 'Unknown'} · {version.created_at ? new Date(version.created_at).toLocaleString() : ''}
+                    </p>
+                  </div>
+                </div>
+                {(version.change_summary || version.author_response) && (
+                  <div className="space-y-1 text-xs text-zinc-600 dark:text-zinc-350">
+                    {version.change_summary && <p><span className="font-bold">Summary:</span> {version.change_summary}</p>}
+                    {version.author_response && <p><span className="font-bold">Author response:</span> {version.author_response}</p>}
+                  </div>
+                )}
+                {(version.files || []).length === 0 ? (
+                  <p className="text-[10px] text-zinc-450">No files are visible for this version.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {(version.files || []).map((file) => (
+                      <div key={file.id} className="flex items-center justify-between gap-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-850 px-2.5 py-2">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 truncate">{file.original_name}</p>
+                          <p className="text-[9px] text-zinc-450 font-mono">{file.file_type?.replaceAll('_', ' ')}</p>
+                        </div>
+                        <a href={fileDownloadUrl(file.download_url)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 hover:underline">
+                          <Download className="w-3.5 h-3.5" />
+                          Open
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>

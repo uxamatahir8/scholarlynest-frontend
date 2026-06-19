@@ -78,6 +78,8 @@ export default function AdminEditArticle() {
   const [status, setStatus] = useState('submitted');
   const [articleOwnerId, setArticleOwnerId] = useState(null);
   const [academicMetadata, setAcademicMetadata] = useState(emptyAcademicMetadata);
+  const [revisionResponse, setRevisionResponse] = useState('');
+  const [changeSummary, setChangeSummary] = useState('');
 
   const [seoTitle, setSeoTitle] = useState('');
   const [seoDescription, setSeoDescription] = useState('');
@@ -87,6 +89,7 @@ export default function AdminEditArticle() {
 
   const canEditAll = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || (user && articleOwnerId === user.id && hasPermission('articles.edit-own'));
   const canEditSeo = hasPermission('seo.articles');
+  const isRevisionCycle = ['revision_required', 'minor_revision_required', 'major_revision_required'].includes(status);
 
   // Expand SEO settings by default if user is SEO-only
   useEffect(() => {
@@ -326,6 +329,12 @@ export default function AdminEditArticle() {
       appendAcademicMetadata(formData, academicMetadata);
       if (pdfFile) {
         formData.append('pdf_file', pdfFile);
+      }
+      if (revisionResponse.trim()) {
+        formData.append('revision_response', revisionResponse.trim());
+      }
+      if (changeSummary.trim()) {
+        formData.append('change_summary', changeSummary.trim());
       }
       if (featuredImage) {
         formData.append('featured_image', featuredImage);
@@ -844,6 +853,35 @@ export default function AdminEditArticle() {
               <p className="text-[10px] text-zinc-400 font-medium leading-relaxed">Add or replace the article cover image. Falls back to the magazine cover image if not provided.</p>
             </div>
           </div>
+
+          {isRevisionCycle && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-amber-500/[0.04] dark:bg-amber-500/[0.06] border border-amber-500/15 p-5 rounded-2xl">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 font-mono block">
+                  Response to Reviewer / Editor Comments
+                </label>
+                <textarea
+                  value={revisionResponse}
+                  onChange={(e) => setRevisionResponse(e.target.value)}
+                  rows={4}
+                  placeholder="Explain how the requested revisions were addressed..."
+                  className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-955 border border-amber-500/20 dark:border-amber-500/20 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 font-mono block">
+                  Summary of Changes
+                </label>
+                <textarea
+                  value={changeSummary}
+                  onChange={(e) => setChangeSummary(e.target.value)}
+                  rows={4}
+                  placeholder="Summarize the main manuscript changes in this revision..."
+                  className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-955 border border-amber-500/20 dark:border-amber-500/20 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-200"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Article Assets Manager */}
           <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-4">

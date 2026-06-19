@@ -195,7 +195,7 @@ export default function AdminArticlesBoard() {
     setLoadingWorkflow(true);
     try {
       const res = await api.get(`/admin/articles/${article.id}/workflow`);
-      const nextArticle = res.data?.article ? { ...res.data.article, files: res.data.files || res.data.article.files || [] } : null;
+      const nextArticle = res.data?.article ? { ...res.data.article, files: res.data.files || res.data.article.files || [], versions: res.data.versions || res.data.article.versions || [] } : null;
       setWorkflowContext(nextArticle);
     } catch (err) {
       console.error('Failed to load workflow context', err);
@@ -209,7 +209,7 @@ export default function AdminArticlesBoard() {
     if (!articleId) return;
 
     const res = await api.get(`/admin/articles/${articleId}/workflow`);
-    const nextArticle = res.data?.article ? { ...res.data.article, files: res.data.files || res.data.article.files || [] } : null;
+    const nextArticle = res.data?.article ? { ...res.data.article, files: res.data.files || res.data.article.files || [], versions: res.data.versions || res.data.article.versions || [] } : null;
     setWorkflowContext(nextArticle);
     if (nextArticle) {
       setSelectedArticle((prev) => ({ ...prev, ...nextArticle }));
