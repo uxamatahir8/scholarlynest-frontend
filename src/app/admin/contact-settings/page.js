@@ -9,7 +9,7 @@ import { useAuth } from '../../../context/AuthContext';
 
 export default function AdminContactSettings() {
   const { toast } = useToast();
-  const { user, hasPermission, loading: authLoading } = useAuth();
+  const { user, hasRole, hasPermission, loading: authLoading } = useAuth();
   
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -29,6 +29,7 @@ export default function AdminContactSettings() {
   const [subjectSortOrder, setSubjectSortOrder] = useState(0);
   const [subjectSaving, setSubjectSaving] = useState(false);
   const [deletingSubjectId, setDeletingSubjectId] = useState(null);
+  const canDeleteRecords = hasRole('super_admin');
 
   useEffect(() => {
     const fetchContactSettings = async () => {
@@ -134,6 +135,7 @@ export default function AdminContactSettings() {
   };
 
   const handleDeleteSubject = async (id, label) => {
+    if (!canDeleteRecords) return;
     setDeletingSubjectId(id);
     try {
       await api.delete(`/admin/contact-subjects/${id}`);
@@ -431,17 +433,19 @@ export default function AdminContactSettings() {
                       >
                         <Edit className="w-3.5 h-3.5" />
                       </button>
-                      <button
-                        onClick={() => handleDeleteSubject(s.id, s.label)}
-                        disabled={deletingSubjectId === s.id}
-                        className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        {deletingSubjectId === s.id ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-3.5 h-3.5" />
-                        )}
-                      </button>
+                      {canDeleteRecords && (
+                        <button
+                          onClick={() => handleDeleteSubject(s.id, s.label)}
+                          disabled={deletingSubjectId === s.id}
+                          className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                        >
+                          {deletingSubjectId === s.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))

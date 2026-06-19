@@ -7,10 +7,13 @@ import {
 } from 'lucide-react';
 import api from '../../../../utils/api';
 import { useToast } from '../../../../context/ToastContext';
+import { useAuth } from '../../../../context/AuthContext';
 import Pagination from '../../../../components/ui/Pagination';
 
 export default function AdminMagazineTags() {
   const { toast } = useToast();
+  const { hasRole } = useAuth();
+  const canDeleteRecords = hasRole('super_admin');
 
   const [magazines, setMagazines] = useState([]);
   const [tags, setTags] = useState([]);
@@ -175,6 +178,7 @@ export default function AdminMagazineTags() {
 
   // Handle Delete Tag
   const handleDeleteTag = async () => {
+    if (!canDeleteRecords) return;
     try {
       setSubmittingDelete(true);
       await api.delete(`/admin/tags/${deletingTag.id}`);
@@ -198,6 +202,7 @@ export default function AdminMagazineTags() {
   };
 
   const openDeleteModal = (tag) => {
+    if (!canDeleteRecords) return;
     setDeletingTag(tag);
     setIsDeleteModalOpen(true);
   };
@@ -303,13 +308,15 @@ export default function AdminMagazineTags() {
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={() => openDeleteModal(tag)}
-                  className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                  title="Delete tag"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canDeleteRecords && (
+                  <button
+                    onClick={() => openDeleteModal(tag)}
+                    className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                    title="Delete tag"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -450,7 +457,7 @@ export default function AdminMagazineTags() {
       )}
 
       {/* DELETE TAG MODAL */}
-      {isDeleteModalOpen && deletingTag && (
+      {canDeleteRecords && isDeleteModalOpen && deletingTag && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-250">
           <div className="bg-white rounded-2xl border border-zinc-250 shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 text-center space-y-4">

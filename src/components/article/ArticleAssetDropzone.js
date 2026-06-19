@@ -4,9 +4,12 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, File, FileSpreadsheet, FileText, Image, Archive, Loader2, AlertCircle } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function ArticleAssetDropzone({ articleId, assets, onAssetsChanged }) {
   const { toast } = useToast();
+  const { hasRole } = useAuth();
+  const canDeleteRecords = hasRole('super_admin');
   const [dragActive, setDragActive] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState({}); // tracking upload status of files by name
   const fileInputRef = useRef(null);
@@ -120,6 +123,7 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
 
   // Delete handler
   const handleDelete = async (assetId, filename) => {
+    if (!canDeleteRecords) return;
     try {
       await api.delete(`/articles/assets/${assetId}`);
       onAssetsChanged(assets.filter(a => a.id !== assetId));
@@ -229,14 +233,16 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(asset.id, asset.original_filename)}
-                  className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-650 transition-colors cursor-pointer"
-                  title="Remove supplementary asset"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                {canDeleteRecords && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(asset.id, asset.original_filename)}
+                    className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-650 transition-colors cursor-pointer"
+                    title="Remove supplementary asset"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             ))}
           </div>

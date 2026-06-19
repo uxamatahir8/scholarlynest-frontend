@@ -87,7 +87,7 @@ export default function AdminEditArticle() {
   const [seoExpanded, setSeoExpanded] = useState(false);
   const [savingSeo, setSavingSeo] = useState(false);
 
-  const canEditAll = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || (user && articleOwnerId === user.id && hasPermission('articles.edit-own'));
+  const canEditAll = hasRole('super_admin') || hasRole('admin') || (user && articleOwnerId === user.id && hasPermission('articles.edit-own'));
   const canEditSeo = hasPermission('seo.articles');
   const isRevisionCycle = ['revision_required', 'minor_revision_required', 'major_revision_required'].includes(status);
 

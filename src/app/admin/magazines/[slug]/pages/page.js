@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import api from '../../../../../utils/api';
 import { useToast } from '../../../../../context/ToastContext';
+import { useAuth } from '../../../../../context/AuthContext';
 import { ConfirmationModal } from '../../../../../components/ui/ConfirmationModal';
 
 const RichEditor = dynamic(() => import('../../../../../components/ui/RichEditor'), {
@@ -27,6 +28,9 @@ export default function AdminMagazinePages() {
   const router = useRouter();
   const slug = params ? params.slug : null;
   const { toast } = useToast();
+  const { user, hasRole } = useAuth();
+  const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const canDeleteRecords = hasRole('super_admin');
 
   const [magazine, setMagazine] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -125,12 +129,13 @@ export default function AdminMagazinePages() {
 
   // Delete page Trigger
   const triggerDeletePage = (pageId) => {
+    if (!canDeleteRecords) return;
     setSelectedPageId(pageId);
     setIsConfirmOpen(true);
   };
 
   const executeDeletePage = async () => {
-    if (!selectedPageId) return;
+    if (!canDeleteRecords || !selectedPageId) return;
     try {
       await api.delete(`/admin/magazines/${magazine.id}/pages/${selectedPageId}`);
       toast('Custom subpage deleted successfully.', 'success');
@@ -237,20 +242,24 @@ export default function AdminMagazinePages() {
                       <td className="px-6 py-4 font-bold text-zinc-950">{p.title}</td>
                       <td className="px-6 py-4 font-mono text-[11px] text-zinc-500">/{p.slug}</td>
                       <td className="px-6 py-4 text-right space-x-3">
-                        <button
-                          onClick={() => openEditModal(p)}
-                          className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          <span>Edit</span>
-                        </button>
-                        <button
-                          onClick={() => triggerDeletePage(p.id)}
-                          className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-red-600 hover:text-red-800 transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Delete</span>
-                        </button>
+                        {(!isEditor || (Number(p.created_by) === Number(user?.id) && p.is_editor_created)) && (
+                          <button
+                            onClick={() => openEditModal(p)}
+                            className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+                        )}
+                        {canDeleteRecords && (
+                          <button
+                            onClick={() => triggerDeletePage(p.id)}
+                            className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-red-600 hover:text-red-800 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -395,7 +404,7 @@ export default function AdminMagazinePages() {
 
       {/* Confirmation Modal */}
       <ConfirmationModal
-        isOpen={isConfirmOpen}
+        isOpen={canDeleteRecords && isConfirmOpen}
         title="Delete Page?"
         message="Are you absolutely sure you want to delete this custom subpage? This action cannot be undone."
         confirmText="Delete Page"

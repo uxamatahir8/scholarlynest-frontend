@@ -245,16 +245,13 @@ export default function RbacManager() {
     const anyPerm = `${resourceName}.view-any`;
     const editOwnPerm = `${resourceName}.edit-own`;
     const editAnyPerm = `${resourceName}.edit-any`;
-    const deleteOwnPerm = `${resourceName}.delete-own`;
-    const deleteAnyPerm = `${resourceName}.delete-any`;
-
-    const cleanList = [ownPerm, anyPerm, editOwnPerm, editAnyPerm, deleteOwnPerm, deleteAnyPerm];
+    const cleanList = [ownPerm, anyPerm, editOwnPerm, editAnyPerm];
     targetPermissions = targetPermissions.filter(p => !cleanList.includes(p));
 
     if (scope === 'own') {
-      targetPermissions.push(ownPerm, editOwnPerm, deleteOwnPerm);
+      targetPermissions.push(ownPerm, editOwnPerm);
     } else if (scope === 'any') {
-      targetPermissions.push(anyPerm, editAnyPerm, deleteAnyPerm);
+      targetPermissions.push(anyPerm, editAnyPerm);
     } // 'none' leaves them empty
 
     syncRolePermissions(selectedRole.id, targetPermissions);
@@ -525,7 +522,7 @@ export default function RbacManager() {
                             <Badge variant={r.is_system ? 'default' : 'outline'} className={isSelected ? 'bg-white/20 border-white/20 text-white' : ''}>
                               {r.is_system ? 'System' : 'Custom'}
                             </Badge>
-                            {!r.is_system && (
+                            {hasRole('super_admin') && !r.is_system && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -698,15 +695,6 @@ export default function RbacManager() {
                                   <span className="text-xs font-semibold text-[var(--foreground)]">Allow Modifying Magazine Settings & Pages</span>
                                 </label>
 
-                                <label className="flex items-center space-x-2.5 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedRole.permissions.some(p => p.name === 'magazines.delete')}
-                                    onChange={(e) => handleToggleCheckboxPermission('magazines.delete', e.target.checked)}
-                                    className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)]"
-                                  />
-                                  <span className="text-xs font-semibold text-[var(--foreground)]">Allow Deleting Magazines</span>
-                                </label>
                               </div>
                             </div>
                           </div>
@@ -885,15 +873,6 @@ export default function RbacManager() {
                                     className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)]"
                                   />
                                   <span className="text-xs font-semibold text-[var(--foreground)]">Send Campaigns</span>
-                                </label>
-                                <label className="flex items-center space-x-2.5 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedRole.permissions.some(p => p.name === 'newsletters.delete')}
-                                    onChange={(e) => handleToggleCheckboxPermission('newsletters.delete', e.target.checked)}
-                                    className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)]"
-                                  />
-                                  <span className="text-xs font-semibold text-[var(--foreground)]">Delete Campaigns</span>
                                 </label>
                               </div>
                             </div>
@@ -1299,7 +1278,7 @@ export default function RbacManager() {
 
       {/* Confirmation Modal */}
       <ConfirmationModal
-        isOpen={isConfirmOpen}
+        isOpen={hasRole('super_admin') && isConfirmOpen}
         title="Delete Role?"
         message={`Are you sure you want to permanently delete the role "${deleteRoleName}"? This action cannot be undone.`}
         confirmText="Delete Role"

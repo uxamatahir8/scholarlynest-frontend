@@ -198,7 +198,7 @@ export default function AdminLayout({ children }) {
   const isPublisherDeskActive = pathname ? pathname.startsWith('/admin/publisher') : false;
 
   const showIssueManager = hasRole('publisher') || hasRole('super_admin') || hasRole('admin');
-  const showMagazinePortal = showIssueManager || hasPermission('magazines.view-any') || hasPermission('magazines.view-own') || hasPermission('articles.view-any') || hasPermission('articles.view-own');
+  const showMagazinePortal = showIssueManager || hasPermission('magazines.view-any') || hasPermission('magazines.view-own');
   const showSubEditorDesk = hasRole('sub_editor') || hasRole('super_admin') || hasRole('admin');
   const showReviewerDesk = hasRole('reviewer') || hasRole('super_admin') || hasRole('admin');
   const showCopyEditorDesk = hasRole('copy_editor') || hasRole('super_admin') || hasRole('admin');

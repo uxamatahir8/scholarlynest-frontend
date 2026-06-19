@@ -29,7 +29,8 @@ const QuillEditor = dynamic(() => import('../../../components/ui/QuillEditor'), 
 export default function AdminMagazines() {
   const { toast } = useToast();
   const { user, hasPermission, hasRole, loading: authLoading } = useAuth();
-  const isEditor = hasRole('magazine_editor') || hasRole('magazine-editor');
+  const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const canDeleteRecords = hasRole('super_admin');
   
   const [magazines, setMagazines] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -202,6 +203,7 @@ export default function AdminMagazines() {
 
   // Delete magazine Trigger
   const triggerDelete = (id) => {
+    if (!canDeleteRecords) return;
     setSelectedMagazineId(id);
     setIsConfirmOpen(true);
   };
@@ -364,7 +366,7 @@ export default function AdminMagazines() {
                       </button>
                     ) : <div />)}
                     
-                    {hasPermission('magazines.delete') && !isEditor && (
+                    {canDeleteRecords && hasPermission('magazines.delete') && !isEditor && (
                       <button
                         onClick={() => triggerDelete(mag.id)}
                         className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase tracking-wider text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors cursor-pointer"
@@ -677,7 +679,7 @@ export default function AdminMagazines() {
 
       {/* Confirmation Modal */}
       <ConfirmationModal
-        isOpen={isConfirmOpen}
+        isOpen={canDeleteRecords && isConfirmOpen}
         title="Delete Magazine?"
         message="Are you absolutely sure you want to delete this magazine? This will permanently delete all associated pages, articles, and documents."
         confirmText="Delete Magazine"

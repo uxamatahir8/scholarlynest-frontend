@@ -14,6 +14,7 @@ import Link from 'next/link';
 
 export default function FaqManagementWorkspace() {
   const { user, hasRole, hasPermission, loading: authLoading } = useAuth();
+  const canDeleteRecords = hasRole('super_admin');
   const { toast } = useToast();
 
   // Data states
@@ -189,6 +190,7 @@ export default function FaqManagementWorkspace() {
 
   // Handle Delete
   const handleDelete = async (id) => {
+    if (!canDeleteRecords) return;
     try {
       setDeletingId(id);
       await api.delete(`/admin/faqs/${id}`);
@@ -573,16 +575,18 @@ export default function FaqManagementWorkspace() {
                         </Button>
 
                         {/* Delete Button */}
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => {
-                            setConfirmFaqId(faq.id);
-                            setIsConfirmOpen(true);
-                          }}
-                          isLoading={deletingId === faq.id}
-                          icon={Trash2}
-                        />
+                        {canDeleteRecords && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => {
+                              setConfirmFaqId(faq.id);
+                              setIsConfirmOpen(true);
+                            }}
+                            isLoading={deletingId === faq.id}
+                            icon={Trash2}
+                          />
+                        )}
                       </div>
                     </div>
 
@@ -604,7 +608,7 @@ export default function FaqManagementWorkspace() {
 
       {/* Confirmation Modal */}
       <ConfirmationModal
-        isOpen={isConfirmOpen}
+        isOpen={canDeleteRecords && isConfirmOpen}
         title="Delete FAQ?"
         message="Are you absolutely sure you want to delete this FAQ entry? This will permanently remove it from the platform."
         confirmText="Delete FAQ"
