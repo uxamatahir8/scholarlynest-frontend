@@ -25,7 +25,9 @@ import {
   Loader2,
   ClipboardCheck,
   UserCheck,
-  Newspaper
+  Newspaper,
+  BriefcaseBusiness,
+  FileCheck2
 } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
@@ -191,11 +193,17 @@ export default function AdminLayout({ children }) {
   const isMagazineActive = pathname ? (pathname.startsWith('/admin/magazines') || pathname.startsWith('/admin/articles') || pathname.startsWith('/admin/issues')) : false;
   const isSubEditorDeskActive = pathname ? pathname.startsWith('/admin/sub-editor') : false;
   const isReviewerDeskActive = pathname ? pathname.startsWith('/admin/reviewer') : false;
+  const isCopyEditorDeskActive = pathname ? pathname.startsWith('/admin/copy-editor') : false;
+  const isProofreaderDeskActive = pathname ? pathname.startsWith('/admin/proofreader') : false;
+  const isPublisherDeskActive = pathname ? pathname.startsWith('/admin/publisher') : false;
 
-  const showMagazinePortal = hasPermission('magazines.view-any') || hasPermission('magazines.view-own') || hasPermission('articles.view-any') || hasPermission('articles.view-own');
   const showIssueManager = hasRole('publisher') || hasRole('super_admin') || hasRole('admin');
+  const showMagazinePortal = showIssueManager || hasPermission('magazines.view-any') || hasPermission('magazines.view-own') || hasPermission('articles.view-any') || hasPermission('articles.view-own');
   const showSubEditorDesk = hasRole('sub_editor') || hasRole('super_admin') || hasRole('admin');
   const showReviewerDesk = hasRole('reviewer') || hasRole('super_admin') || hasRole('admin');
+  const showCopyEditorDesk = hasRole('copy_editor') || hasRole('super_admin') || hasRole('admin');
+  const showProofreaderDesk = hasRole('proofreader') || hasRole('super_admin') || hasRole('admin');
+  const showPublisherDesk = hasRole('publisher') || hasRole('super_admin') || hasRole('admin');
   const showRbac = hasPermission('roles.view-any');
   const showContactSettings = hasPermission('settings.view-any') || hasPermission('settings.manage') || hasPermission('footer.manage');
   const showContactMessages = hasPermission('settings.view-any') || hasPermission('settings.manage') || hasPermission('footer.manage');
@@ -360,6 +368,36 @@ export default function AdminLayout({ children }) {
               </Link>
             )}
 
+            {showCopyEditorDesk && (
+              <Link
+                href="/admin/copy-editor"
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isCopyEditorDeskActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
+              >
+                <BriefcaseBusiness className="w-4 h-4" />
+                <span>Copy Editor Desk</span>
+              </Link>
+            )}
+
+            {showProofreaderDesk && (
+              <Link
+                href="/admin/proofreader"
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isProofreaderDeskActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
+              >
+                <FileCheck2 className="w-4 h-4" />
+                <span>Proofreader Desk</span>
+              </Link>
+            )}
+
+            {showPublisherDesk && (
+              <Link
+                href="/admin/publisher"
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isPublisherDeskActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
+              >
+                <Newspaper className="w-4 h-4" />
+                <span>Publisher Desk</span>
+              </Link>
+            )}
+
             {showRbac && (
               <Link
                 href="/admin/rbac"
@@ -481,7 +519,7 @@ export default function AdminLayout({ children }) {
               <span>Workspace</span>
               <ChevronRight className="w-3.5 h-3.5 text-amber-500" />
               <span className="text-zinc-800 dark:text-zinc-200">
-                {isOverviewActive ? 'Overview' : isRbacActive ? 'Access Control' : isCmsActive ? 'CMS Page Management' : isMagazineActive ? 'Magazine Portal' : 'Console'}
+                {isOverviewActive ? 'Overview' : isRbacActive ? 'Access Control' : isCmsActive ? 'CMS Page Management' : isMagazineActive ? 'Magazine Portal' : isSubEditorDeskActive ? 'Sub Editor Desk' : isReviewerDeskActive ? 'Reviewer Desk' : isCopyEditorDeskActive ? 'Copy Editor Desk' : isProofreaderDeskActive ? 'Proofreader Desk' : isPublisherDeskActive ? 'Publisher Desk' : 'Console'}
               </span>
             </div>
           </div>

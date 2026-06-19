@@ -114,9 +114,31 @@ export default function WorkflowActionPanel({
     (workflowContext?.reviewer_assignments || []).find((item) => Number(item.reviewer_id) === Number(user?.id))
   ), [workflowContext, user]);
 
-  const myProductionAssignment = useMemo(() => (
-    (workflowContext?.production_assignments || []).find((item) => Number(item.user_id) === Number(user?.id) && ['pending', 'in_progress'].includes(item.status))
-  ), [workflowContext, user]);
+  const myProductionAssignment = useMemo(() => {
+    const current = workflowContext?.current_assignment;
+    if (current?.role && ['copy_editor', 'proofreader'].includes(current.role) && ['pending', 'in_progress'].includes(current.status)) {
+      if (isAdmin || Number(current.user_id) === Number(user?.id)) return current;
+    }
+
+    return (workflowContext?.production_assignments || []).find((item) => {
+      const roleMatches = isCopyEditor ? item.role === 'copy_editor' : isProofreader ? item.role === 'proofreader' : true;
+      const userMatches = isAdmin || Number(item.user_id) === Number(user?.id);
+      return userMatches && roleMatches && ['pending', 'in_progress'].includes(item.status);
+    });
+  }, [workflowContext, user, isAdmin, isCopyEditor, isProofreader]);
+
+  const completedProductionAssignment = useMemo(() => {
+    const current = workflowContext?.current_assignment;
+    if (current?.role && ['copy_editor', 'proofreader'].includes(current.role) && current.status === 'completed') {
+      if (isAdmin || Number(current.user_id) === Number(user?.id)) return current;
+    }
+
+    return (workflowContext?.production_assignments || []).find((item) => {
+      const roleMatches = isCopyEditor ? item.role === 'copy_editor' : isProofreader ? item.role === 'proofreader' : true;
+      const userMatches = isAdmin || Number(item.user_id) === Number(user?.id);
+      return userMatches && roleMatches && item.status === 'completed';
+    });
+  }, [workflowContext, user, isAdmin, isCopyEditor, isProofreader]);
 
   const loadAssignees = async (role) => {
     if (assignees[role]) return;
@@ -211,7 +233,7 @@ export default function WorkflowActionPanel({
         </div>
       </div>
 
-      {!canEditorial && !canAssignReviewer && !isSubEditor && !isReviewer && !canPublish && !canCompleteProduction && (
+      {!canEditorial && !canAssignReviewer && !isSubEditor && !isReviewer && !canPublish && !canCompleteProduction && !completedProductionAssignment && (
         <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 text-xs text-zinc-500">
           No workflow actions are available for your current role on this manuscript.
         </div>
@@ -418,6 +440,13 @@ export default function WorkflowActionPanel({
           <p className="text-xs text-zinc-500">Current task: {myProductionAssignment.role?.replaceAll('_', ' ')} ({myProductionAssignment.status})</p>
           {fileInput('production_file', myProductionAssignment.role === 'proofreader' ? 'Proof File' : 'Copy-Edited File')}
           <PanelButton icon={Check} loading={busyAction === 'complete-production'} onClick={() => runAction('complete-production', () => api.post(`/admin/production-assignments/${myProductionAssignment.id}/complete`, buildFormData({}, { production_file: files.production_file }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Production task completed.')}>Complete Task</PanelButton>
+        </section>
+      )}
+
+      {!canCompleteProduction && completedProductionAssignment && (
+        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
+          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Production Task</h4>
+          <p className="text-xs text-zinc-500">This {completedProductionAssignment.role?.replaceAll('_', ' ')} task is completed and is now read-only.</p>
         </section>
       )}
 

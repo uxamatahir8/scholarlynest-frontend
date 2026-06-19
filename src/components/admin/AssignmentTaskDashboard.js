@@ -56,6 +56,8 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
   const [error, setError] = useState('');
 
   const isReviewerDashboard = kind === 'reviewer';
+  const isProductionDashboard = ['copy_editor', 'proofreader'].includes(kind);
+  const dashboardRoleLabel = kind === 'reviewer' ? 'Reviewers' : kind === 'copy_editor' ? 'Copy Editors' : kind === 'proofreader' ? 'Proofreaders' : 'Sub Editors';
   const roleAllowed = hasRole('super_admin') || hasRole('admin') || hasRole(kind);
 
   const fetchAssignments = useCallback(async () => {
@@ -154,13 +156,19 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
           </span>
           <span className="inline-flex items-center gap-1.5">
             <FileText className="h-3.5 w-3.5" />
-            {isReviewerDashboard ? `${assignment.files?.length || 0} file(s)` : `${completedReviews}/${reviewerCount} reviews complete`}
+            {isReviewerDashboard || isProductionDashboard ? `${assignment.files?.length || 0} file(s)` : `${completedReviews}/${reviewerCount} reviews complete`}
           </span>
         </div>
 
         {history && assignment.recommendation && (
           <p className="mt-3 text-[11px] font-bold uppercase tracking-wider text-emerald-600">
             Recommendation: {labelize(assignment.recommendation)}
+          </p>
+        )}
+
+        {history && isProductionDashboard && assignment.completed_at && (
+          <p className="mt-3 text-[11px] font-bold uppercase tracking-wider text-emerald-600">
+            Completed: {formatDate(assignment.completed_at)}
           </p>
         )}
 
@@ -192,7 +200,7 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
   if (!roleAllowed) {
     return (
       <div className="h-full overflow-y-auto bg-zinc-50 p-6 dark:bg-zinc-950">
-        <EmptyState>This dashboard is available only to assigned {isReviewerDashboard ? 'Reviewers' : 'Sub Editors'} and Super Admin.</EmptyState>
+        <EmptyState>This dashboard is available only to assigned {dashboardRoleLabel} and Super Admin.</EmptyState>
       </div>
     );
   }
@@ -228,7 +236,7 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
               <section className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
-                    {isReviewerDashboard ? 'Invitations and Pending Reviews' : 'Assigned Articles'}
+                    {isReviewerDashboard ? 'Invitations and Pending Reviews' : isProductionDashboard ? 'Assigned Production Tasks' : 'Assigned Articles'}
                   </h2>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{activeAssignments.length} active</span>
                 </div>
@@ -261,7 +269,7 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
                   </div>
                   <WorkflowActionPanel
                     article={selectedAssignment.article}
-                    workflowContext={selectedAssignment.article}
+                    workflowContext={{ ...selectedAssignment.article, current_assignment: selectedAssignment }}
                     user={user}
                     hasRole={hasRole}
                     hasPermission={hasPermission}
