@@ -253,6 +253,7 @@ export default function AdminLayout({ children }) {
   ) : false;
 
   const isEditorRole = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const isNonImpersonatedSuperAdmin = hasRole('super_admin') && !impersonationStatus?.active;
   const showMySubEditors = isEditorRole;
   const showIssueManager = hasRole('publisher') || hasRole('super_admin') || hasRole('admin');
   const showMagazineDirectory = (hasPermission('magazines.view-any') || hasPermission('magazines.view-own')) && !hasRole('author');
@@ -409,7 +410,7 @@ export default function AdminLayout({ children }) {
               </div>
             )}
 
-            {hasRole('super_admin') && (
+            {isNonImpersonatedSuperAdmin && (
               <div className="space-y-1">
                 <button
                   onClick={() => setWorkflowDropdownOpen(!workflowDropdownOpen)}
@@ -524,7 +525,7 @@ export default function AdminLayout({ children }) {
               </Link>
             )}
 
-            {hasRole('super_admin') && (
+            {isNonImpersonatedSuperAdmin && (
               <div className="space-y-1">
                 <button
                   onClick={() => setUserManagementDropdownOpen(!userManagementDropdownOpen)}
