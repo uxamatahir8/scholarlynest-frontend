@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../context/ToastContext';
 import api from '../../../../utils/api';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  UserPlus, ArrowLeft, Loader2, CheckCircle2, AlertTriangle, ShieldAlert
+  UserPlus, ArrowLeft, Loader2, AlertTriangle, ShieldAlert, ChevronDown, X
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../../components/ui/Card';
 import { Button } from '../../../../components/ui/Button';
@@ -38,6 +38,11 @@ export default function CreateUserPage() {
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [generalError, setGeneralError] = useState(null);
+
+  // Searchable Multi-Select States
+  const [editorSearchQuery, setEditorSearchQuery] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const containerRef = useRef(null);
 
   // Determine if Sub Editor is selected
   const selectedRole = roles.find(r => r.id === parseInt(roleId));
@@ -78,10 +83,25 @@ export default function CreateUserPage() {
   useEffect(() => {
     if (!isSubEditor) {
       setSelectedEditorIds([]);
+      setEditorSearchQuery('');
+      setDropdownOpen(false);
     }
   }, [roleId, isSubEditor]);
 
-  // Handle Editor Selection Checkbox Toggle
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Handle Editor Selection Toggle
   const handleEditorToggle = (editorId) => {
     setSelectedEditorIds(prev => {
       if (prev.includes(editorId)) {
@@ -91,6 +111,17 @@ export default function CreateUserPage() {
       }
     });
   };
+
+  // Filter editors by search query and exclude already selected
+  const filteredEditors = editors.filter(editor => {
+    if (selectedEditorIds.includes(editor.id)) return false;
+    const query = editorSearchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return (
+      editor.name.toLowerCase().includes(query) ||
+      editor.email.toLowerCase().includes(query)
+    );
+  });
 
   // Form Submit Handler
   const handleSubmit = async (e) => {
@@ -208,7 +239,7 @@ export default function CreateUserPage() {
             Create User
           </h1>
           <p className="text-xs text-[var(--muted)] mt-1.5 font-medium">
-            Register a new staff member or reviewer and assign their system access privileges.
+            Register a new platform personnel account and assign their workflow access privileges.
           </p>
         </div>
       </div>
@@ -259,7 +290,7 @@ export default function CreateUserPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={`w-full text-xs font-semibold px-3 py-2 bg-[var(--foreground)]/5 border rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-[var(--foreground)] ${
-                    fieldErrors.email ? 'border-red-500' : 'border-[var(--muted-border)]'
+                    fieldErrors.email ? 'border-red-500' : 'border-red-500'
                   }`}
                   placeholder="e.g. john.doe@example.com"
                 />
@@ -337,7 +368,7 @@ export default function CreateUserPage() {
               </div>
             </div>
 
-            {/* Mandatory Sub Editor -> Editor Assignment Conditional Section */}
+            {/* Mandatory Sub Editor -> Editor Assignment Searchable Multi-Select */}
             {isSubEditor && (
               <div className="border border-[var(--muted-border)] rounded-xl p-4 bg-[var(--foreground)]/5 space-y-4 animate-in slide-in-from-top-2 duration-300">
                 <div>
@@ -352,28 +383,85 @@ export default function CreateUserPage() {
                     No active Editor profiles were found. Please configure a user with the Editor role before creating a Sub Editor.
                   </p>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-52 overflow-y-auto pr-2 border border-[var(--muted-border)]/50 rounded-xl p-3 bg-[var(--card-bg)]">
-                    {editors.map(editor => (
-                      <label
-                        key={editor.id}
-                        className={`flex items-center space-x-3 p-2 rounded-lg border transition-colors cursor-pointer text-xs font-semibold ${
-                          selectedEditorIds.includes(editor.id)
-                            ? 'border-amber-500 bg-amber-500/5 text-[var(--foreground)]'
-                            : 'border-[var(--muted-border)]/50 hover:bg-[var(--foreground)]/5 text-[var(--muted)]'
+                  <div className="space-y-3" ref={containerRef}>
+                    {/* Searchable Combobox Container */}
+                    <div className="relative">
+                      <div
+                        onClick={() => setDropdownOpen(true)}
+                        className={`flex flex-wrap gap-1.5 p-2 bg-[var(--card-bg)] border rounded-xl min-h-[42px] items-center cursor-pointer justify-between ${
+                          fieldErrors.editor_ids ? 'border-red-500' : 'border-[var(--muted-border)]'
                         }`}
                       >
-                        <input
-                          type="checkbox"
-                          checked={selectedEditorIds.includes(editor.id)}
-                          onChange={() => handleEditorToggle(editor.id)}
-                          className="w-3.5 h-3.5 rounded text-amber-500 focus:ring-amber-500 border-zinc-400 bg-zinc-700 cursor-pointer"
-                        />
-                        <div className="truncate">
-                          <span className="block text-[var(--foreground)] font-bold">{editor.name}</span>
-                          <span className="block text-[10px] font-medium text-[var(--muted)]">{editor.email}</span>
+                        <div className="flex flex-wrap gap-1.5 items-center flex-1">
+                          {selectedEditorIds.length === 0 && (
+                            <span className="text-zinc-400 text-xs px-2 select-none">Select editor(s)...</span>
+                          )}
+                          {selectedEditorIds.map(id => {
+                            const editor = editors.find(e => e.id === id);
+                            if (!editor) return null;
+                            return (
+                              <div
+                                key={id}
+                                className="flex items-center space-x-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider animate-in fade-in zoom-in-95"
+                              >
+                                <span>{editor.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditorToggle(id);
+                                  }}
+                                  className="hover:text-amber-800 dark:hover:text-white transition-colors cursor-pointer text-xs leading-none"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </label>
-                    ))}
+                        <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0 ml-2" />
+                      </div>
+
+                      {/* Dropdown Options */}
+                      {dropdownOpen && (
+                        <div className="absolute z-50 w-full mt-2 bg-[var(--card-bg)] border border-[var(--muted-border)] rounded-xl shadow-lg p-3 space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                          {/* Search Input */}
+                          <input
+                            type="text"
+                            placeholder="Search active editors by name or email..."
+                            value={editorSearchQuery}
+                            onChange={(e) => setEditorSearchQuery(e.target.value)}
+                            className="w-full text-xs font-semibold px-3 py-2 bg-[var(--foreground)]/5 border border-[var(--muted-border)] rounded-lg focus:outline-none focus:border-amber-500 transition-colors text-[var(--foreground)]"
+                            onClick={(e) => e.stopPropagation()}
+                            autoFocus
+                          />
+
+                          {/* Scrollable list */}
+                          <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+                            {filteredEditors.length === 0 ? (
+                              <div className="text-[10px] text-zinc-400 p-2 text-center select-none font-medium">
+                                No matching editors available
+                              </div>
+                            ) : (
+                              filteredEditors.map(editor => (
+                                <button
+                                  key={editor.id}
+                                  type="button"
+                                  onClick={() => {
+                                    handleEditorToggle(editor.id);
+                                    setEditorSearchQuery('');
+                                  }}
+                                  className="w-full text-left text-xs font-bold p-2 hover:bg-[var(--foreground)]/5 rounded-lg transition-colors flex flex-col cursor-pointer border border-transparent hover:border-[var(--muted-border)]/30"
+                                >
+                                  <span className="text-[var(--foreground)]">{editor.name}</span>
+                                  <span className="text-[10px] text-zinc-400 font-medium">{editor.email}</span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 {fieldErrors.editor_ids && (
