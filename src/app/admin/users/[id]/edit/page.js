@@ -216,8 +216,9 @@ export default function EditUserPage() {
       // Redirect to directory
       router.push('/admin/users');
     } catch (err) {
-      if (err.response && err.response.status === 422) {
-        const backendErrors = err.response.data?.errors || {};
+      const response = err.response;
+      if (response && response.status === 422) {
+        const backendErrors = response.data?.errors || {};
         const formattedErrors = {};
         Object.keys(backendErrors).forEach(key => {
           formattedErrors[key] = backendErrors[key][0];
@@ -434,7 +435,7 @@ export default function EditUserPage() {
                   <div>
                     <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--foreground)] font-mono">Assigned Editor(s)</h3>
                     <p className="text-[10px] text-[var(--muted)] mt-1">
-                      Sub Editors must be affiliated with at least one active Magazine Editor to manage their assigned submission workflows.
+                      Sub Editors must be affiliated with at least one active Editor to manage their assigned submission workflows.
                     </p>
                   </div>
 
