@@ -45,6 +45,7 @@ export default function AdminLayout({ children }) {
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [workflowDropdownOpen, setWorkflowDropdownOpen] = useState(false);
+  const [userManagementDropdownOpen, setUserManagementDropdownOpen] = useState(false);
   const [topSearchQuery, setTopSearchQuery] = useState('');
   const [notifications, setNotifications] = useState([
     { id: 1, title: 'Platform update deployed', desc: 'Sleek UI dynamically compiled globally.', time: '4h ago', unread: false },
@@ -199,6 +200,9 @@ export default function AdminLayout({ children }) {
     )) {
       setWorkflowDropdownOpen(true);
     }
+    if (pathname && (pathname.startsWith('/admin/users') || pathname.startsWith('/admin/user-management'))) {
+      setUserManagementDropdownOpen(true);
+    }
   }, [pathname, user]);
 
   if (authLoading || !user) {
@@ -214,7 +218,7 @@ export default function AdminLayout({ children }) {
 
   // Active path logic
   const isOverviewActive = pathname === '/admin';
-  const isRbacActive = pathname ? pathname.startsWith('/admin/rbac') : false;
+  const isUserManagementActive = pathname ? (pathname.startsWith('/admin/users') || pathname.startsWith('/admin/user-management')) : false;
   const isCmsActive = pathname ? (pathname.startsWith('/admin/cms') || pathname.startsWith('/admin/footer-cms')) : false;
   const isMagazineActive = pathname ? (pathname.startsWith('/admin/magazines') || pathname.startsWith('/admin/articles') || pathname.startsWith('/admin/issues')) : false;
   const isSubEditorDeskActive = pathname ? pathname.startsWith('/admin/sub-editor') : false;
@@ -503,14 +507,45 @@ export default function AdminLayout({ children }) {
               </Link>
             )}
 
-            {showRbac && (
-              <Link
-                href="/admin/rbac"
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isRbacActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
-              >
-                <ShieldAlert className="w-4 h-4" />
-                <span>Access Control</span>
-              </Link>
+            {hasRole('super_admin') && (
+              <div className="space-y-1">
+                <button
+                  onClick={() => setUserManagementDropdownOpen(!userManagementDropdownOpen)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 ${isUserManagementActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Users className="w-4 h-4" />
+                    <span>User Management</span>
+                  </div>
+                  <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${userManagementDropdownOpen ? 'rotate-90 text-amber-500' : 'text-zinc-500'}`} />
+                </button>
+
+                {userManagementDropdownOpen && (
+                  <div className="pl-4 pr-1 py-1 space-y-1 border-l border-zinc-800 ml-5 animate-in slide-in-from-top-1 duration-200">
+                    <Link
+                      href="/admin/users"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/users' || pathname.startsWith('/admin/users/') ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <span className="w-1 h-1 rounded-full bg-current" />
+                      <span>User Accounts</span>
+                    </Link>
+                    <Link
+                      href="/admin/user-management/roles-permissions"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/user-management/roles-permissions' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <span className="w-1 h-1 rounded-full bg-current" />
+                      <span>Roles & Permission Matrix</span>
+                    </Link>
+                    <Link
+                      href="/admin/user-management/registration-settings"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/user-management/registration-settings' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <span className="w-1 h-1 rounded-full bg-current" />
+                      <span>Registration Settings</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
             )}
 
             {showContactSettings && (
@@ -679,7 +714,7 @@ export default function AdminLayout({ children }) {
               <span>Workspace</span>
               <ChevronRight className="w-3.5 h-3.5 text-amber-500" />
               <span className="text-zinc-800 dark:text-zinc-200">
-                {isOverviewActive ? 'Overview' : isRbacActive ? 'Access Control' : isCmsActive ? 'CMS Page Management' : isMagazineActive ? 'Magazine Portal' : isSubEditorDeskActive ? 'Sub Editor Desk' : isReviewerDeskActive ? 'Reviewer Desk' : isCopyEditorDeskActive ? 'Copy Editor Desk' : isProofreaderDeskActive ? 'Proofreader Desk' : isPublisherDeskActive ? 'Publisher Desk' : 'Console'}
+                {isOverviewActive ? 'Overview' : isUserManagementActive ? 'User Management' : isCmsActive ? 'CMS Page Management' : isMagazineActive ? 'Magazine Portal' : isSubEditorDeskActive ? 'Sub Editor Desk' : isReviewerDeskActive ? 'Reviewer Desk' : isCopyEditorDeskActive ? 'Copy Editor Desk' : isProofreaderDeskActive ? 'Proofreader Desk' : isPublisherDeskActive ? 'Publisher Desk' : 'Console'}
               </span>
             </div>
           </div>
