@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
+import api from '../../utils/api';
+import { logError } from '../../utils/safeLogger';
 import UniversityGateModal from '../../components/dashboard/UniversityGateModal';
 import Image from 'next/image';
 import {
@@ -35,9 +37,24 @@ import {
 } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
-  const { user, loading: authLoading, logout, hasRole, hasPermission } = useAuth();
+  const { user, loading: authLoading, logout, hasRole, hasPermission, impersonationStatus, stopImpersonationSession } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [stoppingImpersonation, setStoppingImpersonation] = useState(false);
+
+  const handleReturnToSuperAdmin = async () => {
+    setStoppingImpersonation(true);
+    try {
+      const res = await api.post('/admin/impersonation/stop');
+      const { user: superAdminData, access_token } = res.data;
+      stopImpersonationSession(superAdminData, access_token);
+      router.push('/admin/users');
+    } catch (err) {
+      logError('Failed to stop impersonation:', err);
+    } finally {
+      setStoppingImpersonation(false);
+    }
+  };
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [cmsDropdownOpen, setCmsDropdownOpen] = useState(false);
@@ -695,7 +712,24 @@ export default function AdminLayout({ children }) {
       {/* ==========================================
           MAIN PORTAL CORE WORKSPACE
           ========================================== */}
-      <div className="flex-grow flex flex-col min-w-0 h-screen overflow-hidden z-10">
+      <div className="flex-grow flex flex-col min-w-0 h-screen overflow-hidden z-10 animate-in fade-in duration-300">
+
+        {/* Impersonation Banner */}
+        {impersonationStatus && impersonationStatus.active && (
+          <div className="bg-amber-600 dark:bg-amber-700 text-white px-6 py-2.5 flex items-center justify-between shadow-md z-50 text-xs font-bold font-sans animate-in slide-in-from-top duration-300">
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 bg-red-500 rounded-full animate-ping shrink-0" />
+              <span>You are currently logged in as <span className="underline">{impersonationStatus.impersonated_user?.name}</span>.</span>
+            </div>
+            <button
+              onClick={handleReturnToSuperAdmin}
+              disabled={stoppingImpersonation}
+              className="bg-white/10 hover:bg-white/20 text-white font-bold px-3 py-1.5 rounded-lg border border-white/20 transition-all text-[10px] uppercase tracking-wider cursor-pointer font-sans leading-none"
+            >
+              {stoppingImpersonation ? 'Restoring Session...' : 'Return to Super Admin'}
+            </button>
+          </div>
+        )}
 
         {/* TOP BAR / PORTAL HEADER */}
         <header className="py-5 border-b border-zinc-200/60 dark:border-zinc-900/60 px-6 sm:px-8 flex items-center justify-between sticky top-0 backdrop-blur-md bg-white/70 dark:bg-zinc-955/70 z-40">

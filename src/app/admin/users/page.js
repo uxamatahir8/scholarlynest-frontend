@@ -11,10 +11,28 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { useToast } from '../../../context/ToastContext';
 
 export default function UserAccountsPage() {
-  const { user: authUser, hasRole, loading: authLoading } = useAuth();
+  const { user: authUser, hasRole, loading: authLoading, impersonationStatus, startImpersonationSession } = useAuth();
+  const { toast } = useToast();
   const router = useRouter();
+  const [impersonateTarget, setImpersonateTarget] = useState(null);
+
+  const handleImpersonateConfirm = async () => {
+    if (!impersonateTarget) return;
+    try {
+      const res = await api.post(`/admin/users/${impersonateTarget.id}/impersonate`, { confirmed: true });
+      const { user: targetUserData, access_token } = res.data;
+      startImpersonationSession(targetUserData, access_token);
+      toast(`Logged in as ${targetUserData.name} successfully.`, 'success');
+      router.push('/admin');
+    } catch (err) {
+      toast('Unable to start impersonation. Please try again.', 'error');
+    } finally {
+      setImpersonateTarget(null);
+    }
+  };
 
   // Query States
   const [users, setUsers] = useState([]);
@@ -221,12 +239,22 @@ export default function UserAccountsPage() {
                       <td className="px-6 py-4 font-medium text-[var(--muted)]">
                         {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right flex items-center justify-end space-x-2">
+                        {isSuperAdmin && u.id !== authUser.id && u.status === 'active' && u.roles?.[0]?.name !== 'super_admin' && !impersonationStatus.active && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setImpersonateTarget(u)}
+                            className="border-amber-500/20 text-amber-600 hover:bg-amber-500/10 dark:text-amber-450 text-[10px] font-bold uppercase py-1 px-2.5 h-auto cursor-pointer rounded-lg shrink-0"
+                          >
+                            Login as User
+                          </Button>
+                        )}
                         <Link href={`/admin/users/${u.id}/edit`} passHref legacyBehavior>
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 text-[10px] font-bold uppercase py-1 px-2.5 h-auto cursor-pointer rounded-lg"
+                            className="border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 text-[10px] font-bold uppercase py-1 px-2.5 h-auto cursor-pointer rounded-lg shrink-0"
                           >
                             Edit
                           </Button>
@@ -268,6 +296,36 @@ export default function UserAccountsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Impersonation Confirmation Modal */}
+      {impersonateTarget && (
+        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[var(--card-bg)] border border-[var(--muted-border)] max-w-sm w-full rounded-2xl shadow-xl p-6 space-y-4 animate-in zoom-in-95 text-left">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--foreground)] font-mono">Confirm Impersonation</h3>
+            <p className="text-xs text-[var(--muted)] leading-relaxed">
+              You are about to log in as <span className="font-bold text-[var(--foreground)]">{impersonateTarget.name}</span>. Your current session will switch to the target user. Do you wish to continue?
+            </p>
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setImpersonateTarget(null)}
+                className="text-xs border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 font-bold cursor-pointer rounded-lg"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleImpersonateConfirm}
+                className="text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer rounded-lg"
+              >
+                Continue
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
