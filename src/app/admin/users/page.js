@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../utils/api';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
-  Users, RefreshCw, ShieldAlert, Search, Loader2, ChevronLeft, ChevronRight, AlertTriangle
+  Users, RefreshCw, ShieldAlert, Search, Loader2, ChevronLeft, ChevronRight, AlertTriangle, Plus
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
@@ -124,6 +125,16 @@ export default function UserAccountsPage() {
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </Button>
+          <Link href="/admin/users/create" passHref legacyBehavior>
+            <Button
+              variant="default"
+              size="sm"
+              className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs py-2 h-auto cursor-pointer font-bold rounded-lg border border-amber-600 hover:border-amber-700"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create User</span>
+            </Button>
+          </Link>
         </div>
       </div>
 
