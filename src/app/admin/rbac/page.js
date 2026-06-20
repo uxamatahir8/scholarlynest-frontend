@@ -10,7 +10,7 @@ import UserMagazineAssignment from '../../../components/admin/UserMagazineAssign
 import {
   ShieldAlert, Users, Lock, Key, ShieldCheck,
   Settings, UserCheck, RefreshCw, Save, CheckCircle,
-  Plus, Trash2, Shield, Info, HelpCircle
+  Plus, Trash2, Shield, Info, HelpCircle, Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
@@ -40,6 +40,11 @@ export default function RbacManager() {
   // Modal / Editing states
   const [editingUser, setEditingUser] = useState(null);
   const [selectedUserRoleId, setSelectedUserRoleId] = useState('');
+  
+  // Editor assignment states for Sub Editors
+  const [newUserEditorIds, setNewUserEditorIds] = useState([]);
+  const [editingUserEditorIds, setEditingUserEditorIds] = useState([]);
+  const [showRoleRemovalConfirm, setShowRoleRemovalConfirm] = useState(false);
 
   // Create User states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -108,16 +113,37 @@ export default function RbacManager() {
     setEditingUser(user);
     setSelectedUserRoleId(user.role_id || '');
     setSelectedUserMagazineIds(user.magazines?.map(m => m.id) || []);
+    setEditingUserEditorIds(user.assigned_editors?.map(e => e.id) || []);
   };
 
-  const handleSaveUserRole = async () => {
+  const handleSaveUserRole = async (bypassConfirm = false) => {
     if (!editingUser) return;
+
+    const editingRoleObj = roles.find(r => r.id === Number(selectedUserRoleId));
+    const isEditingSubEditor = editingRoleObj && (editingRoleObj.name === 'sub_editor' || editingRoleObj.name === 'sub-editor');
+
+    if (isEditingSubEditor && editingUserEditorIds.length === 0) {
+      toast('At least one Editor must be assigned to a Sub Editor.', 'error');
+      return;
+    }
+
+    // Check if removing sub_editor role entirely
+    const wasSubEditor = editingUser.role?.name === 'sub_editor' || editingUser.role?.name === 'sub-editor';
+    if (wasSubEditor && !isEditingSubEditor && !bypassConfirm) {
+      setShowRoleRemovalConfirm(true);
+      return;
+    }
+
     setUpdating(true);
     try {
-      const res = await api.patch(`/admin/rbac/users/${editingUser.id}`, {
+      const payload = {
         role_id: Number(selectedUserRoleId),
         magazine_ids: selectedUserMagazineIds
-      });
+      };
+      if (isEditingSubEditor) {
+        payload.editor_ids = editingUserEditorIds;
+      }
+      const res = await api.patch(`/admin/rbac/users/${editingUser.id}`, payload);
       toast(`Access privileges updated for ${editingUser.name}.`, 'success');
 
       // Update local state
@@ -126,9 +152,11 @@ export default function RbacManager() {
         role_id: res.data.role_id, 
         role: res.data.role, 
         roles: res.data.roles,
-        magazines: res.data.magazines
+        magazines: res.data.magazines,
+        assigned_editors: res.data.assigned_editors
       } : u));
       setEditingUser(null);
+      setShowRoleRemovalConfirm(false);
     } catch (err) {
       const errMsg = safeApiMessage(err, 'Failed to update user role.');
       toast(errMsg, 'error');
@@ -279,19 +307,30 @@ export default function RbacManager() {
       errors.newUserUniversityName = 'University or Institutional Affiliation is required.';
     }
 
+    const selectedRoleObj = roles.find(r => r.id === Number(newUserRoleId));
+    const isSubEditorSelected = selectedRoleObj && (selectedRoleObj.name === 'sub_editor' || selectedRoleObj.name === 'sub-editor');
+
+    if (isSubEditorSelected && newUserEditorIds.length === 0) {
+      errors.newUserEditorIds = 'At least one Editor must be assigned to a Sub Editor.';
+    }
+
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       return;
     }
     setUpdating(true);
     try {
-      await api.post('/admin/rbac/users', {
+      const payload = {
         name: newUserName,
         email: newUserEmail,
         role_id: Number(newUserRoleId),
         university_name: newUserUniversityName,
         magazine_ids: newUserMagazineIds,
-      });
+      };
+      if (isSubEditorSelected) {
+        payload.editor_ids = newUserEditorIds;
+      }
+      await api.post('/admin/rbac/users', payload);
       toast(`User ${newUserName} created successfully. Welcome credentials email dispatched.`, 'success');
       setShowCreateModal(false);
       setNewUserName('');
@@ -299,6 +338,7 @@ export default function RbacManager() {
       setNewUserRoleId('');
       setNewUserUniversityName('');
       setNewUserMagazineIds([]);
+      setNewUserEditorIds([]);
       await fetchData();
     } catch (err) {
       const errMsg = safeApiMessage(err, 'Failed to create user.');
@@ -989,6 +1029,22 @@ export default function RbacManager() {
                 value={selectedUserMagazineIds}
                 onChange={setSelectedUserMagazineIds}
               />
+
+              {(() => {
+                const editingRoleObj = roles.find(r => r.id === Number(selectedUserRoleId));
+                const isEditingSubEditor = editingRoleObj && (editingRoleObj.name === 'sub_editor' || editingRoleObj.name === 'sub-editor');
+                if (!isEditingSubEditor) return null;
+                return (
+                  <EditorMultiSelect
+                    selectedEditorIds={editingUserEditorIds}
+                    onChange={setEditingUserEditorIds}
+                    editorsList={users.filter(u => {
+                      const roleName = u.role?.name || '';
+                      return roleName === 'editor' || roleName === 'magazine-editor' || roleName === 'magazine_editor';
+                    })}
+                  />
+                );
+              })()}
             </div>
 
             <div className="pt-4 border-t border-[var(--muted-border)] flex items-center justify-end space-x-3">
@@ -1143,6 +1199,27 @@ export default function RbacManager() {
                 value={newUserMagazineIds}
                 onChange={setNewUserMagazineIds}
               />
+
+              {(() => {
+                const selectedRoleObj = roles.find(r => r.id === Number(newUserRoleId));
+                const isSubEditorSelected = selectedRoleObj && (selectedRoleObj.name === 'sub_editor' || selectedRoleObj.name === 'sub-editor');
+                if (!isSubEditorSelected) return null;
+                return (
+                  <div className="space-y-1.5">
+                    <EditorMultiSelect
+                      selectedEditorIds={newUserEditorIds}
+                      onChange={setNewUserEditorIds}
+                      editorsList={users.filter(u => {
+                        const roleName = u.role?.name || '';
+                        return roleName === 'editor' || roleName === 'magazine-editor' || roleName === 'magazine_editor';
+                      })}
+                    />
+                    {validationErrors.newUserEditorIds && (
+                      <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newUserEditorIds}</span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="pt-4 border-t border-[var(--muted-border)] flex items-center justify-end space-x-3">
@@ -1294,6 +1371,99 @@ export default function RbacManager() {
         variant="danger"
         isLoading={updating}
       />
+
+      {/* Role Removal Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showRoleRemovalConfirm}
+        title="Confirm Role Change"
+        message={`Removing the Sub Editor role from ${editingUser?.name || 'this user'} will detach all of their assigned Editor relationships. Are you sure you want to proceed?`}
+        confirmText="Yes, Change Role"
+        cancelText="Cancel"
+        onConfirm={() => handleSaveUserRole(true)}
+        onCancel={() => setShowRoleRemovalConfirm(false)}
+        variant="warning"
+        isLoading={updating}
+      />
+    </div>
+  );
+}
+
+// Searchable multi-select dropdown for assigning editors to sub-editors
+function EditorMultiSelect({ selectedEditorIds, onChange, editorsList }) {
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const filteredEditors = editorsList.filter(e => 
+    e.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    e.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const toggleEditor = (id) => {
+    if (selectedEditorIds.includes(id)) {
+      onChange(selectedEditorIds.filter(item => item !== id));
+    } else {
+      onChange([...selectedEditorIds, id]);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] block">
+        Assigned Editor(s) <span className="text-red-500">*</span>
+      </label>
+      <input
+        type="text"
+        placeholder="Search editors by name or email..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border border-[var(--muted-border)] rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)]"
+      />
+      <div className="max-h-40 overflow-y-auto border border-[var(--muted-border)] rounded-md divide-y divide-[var(--muted-border)]/50 bg-[var(--card-bg)]">
+        {filteredEditors.length === 0 ? (
+          <div className="p-3 text-xs text-[var(--muted)] text-center">No editors found.</div>
+        ) : (
+          filteredEditors.map(editor => {
+            const isChecked = selectedEditorIds.includes(editor.id);
+            return (
+              <label
+                key={editor.id}
+                className="flex items-center space-x-2.5 p-2 hover:bg-[var(--foreground)]/5 cursor-pointer text-xs select-none"
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => toggleEditor(editor.id)}
+                  className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
+                />
+                <div className="flex flex-col">
+                  <span className="font-bold text-[var(--foreground)]">{editor.name}</span>
+                  <span className="text-[10px] text-[var(--muted)]">{editor.email}</span>
+                </div>
+              </label>
+            );
+          })
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5 mt-1.5">
+        {selectedEditorIds.map(id => {
+          const editor = editorsList.find(e => e.id === id);
+          if (!editor) return null;
+          return (
+            <span
+              key={id}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20"
+            >
+              {editor.name}
+              <button
+                type="button"
+                onClick={() => toggleEditor(id)}
+                className="hover:text-red-500 font-normal focus:outline-none"
+              >
+                ✕
+              </button>
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }

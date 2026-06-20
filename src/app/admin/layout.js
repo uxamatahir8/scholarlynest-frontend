@@ -30,7 +30,8 @@ import {
   FileCheck2,
   Users,
   Search,
-  ChevronDown
+  ChevronDown,
+  Workflow
 } from 'lucide-react';
 
 export default function AdminLayout({ children }) {
@@ -43,6 +44,7 @@ export default function AdminLayout({ children }) {
   const [magazineDropdownOpen, setMagazineDropdownOpen] = useState(false);
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [workflowDropdownOpen, setWorkflowDropdownOpen] = useState(false);
   const [topSearchQuery, setTopSearchQuery] = useState('');
   const [notifications, setNotifications] = useState([
     { id: 1, title: 'Platform update deployed', desc: 'Sleek UI dynamically compiled globally.', time: '4h ago', unread: false },
@@ -188,7 +190,16 @@ export default function AdminLayout({ children }) {
     if (pathname && pathname.startsWith('/admin/settings')) {
       setSettingsDropdownOpen(true);
     }
-  }, [pathname]);
+    if (user && hasRole('super_admin') && pathname && (
+      pathname.startsWith('/admin/sub-editor') ||
+      pathname.startsWith('/admin/reviewer') ||
+      pathname.startsWith('/admin/copy-editor') ||
+      pathname.startsWith('/admin/proofreader') ||
+      pathname.startsWith('/admin/publisher')
+    )) {
+      setWorkflowDropdownOpen(true);
+    }
+  }, [pathname, user]);
 
   if (authLoading || !user) {
     return (
@@ -212,9 +223,16 @@ export default function AdminLayout({ children }) {
   const isProofreaderDeskActive = pathname ? pathname.startsWith('/admin/proofreader') : false;
   const isPublisherDeskActive = pathname ? pathname.startsWith('/admin/publisher') : false;
   const isSettingsActive = pathname ? pathname.startsWith('/admin/settings') : false;
+  const isWorkflowActive = pathname ? (
+    pathname.startsWith('/admin/sub-editor') ||
+    pathname.startsWith('/admin/reviewer') ||
+    pathname.startsWith('/admin/copy-editor') ||
+    pathname.startsWith('/admin/proofreader') ||
+    pathname.startsWith('/admin/publisher')
+  ) : false;
 
   const isEditorRole = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
-  const showMySubEditors = isEditorRole || hasRole('super_admin') || hasRole('admin');
+  const showMySubEditors = isEditorRole;
   const showIssueManager = hasRole('publisher') || hasRole('super_admin') || hasRole('admin');
   const showMagazineDirectory = (hasPermission('magazines.view-any') || hasPermission('magazines.view-own')) && !hasRole('author');
   const showArticleBoard = hasPermission('articles.view-any') || isEditorRole;
@@ -370,14 +388,59 @@ export default function AdminLayout({ children }) {
               </div>
             )}
 
-            {showSubEditorDesk && (
-              <Link
-                href="/admin/sub-editor"
-                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isSubEditorDeskActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
-              >
-                <ClipboardCheck className="w-4 h-4" />
-                <span>Sub Editor Desk</span>
-              </Link>
+            {hasRole('super_admin') && (
+              <div className="space-y-1">
+                <button
+                  onClick={() => setWorkflowDropdownOpen(!workflowDropdownOpen)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-300 ${isWorkflowActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Workflow className="w-4 h-4" />
+                    <span>Workflow Desks</span>
+                  </div>
+                  <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${workflowDropdownOpen ? 'rotate-90 text-amber-500' : 'text-zinc-500'}`} />
+                </button>
+
+                {workflowDropdownOpen && (
+                  <div className="pl-4 pr-1 py-1 space-y-1 border-l border-zinc-800 ml-5 animate-in slide-in-from-top-1 duration-200">
+                    <Link
+                      href="/admin/sub-editor"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/sub-editor' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <ClipboardCheck className="w-3.5 h-3.5" />
+                      <span>Sub Editor Desk</span>
+                    </Link>
+                    <Link
+                      href="/admin/reviewer"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/reviewer' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span>Reviewer Desk</span>
+                    </Link>
+                    <Link
+                      href="/admin/copy-editor"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/copy-editor' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <BriefcaseBusiness className="w-3.5 h-3.5" />
+                      <span>Copy Editor Desk</span>
+                    </Link>
+                    <Link
+                      href="/admin/proofreader"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/proofreader' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <FileCheck2 className="w-3.5 h-3.5" />
+                      <span>Proofreader Desk</span>
+                    </Link>
+                    <Link
+                      href="/admin/publisher"
+                      className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/publisher' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
+                    >
+                      <Newspaper className="w-3.5 h-3.5" />
+                      <span>Publisher Desk</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
             )}
 
             {showMySubEditors && (
@@ -390,7 +453,17 @@ export default function AdminLayout({ children }) {
               </Link>
             )}
 
-            {showReviewerDesk && (
+            {!hasRole('super_admin') && showSubEditorDesk && (
+              <Link
+                href="/admin/sub-editor"
+                className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isSubEditorDeskActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
+              >
+                <ClipboardCheck className="w-4 h-4" />
+                <span>Sub Editor Desk</span>
+              </Link>
+            )}
+
+            {!hasRole('super_admin') && showReviewerDesk && (
               <Link
                 href="/admin/reviewer"
                 className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isReviewerDeskActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
@@ -400,7 +473,7 @@ export default function AdminLayout({ children }) {
               </Link>
             )}
 
-            {showCopyEditorDesk && (
+            {!hasRole('super_admin') && showCopyEditorDesk && (
               <Link
                 href="/admin/copy-editor"
                 className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isCopyEditorDeskActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
@@ -410,7 +483,7 @@ export default function AdminLayout({ children }) {
               </Link>
             )}
 
-            {showProofreaderDesk && (
+            {!hasRole('super_admin') && showProofreaderDesk && (
               <Link
                 href="/admin/proofreader"
                 className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isProofreaderDeskActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
@@ -420,7 +493,7 @@ export default function AdminLayout({ children }) {
               </Link>
             )}
 
-            {showPublisherDesk && (
+            {!hasRole('super_admin') && showPublisherDesk && (
               <Link
                 href="/admin/publisher"
                 className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${isPublisherDeskActive ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}

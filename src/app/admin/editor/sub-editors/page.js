@@ -7,10 +7,12 @@ import { Users, UserPlus, Trash2, Loader2, Mail, Info } from 'lucide-react';
 import api from '../../../../utils/api';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../context/ToastContext';
+import { useRouter } from 'next/navigation';
 
 export default function MySubEditorsPage() {
   const { user, hasRole } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   const [subEditors, setSubEditors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [inviting, setInviting] = useState(false);
@@ -18,7 +20,16 @@ export default function MySubEditorsPage() {
   
   const [form, setForm] = useState({ name: '', email: '' });
 
-  const roleAllowed = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const roleAllowed = isEditor;
+
+  useEffect(() => {
+    if (user) {
+      if (hasRole('super_admin') || hasRole('admin')) {
+        router.push('/admin/rbac');
+      }
+    }
+  }, [user, router, hasRole]);
 
   const fetchSubEditors = async () => {
     try {
@@ -94,6 +105,10 @@ export default function MySubEditorsPage() {
         <p className="mt-2 text-sm text-zinc-550">
           Recruit or link Sub Editors to work under your desk. Invited accounts default to the password <span className="font-mono font-bold text-amber-600">Password123!</span>.
         </p>
+        <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 rounded-xl text-xs flex items-center gap-2">
+          <Info className="h-4 w-4 text-blue-500 shrink-0" />
+          <span>New Sub Editors are automatically linked to your editor account.</span>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -112,34 +127,42 @@ export default function MySubEditorsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {subEditors.map((sub) => (
-                <div
-                  key={sub.id}
-                  className="rounded-xl border border-zinc-150 bg-white p-4 shadow-sm dark:border-zinc-850 dark:bg-zinc-900 flex items-center justify-between gap-4"
-                >
-                  <div className="min-w-0 flex-grow">
-                    <h3 className="text-sm font-black text-zinc-950 dark:text-white truncate">{sub.name}</h3>
-                    <p className="mt-1 text-xs text-zinc-450 truncate flex items-center gap-1">
-                      <Mail className="h-3 w-3 inline" />
-                      {sub.email}
-                    </p>
-                    <p className="mt-2 text-[10px] text-zinc-400">Linked on {new Date(sub.assigned_at).toLocaleDateString()}</p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={unassigningId === sub.id}
-                    onClick={() => handleUnassign(sub.id)}
-                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-all cursor-pointer disabled:opacity-50 shrink-0"
-                    title="Remove link"
+              {subEditors.map((sub) => {
+                const isFinalLink = sub.editors_count <= 1;
+                return (
+                  <div
+                    key={sub.id}
+                    className="rounded-xl border border-zinc-150 bg-white p-4 shadow-sm dark:border-zinc-850 dark:bg-zinc-900 flex items-center justify-between gap-4"
                   >
-                    {unassigningId === sub.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-              ))}
+                    <div className="min-w-0 flex-grow">
+                      <h3 className="text-sm font-black text-zinc-950 dark:text-white truncate">{sub.name}</h3>
+                      <p className="mt-1 text-xs text-zinc-450 truncate flex items-center gap-1">
+                        <Mail className="h-3 w-3 inline" />
+                        {sub.email}
+                      </p>
+                      <p className="mt-2 text-[10px] text-zinc-400">Linked on {new Date(sub.assigned_at).toLocaleDateString()}</p>
+                      {isFinalLink && (
+                        <p className="mt-1.5 text-[10px] font-bold text-amber-600 dark:text-amber-505">
+                          ⚠️ must remain assigned to at least one Editor
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={unassigningId === sub.id || isFinalLink}
+                      onClick={() => handleUnassign(sub.id)}
+                      className={`p-2 rounded-xl transition-all shrink-0 ${isFinalLink ? 'text-zinc-300 dark:text-zinc-700 cursor-not-allowed' : 'text-red-500 hover:bg-red-500/10 cursor-pointer disabled:opacity-50'}`}
+                      title={isFinalLink ? "This Sub Editor must remain assigned to at least one Editor." : "Remove link"}
+                    >
+                      {unassigningId === sub.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
