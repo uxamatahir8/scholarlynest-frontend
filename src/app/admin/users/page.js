@@ -104,16 +104,6 @@ export default function UserAccountsPage() {
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </Button>
-          <Link href="/admin/users/create" passHref legacyBehavior>
-            <Button
-              variant="primary"
-              size="sm"
-              className="flex items-center gap-1.5 text-xs py-2 h-auto cursor-pointer shadow-md"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Create New User</span>
-            </Button>
-          </Link>
         </div>
       </div>
 
@@ -162,7 +152,6 @@ export default function UserAccountsPage() {
                   <th className="px-6 py-4">Email Address</th>
                   <th className="px-6 py-4">University</th>
                   <th className="px-6 py-4">Assigned Role</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--muted-border)]/50 text-xs">
@@ -180,18 +169,6 @@ export default function UserAccountsPage() {
                       <Badge variant={u.role?.name === 'super_admin' ? 'gold' : u.role?.name === 'editor' ? 'default' : 'outline'}>
                         {u.role?.display_name || 'No Role Assigned'}
                       </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Link href={`/admin/users/${u.id}/edit`} passHref legacyBehavior>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs py-1.5 h-auto hover:bg-[var(--foreground)]/10 text-[var(--accent)] dark:text-blue-400 cursor-pointer"
-                        >
-                          <UserCheck className="w-3.5 h-3.5 mr-1 inline" />
-                          Edit Profile & Role
-                        </Button>
-                      </Link>
                     </td>
                   </tr>
                 ))}
