@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../utils/safeErrors';
+import { logError } from '../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
@@ -75,7 +77,7 @@ export default function SecuritySettings() {
       setCodeVerified(false);
       toast('Verification code sent to your email.', 'info');
     } catch (err) {
-      console.error('Failed to request password change code:', err);
+      logError('Failed to request password change code:', err);
       toast('Failed to send verification code to email.', 'error');
     } finally {
       setRequestLoading(false);
@@ -95,7 +97,7 @@ export default function SecuritySettings() {
       setCodeVerified(true);
       toast('Verification code accepted. Please enter your new password.', 'success');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Invalid or expired code.';
+      const msg = safeApiMessage(err, 'Invalid or expired code.');
       toast(msg, 'error');
     } finally {
       setVerifyLoading(false);
@@ -110,7 +112,7 @@ export default function SecuritySettings() {
       await refreshUser();
       toast(res.data.message || 'Two-Factor Authentication enabled.', 'success');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to enable 2FA.';
+      const msg = safeApiMessage(err, 'Failed to enable 2FA.');
       toast(msg, 'error');
     } finally {
       setToggleLoading(false);
@@ -125,7 +127,7 @@ export default function SecuritySettings() {
       setDisable2FARequested(true);
       toast('Verification code sent to your email to authorize disabling 2FA.', 'info');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to request disable verification code.';
+      const msg = safeApiMessage(err, 'Failed to request disable verification code.');
       toast(msg, 'error');
     } finally {
       setRequestDisableLoading(false);
@@ -149,7 +151,7 @@ export default function SecuritySettings() {
       setDisableCode('');
       toast(res.data.message || 'Two-Factor Authentication has been disabled.', 'success');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to disable 2FA. Verify code.';
+      const msg = safeApiMessage(err, 'Failed to disable 2FA. Verify code.');
       toast(msg, 'error');
     } finally {
       setConfirmDisableLoading(false);
@@ -190,7 +192,7 @@ export default function SecuritySettings() {
       setCodeRequested(false);
       setCodeVerified(false);
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to update password.';
+      const msg = safeApiMessage(err, 'Failed to update password.');
       toast(msg, 'error');
     } finally {
       setSubmitLoading(false);
@@ -224,8 +226,8 @@ export default function SecuritySettings() {
       setProfileImage(res.data.url);
       toast('Profile picture uploaded successfully. Save profile to apply changes.', 'success');
     } catch (err) {
-      console.error('Failed to upload image:', err);
-      const msg = err.response?.data?.message || 'Failed to upload image.';
+      logError('Failed to upload image:', err);
+      const msg = safeApiMessage(err, 'Failed to upload image.');
       toast(msg, 'error');
     } finally {
       setUploadingImage(false);
@@ -260,8 +262,8 @@ export default function SecuritySettings() {
       await refreshUser();
       toast(res.data.message || 'Profile updated successfully.', 'success');
     } catch (err) {
-      console.error('Failed to update profile:', err);
-      const msg = err.response?.data?.message || 'Failed to update profile.';
+      logError('Failed to update profile:', err);
+      const msg = safeApiMessage(err, 'Failed to update profile.');
       toast(msg, 'error');
     } finally {
       setProfileLoading(false);
@@ -274,7 +276,7 @@ export default function SecuritySettings() {
       await api.post('/profile/email/request-current-code');
       toast('Verification code sent to your current email address.', 'info');
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to send verification code.', 'error');
     } finally {
       setEmailChangeLoading(false);
@@ -294,8 +296,8 @@ export default function SecuritySettings() {
       setEmailStep(2);
       toast(res.data.message || 'Current email verified. Now submit your new email.', 'success');
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Invalid or expired code.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Invalid or expired code.');
       toast(msg, 'error');
     } finally {
       setEmailChangeLoading(false);
@@ -324,8 +326,8 @@ export default function SecuritySettings() {
       await api.post('/profile/email/request-new-code', { email: newEmailAddress.trim() });
       toast('Verification code sent to your new email address.', 'info');
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Failed to request verification code.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Failed to request verification code.');
       toast(msg, 'error');
     } finally {
       setEmailChangeLoading(false);
@@ -347,8 +349,8 @@ export default function SecuritySettings() {
       resetEmailWizard();
       toast(res.data.message || 'Email address updated successfully.', 'success');
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Invalid or expired code.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Invalid or expired code.');
       toast(msg, 'error');
     } finally {
       setEmailChangeLoading(false);

@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, Plus, Edit2, Trash2, FileText, Settings, Loader2, 
@@ -76,7 +77,7 @@ export default function AdminMagazines() {
       setMagazines(response.data.data || []);
       setTotalPages(response.data.last_page || 1);
     } catch (err) {
-      console.error(err);
+      logError(err);
       setError('Failed to fetch the registered magazines database.');
     } finally {
       setLoading(false);
@@ -175,7 +176,7 @@ export default function AdminMagazines() {
       setCoverImageFileName('');
       fetchMagazines();
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to save magazine modifications.', 'error');
     } finally {
       setSaving(false);
@@ -195,7 +196,7 @@ export default function AdminMagazines() {
       setIsSeoModalOpen(false);
       fetchMagazines();
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to update SEO metadata.', 'error');
     } finally {
       setSavingSeo(false);
@@ -216,7 +217,7 @@ export default function AdminMagazines() {
       toast('Magazine and all associated content deleted successfully.', 'success');
       fetchMagazines();
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to delete magazine catalog.', 'error');
     } finally {
       setIsConfirmOpen(false);

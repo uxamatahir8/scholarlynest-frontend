@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../../utils/safeErrors';
+import { logError } from '../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../context/ToastContext';
@@ -40,7 +42,7 @@ export default function ArticleTypeManagement() {
       const response = await api.get('/article-types');
       setTypes(response.data || []);
     } catch (err) {
-      console.error('Failed to load article types', err);
+      logError('Failed to load article types', err);
       setErrorMsg('Failed to fetch article types from the server.');
       toast('Failed to load article types.', 'error');
     } finally {
@@ -96,8 +98,8 @@ export default function ArticleTypeManagement() {
       setIsFormOpen(false);
       fetchTypes();
     } catch (err) {
-      console.error('Failed to save article type', err);
-      toast(err.response?.data?.message || 'Error occurred while saving.', 'error');
+      logError('Failed to save article type', err);
+      toast(safeApiMessage(err, 'Error occurred while saving.'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -110,8 +112,8 @@ export default function ArticleTypeManagement() {
       toast('Article Type deleted successfully.', 'success');
       fetchTypes();
     } catch (err) {
-      console.error('Failed to delete article type', err);
-      toast(err.response?.data?.message || 'Failed to delete article type.', 'error');
+      logError('Failed to delete article type', err);
+      toast(safeApiMessage(err, 'Failed to delete article type.'), 'error');
     } finally {
       setDeletingId(null);
     }
@@ -125,7 +127,7 @@ export default function ArticleTypeManagement() {
       toast(`Article Type status updated.`, 'success');
       fetchTypes();
     } catch (err) {
-      console.error('Failed to toggle status', err);
+      logError('Failed to toggle status', err);
       toast('Failed to update status.', 'error');
     }
   };

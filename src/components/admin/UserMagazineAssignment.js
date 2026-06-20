@@ -1,3 +1,4 @@
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
 import {
@@ -29,7 +30,7 @@ export default function UserMagazineAssignment({ selectedRoleId, roles, value, o
         const data = res.data?.data || res.data || [];
         setMagazines(data);
       } catch (err) {
-        console.error('Failed to fetch magazines for assignment', err);
+        logError('Failed to fetch magazines for assignment', err);
       } finally {
         setLoading(false);
       }

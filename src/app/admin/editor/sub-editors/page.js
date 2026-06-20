@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../../utils/safeErrors';
+import { logError } from '../../../../utils/safeLogger';
 import React, { useEffect, useState } from 'react';
 import { Users, UserPlus, Trash2, Loader2, Mail, Info } from 'lucide-react';
 import api from '../../../../utils/api';
@@ -24,7 +26,7 @@ export default function MySubEditorsPage() {
       const res = await api.get('/admin/editor/sub-editors');
       setSubEditors(res.data?.data || []);
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to load sub-editors.', 'error');
     } finally {
       setLoading(false);
@@ -51,8 +53,8 @@ export default function MySubEditorsPage() {
       setForm({ name: '', email: '' });
       fetchSubEditors();
     } catch (err) {
-      console.error(err);
-      toast(err.response?.data?.message || 'Failed to recruit/link Sub Editor.', 'error');
+      logError(err);
+      toast(safeApiMessage(err, 'Failed to recruit/link Sub Editor.'), 'error');
     } finally {
       setInviting(false);
     }
@@ -66,7 +68,7 @@ export default function MySubEditorsPage() {
       toast('Sub Editor removed from your recruits.', 'success');
       fetchSubEditors();
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to remove Sub Editor.', 'error');
     } finally {
       setUnassigningId(null);

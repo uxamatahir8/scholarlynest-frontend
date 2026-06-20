@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -63,7 +64,7 @@ export default function AdminMagazinePages() {
       const response = await api.get(`/admin/magazines/${slug}`);
       setMagazine(response.data);
     } catch (err) {
-      console.error(err);
+      logError(err);
       setError('Could not locate the selected magazine issues or related subpages.');
     } finally {
       setLoading(false);
@@ -125,7 +126,7 @@ export default function AdminMagazinePages() {
       setIsModalOpen(false);
       fetchMagazineDetails();
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to save page changes.', 'error');
     } finally {
       setSaving(false);
@@ -146,7 +147,7 @@ export default function AdminMagazinePages() {
       toast('Custom subpage deleted successfully.', 'success');
       fetchMagazineDetails();
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to delete custom subpage.', 'error');
     } finally {
       setIsConfirmOpen(false);

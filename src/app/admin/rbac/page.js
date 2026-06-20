@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../utils/safeErrors';
+import { logError } from '../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
@@ -88,7 +90,7 @@ export default function RbacManager() {
         });
       }
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to load access control records.', 'error');
     } finally {
       setLoading(false);
@@ -128,7 +130,7 @@ export default function RbacManager() {
       } : u));
       setEditingUser(null);
     } catch (err) {
-      const errMsg = err.response?.data?.message || 'Failed to update user role.';
+      const errMsg = safeApiMessage(err, 'Failed to update user role.');
       toast(errMsg, 'error');
     } finally {
       setUpdating(false);
@@ -166,7 +168,7 @@ export default function RbacManager() {
       const newRole = roles.find(r => r.name === res.data.name) || res.data;
       setSelectedRole(newRole);
     } catch (err) {
-      const errMsg = err.response?.data?.message || 'Failed to create role.';
+      const errMsg = safeApiMessage(err, 'Failed to create role.');
       toast(errMsg, 'error');
     } finally {
       setUpdating(false);
@@ -188,7 +190,7 @@ export default function RbacManager() {
       toast(`Role "${deleteRoleName}" deleted successfully.`, 'success');
       await fetchData();
     } catch (err) {
-      const errMsg = err.response?.data?.message || 'Failed to delete role.';
+      const errMsg = safeApiMessage(err, 'Failed to delete role.');
       toast(errMsg, 'error');
     } finally {
       setUpdating(false);
@@ -209,7 +211,7 @@ export default function RbacManager() {
       setSelectedRole(prev => prev.id === roleId ? { ...prev, permissions: res.data.permissions } : prev);
       toast('Permissions updated successfully.', 'success');
     } catch (err) {
-      toast(err.response?.data?.message || 'Failed to update permissions.', 'error');
+      toast(safeApiMessage(err, 'Failed to update permissions.'), 'error');
     }
   };
 
@@ -299,7 +301,7 @@ export default function RbacManager() {
       setNewUserMagazineIds([]);
       await fetchData();
     } catch (err) {
-      const errMsg = err.response?.data?.message || 'Failed to create user.';
+      const errMsg = safeApiMessage(err, 'Failed to create user.');
       toast(errMsg, 'error');
     } finally {
       setUpdating(false);

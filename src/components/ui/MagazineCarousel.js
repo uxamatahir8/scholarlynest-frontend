@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import api from '../../utils/api';
+import { logError } from '../../utils/safeLogger';
 import MagazineCard from '../magazine/MagazineCard';
 
 export default function MagazineCarousel() {
@@ -28,7 +29,7 @@ export default function MagazineCarousel() {
           setMagazines(response.data || []);
         }
       } catch (err) {
-        console.error('Failed to load latest magazines:', err);
+        logError('Failed to load latest magazines:', err);
         setError('We were unable to load the latest magazine publications at this time.');
       } finally {
         setLoading(false);

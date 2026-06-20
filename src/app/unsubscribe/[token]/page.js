@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../utils/safeErrors';
+import { logError } from '../../../utils/safeLogger';
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -27,8 +29,8 @@ export default function UnsubscribePage() {
       await api.get(`/newsletter/unsubscribe/${token}`);
       setStatus('success');
     } catch (error) {
-      console.error('Unsubscribe error:', error);
-      const msg = error.response?.data?.message || 'The unsubscribe link is invalid or has expired.';
+      logError('Unsubscribe error:', error);
+      const msg = safeApiMessage(error, 'The unsubscribe link is invalid or has expired.');
       setErrorMessage(msg);
       setStatus('error');
     }

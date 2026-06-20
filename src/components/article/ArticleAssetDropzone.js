@@ -1,8 +1,10 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
 import React, { useState, useRef } from 'react';
 import { Upload, X, File, FileSpreadsheet, FileText, Image, Archive, Loader2, AlertCircle } from 'lucide-react';
 import api from '../../utils/api';
+import { logError } from '../../utils/safeLogger';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 
@@ -87,8 +89,8 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
         return next;
       });
     } catch (err) {
-      console.error('File upload error:', err);
-      const errMsg = err.response?.data?.message || `Failed to upload "${file.name}"`;
+      logError('File upload error:', err);
+      const errMsg = safeApiMessage(err, `Failed to upload "${file.name}"`);
       toast(errMsg, 'error');
       
       setUploadingFiles(prev => ({
@@ -129,8 +131,8 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
       onAssetsChanged(assets.filter(a => a.id !== assetId));
       toast(`Asset "${filename}" deleted successfully.`, 'success');
     } catch (err) {
-      console.error('Failed to delete asset:', err);
-      toast(err.response?.data?.message || 'Failed to delete supplementary asset.', 'error');
+      logError('Failed to delete asset:', err);
+      toast(safeApiMessage(err, 'Failed to delete supplementary asset.'), 'error');
     }
   };
 

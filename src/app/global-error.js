@@ -1,12 +1,13 @@
 'use client';
 
+import { logError } from '../utils/safeLogger';
 import React, { useEffect } from 'react';
 import { AlertOctagon, RefreshCw } from 'lucide-react';
 import './globals.css';
 
 export default function GlobalError({ error, reset }) {
   useEffect(() => {
-    console.error('Captured critical global error:', error);
+    logError('Captured critical global error:', error);
   }, [error]);
 
   return (

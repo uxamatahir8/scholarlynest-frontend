@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../../../utils/safeLogger';
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -31,7 +32,7 @@ export default function SearchResultsPage() {
         const res = await api.get('/admin/search', { params: { q: query } });
         setResults(res.data || { articles: [], magazines: [], issues: [] });
       } catch (err) {
-        console.error(err);
+        logError(err);
         toast('Unable to fetch panel search results.', 'error');
       } finally {
         setLoading(false);

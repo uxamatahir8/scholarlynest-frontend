@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '../../utils/api';
@@ -32,7 +33,7 @@ export default function CustomFooterPage() {
         }
       })
       .catch((err) => {
-        console.error('Failed to load page data:', err);
+        logError('Failed to load page data:', err);
         if (active) {
           setPageData(null);
         }

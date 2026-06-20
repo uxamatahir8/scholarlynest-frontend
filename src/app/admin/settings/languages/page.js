@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../../utils/safeErrors';
+import { logError } from '../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../context/ToastContext';
@@ -40,7 +42,7 @@ export default function LanguageManagement() {
       const response = await api.get('/languages');
       setLanguages(response.data || []);
     } catch (err) {
-      console.error('Failed to load languages', err);
+      logError('Failed to load languages', err);
       setErrorMsg('Failed to fetch languages from the server.');
       toast('Failed to load languages.', 'error');
     } finally {
@@ -96,8 +98,8 @@ export default function LanguageManagement() {
       setIsFormOpen(false);
       fetchLanguages();
     } catch (err) {
-      console.error('Failed to save language', err);
-      toast(err.response?.data?.message || 'Error occurred while saving.', 'error');
+      logError('Failed to save language', err);
+      toast(safeApiMessage(err, 'Error occurred while saving.'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -110,8 +112,8 @@ export default function LanguageManagement() {
       toast('Language deleted successfully.', 'success');
       fetchLanguages();
     } catch (err) {
-      console.error('Failed to delete language', err);
-      toast(err.response?.data?.message || 'Failed to delete language.', 'error');
+      logError('Failed to delete language', err);
+      toast(safeApiMessage(err, 'Failed to delete language.'), 'error');
     } finally {
       setDeletingId(null);
     }
@@ -125,7 +127,7 @@ export default function LanguageManagement() {
       toast(`Language status updated.`, 'success');
       fetchLanguages();
     } catch (err) {
-      console.error('Failed to toggle status', err);
+      logError('Failed to toggle status', err);
       toast('Failed to update status.', 'error');
     }
   };

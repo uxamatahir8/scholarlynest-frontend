@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
+import { logError } from '../../utils/safeLogger';
 import Link from 'next/link';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -167,8 +169,8 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
         return newData[0]?.id || null;
       });
     } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || 'Unable to load assignments.');
+      logError(err);
+      setError(safeApiMessage(err, 'Unable to load assignments.'));
     } finally {
       setLoading(false);
     }
@@ -210,8 +212,8 @@ export default function AssignmentTaskDashboard({ kind, title, description, endp
       await fetchAssignments(currentPage);
       setSelectedId(assignment.id);
     } catch (err) {
-      console.error(err);
-      toast(err.response?.data?.message || 'Unable to accept review invitation.', 'error');
+      logError(err);
+      toast(safeApiMessage(err, 'Unable to accept review invitation.'), 'error');
     } finally {
       setBusyAssignmentId(null);
     }

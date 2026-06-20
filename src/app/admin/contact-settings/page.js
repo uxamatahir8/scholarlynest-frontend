@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../utils/safeErrors';
+import { logError } from '../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Save, Loader2, ShieldCheck, ArrowLeft, ChevronRight, Plus, Edit, Trash2, Tag, X } from 'lucide-react';
 import Link from 'next/link';
@@ -41,7 +43,7 @@ export default function AdminContactSettings() {
         setPhone(res.data.phone || '');
         setAddress(res.data.address || '');
       } catch (err) {
-        console.error('Failed to load contact settings:', err);
+        logError('Failed to load contact settings:', err);
         toast('Failed to load contact settings.', 'error');
       } finally {
         setLoading(false);
@@ -59,7 +61,7 @@ export default function AdminContactSettings() {
       const res = await api.get('/contact-subjects');
       setSubjects(res.data || []);
     } catch (err) {
-      console.error('Failed to load contact subjects:', err);
+      logError('Failed to load contact subjects:', err);
     } finally {
       setSubjectsLoading(false);
     }
@@ -95,8 +97,8 @@ export default function AdminContactSettings() {
       await api.put('/admin/contact-settings', { email, phone, address });
       toast('Contact settings updated successfully.', 'success');
     } catch (err) {
-      console.error('Failed to update contact settings:', err);
-      toast(err.response?.data?.message || 'Failed to save contact settings.', 'error');
+      logError('Failed to update contact settings:', err);
+      toast(safeApiMessage(err, 'Failed to save contact settings.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -127,7 +129,7 @@ export default function AdminContactSettings() {
       resetSubjectForm();
       await fetchSubjects();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to save subject.';
+      const msg = safeApiMessage(err, 'Failed to save subject.');
       toast(msg, 'error');
     } finally {
       setSubjectSaving(false);
@@ -142,7 +144,7 @@ export default function AdminContactSettings() {
       toast(`Subject "${label}" deleted.`, 'success');
       await fetchSubjects();
     } catch (err) {
-      toast(err.response?.data?.message || 'Failed to delete subject.', 'error');
+      toast(safeApiMessage(err, 'Failed to delete subject.'), 'error');
     } finally {
       setDeletingSubjectId(null);
     }

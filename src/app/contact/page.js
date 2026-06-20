@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Send, HelpCircle, Building } from 'lucide-react';
 
@@ -36,7 +38,7 @@ export default function ContactPage() {
         const res = await api.get('/contact-settings');
         setContactSettings(res.data);
       } catch (err) {
-        console.error('Failed to load contact settings:', err);
+        logError('Failed to load contact settings:', err);
       }
     };
     const fetchSubjects = async () => {
@@ -44,7 +46,7 @@ export default function ContactPage() {
         const res = await api.get('/contact-subjects');
         setSubjects(res.data || []);
       } catch (err) {
-        console.error('Failed to load contact subjects:', err);
+        logError('Failed to load contact subjects:', err);
       }
     };
     fetchContactSettings();
@@ -77,8 +79,8 @@ export default function ContactPage() {
         setSubmitted(false);
       }, 4000);
     } catch (err) {
-      console.error('Submit contact message failed:', err);
-      toast(err.response?.data?.message || 'Failed to submit inquiry. Please try again.', 'error');
+      logError('Submit contact message failed:', err);
+      toast(safeApiMessage(err, 'Failed to submit inquiry. Please try again.'), 'error');
     } finally {
       setSubmitting(false);
     }

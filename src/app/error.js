@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../utils/safeLogger';
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { AlertOctagon, RefreshCw, Home } from 'lucide-react';
@@ -7,7 +8,7 @@ import { AlertOctagon, RefreshCw, Home } from 'lucide-react';
 export default function ErrorBoundary({ error, reset }) {
   useEffect(() => {
     // Log exception details for system administrators
-    console.error('Captured exception:', error);
+    logError('Captured exception:', error);
   }, [error]);
 
   return (

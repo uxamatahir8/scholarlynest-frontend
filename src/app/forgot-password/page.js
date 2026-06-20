@@ -1,5 +1,6 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -31,7 +32,7 @@ export default function ForgotPassword() {
       toast('Verification code sent to your email. Redirecting...', 'success');
       router.push(`/reset-password?email=${encodeURIComponent(email)}`);
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to send password reset code.';
+      const msg = safeApiMessage(err, 'Failed to send password reset code.');
       setError(msg);
       toast(msg, 'error');
     } finally {

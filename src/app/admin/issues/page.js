@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../utils/safeErrors';
+import { logError } from '../../../utils/safeLogger';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { BookOpen, Calendar, CheckCircle2, FileText, Loader2, RefreshCw, Upload } from 'lucide-react';
 import api from '../../../utils/api';
@@ -65,8 +67,8 @@ export default function PublisherIssuesPage() {
         setIssueForm((prev) => ({ ...prev, magazine_id: String(nextMagazines[0].id) }));
       }
     } catch (err) {
-      console.error(err);
-      toast(err.response?.data?.message || 'Failed to load issue workspace.', 'error');
+      logError(err);
+      toast(safeApiMessage(err, 'Failed to load issue workspace.'), 'error');
     } finally {
       setLoading(false);
     }
@@ -86,7 +88,7 @@ export default function PublisherIssuesPage() {
         const res = await api.get('/admin/issues/eligible-articles', { params });
         setEligibleArticles(res.data?.data || []);
       } catch (err) {
-        console.error(err);
+        logError(err);
         setEligibleArticles([]);
       }
     };
@@ -137,8 +139,8 @@ export default function PublisherIssuesPage() {
       await loadAll();
       editIssue(res.data.issue);
     } catch (err) {
-      console.error(err);
-      toast(err.response?.data?.message || 'Failed to save issue.', 'error');
+      logError(err);
+      toast(safeApiMessage(err, 'Failed to save issue.'), 'error');
     } finally {
       setSavingIssue(false);
     }
@@ -151,8 +153,8 @@ export default function PublisherIssuesPage() {
       toast(issue.is_published ? 'Issue unpublished.' : 'Issue published.', 'success');
       await loadAll();
     } catch (err) {
-      console.error(err);
-      toast(err.response?.data?.message || 'Issue status update failed.', 'error');
+      logError(err);
+      toast(safeApiMessage(err, 'Issue status update failed.'), 'error');
     }
   };
 
@@ -178,8 +180,8 @@ export default function PublisherIssuesPage() {
       toast('Article published.', 'success');
       await loadAll();
     } catch (err) {
-      console.error(err);
-      toast(err.response?.data?.message || 'Failed to publish article.', 'error');
+      logError(err);
+      toast(safeApiMessage(err, 'Failed to publish article.'), 'error');
     } finally {
       setPublishingArticleId(null);
     }

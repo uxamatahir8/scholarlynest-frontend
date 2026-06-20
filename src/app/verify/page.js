@@ -1,5 +1,6 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -49,7 +50,7 @@ function VerifyForm() {
       loginWithPayload(res.data.user, res.data.access_token);
       router.push('/admin');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Verification failed. Please check the code.';
+      const msg = safeApiMessage(err, 'Verification failed. Please check the code.');
       setError(msg);
       toast(msg, 'error');
     } finally {
@@ -70,7 +71,7 @@ function VerifyForm() {
       await api.post('/verify/resend', { email });
       toast('Verification code has been resent to your email.', 'success');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to resend verification code.';
+      const msg = safeApiMessage(err, 'Failed to resend verification code.');
       setError(msg);
       toast(msg, 'error');
     } finally {

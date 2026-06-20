@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../../../utils/safeErrors';
+import { logError } from '../../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -69,7 +71,7 @@ export default function AdminEditArticle() {
   const [fullText, setFullText] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfFileName, setPdfFileName] = useState('');
-  const [existingPdfPath, setExistingPdfPath] = useState('');
+  const [hasExistingPdf, setHasExistingPdf] = useState(false);
   const [featuredImage, setFeaturedImage] = useState(null);
   const [featuredImageFileName, setFeaturedImageFileName] = useState('');
   const [featuredImagePreview, setFeaturedImagePreview] = useState('');
@@ -129,7 +131,7 @@ export default function AdminEditArticle() {
         const response = await api.get('/magazines', { params: { all: true } });
         setMagazines(response.data);
       } catch (err) {
-        console.error(err);
+        logError(err);
         toast('Failed to load magazines list.', 'error');
       } finally {
         setLoadingMagazines(false);
@@ -152,7 +154,7 @@ export default function AdminEditArticle() {
         setSubjectAreas(areasRes.data || []);
         setLanguages(langsRes.data || []);
       } catch (err) {
-        console.error('Failed to load classifications', err);
+        logError('Failed to load classifications', err);
       }
     };
     fetchClassifications();
@@ -172,7 +174,7 @@ export default function AdminEditArticle() {
         setMagazineId(article.magazine_id.toString());
         setAbstract(article.abstract);
         setFullText(article.full_text);
-        setExistingPdfPath(article.pdf_path || '');
+        setHasExistingPdf(Boolean(article.has_pdf));
         setExistingFeaturedImage(article.featured_image || '');
         setStatus(article.status);
         setArticleOwnerId(article.user_id);
@@ -227,7 +229,7 @@ export default function AdminEditArticle() {
           setCoAuthors([]);
         }
       } catch (err) {
-        console.error(err);
+        logError(err);
         setError('Could not download the requested article details.');
       } finally {
         setLoadingArticle(false);
@@ -247,7 +249,7 @@ export default function AdminEditArticle() {
         // Note: we don't automatically reset selectedTags here on initial load,
         // but if the magazine changes from the article's original, we clear it.
       } catch (err) {
-        console.error(err);
+        logError(err);
       } finally {
         setLoadingTags(false);
       }
@@ -393,8 +395,8 @@ export default function AdminEditArticle() {
       toast('Article updated successfully.', 'success');
       router.push('/admin/articles');
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Failed to update the article.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Failed to update the article.');
       toast(msg, 'error');
     } finally {
       setSaving(false);
@@ -413,8 +415,8 @@ export default function AdminEditArticle() {
       toast('Article SEO metadata updated successfully.', 'success');
       router.push('/admin/articles');
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Failed to update SEO metadata.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Failed to update SEO metadata.');
       toast(msg, 'error');
     } finally {
       setSavingSeo(false);
@@ -878,8 +880,8 @@ export default function AdminEditArticle() {
                 </label>
                 <span className="text-xs text-zinc-450 font-mono font-medium truncate max-w-xs">{pdfFileName || 'No file selected'}</span>
               </div>
-              {existingPdfPath && (
-                <p className="text-[10px] text-emerald-600 dark:text-emerald-450 font-bold font-mono">✓ Active PDF Link: {existingPdfPath}</p>
+              {hasExistingPdf && (
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-450 font-bold font-mono">Active PDF is available through the protected download endpoint.</p>
               )}
             </div>
 

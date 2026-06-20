@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../../utils/safeErrors';
+import { logError } from '../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '../../../../context/AuthContext';
@@ -102,7 +104,7 @@ export default function CmsPageEditWorkspace() {
         setSeoDescription(response.data.seo_description || '');
         setSeoKeywords(response.data.seo_keywords || '');
       } catch (err) {
-        console.error('Failed to load page content', err);
+        logError('Failed to load page content', err);
         setErrorMsg('We were unable to load the existing page content from the server.');
       } finally {
         setFetching(false);
@@ -163,8 +165,8 @@ export default function CmsPageEditWorkspace() {
       }, 4000);
 
     } catch (err) {
-      console.error('Failed to save CMS page', err);
-      const serverMessage = err.response?.data?.message || 'A network error occurred while compiling your update.';
+      logError('Failed to save CMS page', err);
+      const serverMessage = safeApiMessage(err, 'A network error occurred while compiling your update.');
       setErrorMsg(serverMessage);
       toast(serverMessage, 'error');
     } finally {
@@ -196,8 +198,8 @@ export default function CmsPageEditWorkspace() {
       }, 4000);
 
     } catch (err) {
-      console.error('Failed to save CMS SEO metadata', err);
-      const serverMessage = err.response?.data?.message || 'A network error occurred while updating SEO metadata.';
+      logError('Failed to save CMS SEO metadata', err);
+      const serverMessage = safeApiMessage(err, 'A network error occurred while updating SEO metadata.');
       setErrorMsg(serverMessage);
       toast(serverMessage, 'error');
     } finally {

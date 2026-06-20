@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../../utils/safeErrors';
+import { logError } from '../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../context/ToastContext';
@@ -40,7 +42,7 @@ export default function SubjectAreaManagement() {
       const response = await api.get('/subject-areas');
       setAreas(response.data || []);
     } catch (err) {
-      console.error('Failed to load subject areas', err);
+      logError('Failed to load subject areas', err);
       setErrorMsg('Failed to fetch subject areas from the server.');
       toast('Failed to load subject areas.', 'error');
     } finally {
@@ -96,8 +98,8 @@ export default function SubjectAreaManagement() {
       setIsFormOpen(false);
       fetchAreas();
     } catch (err) {
-      console.error('Failed to save subject area', err);
-      toast(err.response?.data?.message || 'Error occurred while saving.', 'error');
+      logError('Failed to save subject area', err);
+      toast(safeApiMessage(err, 'Error occurred while saving.'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -110,8 +112,8 @@ export default function SubjectAreaManagement() {
       toast('Subject Area deleted successfully.', 'success');
       fetchAreas();
     } catch (err) {
-      console.error('Failed to delete subject area', err);
-      toast(err.response?.data?.message || 'Failed to delete subject area.', 'error');
+      logError('Failed to delete subject area', err);
+      toast(safeApiMessage(err, 'Failed to delete subject area.'), 'error');
     } finally {
       setDeletingId(null);
     }
@@ -125,7 +127,7 @@ export default function SubjectAreaManagement() {
       toast(`Subject Area status updated.`, 'success');
       fetchAreas();
     } catch (err) {
-      console.error('Failed to toggle status', err);
+      logError('Failed to toggle status', err);
       toast('Failed to update status.', 'error');
     }
   };

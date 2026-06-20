@@ -190,7 +190,7 @@ export default function YearArchiveBlock({ groupedArticles = {}, magazineSlug, o
                         ? `${article.published_month} ${article.published_year}`
                         : formatDate(article.published_at || article.created_at)}
                     </span>
-                    {article.pdf_path && <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-450"><FileText className="h-3.5 w-3.5" />PDF available</span>}
+                    {article.has_pdf && <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-450"><FileText className="h-3.5 w-3.5" />PDF available</span>}
                   </div>
                   
                   <Link

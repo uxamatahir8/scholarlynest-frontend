@@ -9,6 +9,7 @@ import {
   ChevronRight, FileSpreadsheet, File, Image, FileQuestion
 } from 'lucide-react';
 import api from '../../../utils/api';
+import { logError } from '../../../utils/safeLogger';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
 import ArticlePagination from '../../../components/article/ArticlePagination';
@@ -94,7 +95,7 @@ export default function ArticleDetail() {
 
     if (article) {
       api.post(`/articles/${article.id}/share-click`, { platform: 'copy_link' }).catch((err) => {
-        console.error('Failed to log share click:', err);
+        logError('Failed to log share click:', err);
       });
     }
   };
@@ -113,7 +114,7 @@ export default function ArticleDetail() {
 
     if (article) {
       api.post(`/articles/${article.id}/share-click`, { platform: 'copy_embed' }).catch((err) => {
-        console.error('Failed to log share click:', err);
+        logError('Failed to log share click:', err);
       });
     }
   };
@@ -146,7 +147,7 @@ export default function ArticleDetail() {
         setPreviousArticleTitle(response.data.previous_article_title);
         setNextArticleTitle(response.data.next_article_title);
       } catch (err) {
-        console.error('Failed to load article details', err);
+        logError('Failed to load article details', err);
         setError('The specified research manuscript could not be found or loaded.');
       } finally {
         setLoading(false);
@@ -157,7 +158,7 @@ export default function ArticleDetail() {
   }, [articleSlug]);
 
   const handlePdfDownload = async () => {
-    if (!article?.pdf_path) {
+    if (!article?.has_pdf) {
       toast('No pre-compiled PDF available for this manuscript.', 'info');
       return;
     }
@@ -177,7 +178,7 @@ export default function ArticleDetail() {
 
       toast('PDF file downloaded successfully.', 'success');
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to initialize PDF resource download.', 'error');
     } finally {
       setDownloading(false);
@@ -193,7 +194,7 @@ export default function ArticleDetail() {
     toast('Citation copied to clipboard!', 'success');
 
     api.post(`/articles/${article.id}/share-click`, { platform: 'copy_citation' }).catch((err) => {
-      console.error('Failed to log share click:', err);
+      logError('Failed to log share click:', err);
     });
   };
 
@@ -243,7 +244,7 @@ export default function ArticleDetail() {
       toast(`Redirecting to share on ${platformName}.`, 'success');
 
       api.post(`/articles/${article.id}/share-click`, { platform }).catch((err) => {
-        console.error('Failed to log share click:', err);
+        logError('Failed to log share click:', err);
       });
     }
   };
@@ -434,7 +435,7 @@ export default function ArticleDetail() {
             <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-200/60 dark:border-zinc-850 p-6 rounded-2xl shadow-sm space-y-4">
               <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-550 uppercase tracking-widest font-mono block text-left">Manuscript Actions</span>
               
-              {article.pdf_path && (
+              {article.has_pdf && (
                 <button
                   onClick={handlePdfDownload}
                   disabled={downloading}

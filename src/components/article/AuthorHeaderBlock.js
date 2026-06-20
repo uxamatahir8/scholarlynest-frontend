@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Mail, Shield, User, Award } from 'lucide-react';
+import { Mail, User, Award } from 'lucide-react';
 
 export default function AuthorHeaderBlock({ article, authorMetrics }) {
   if (!article) return null;
@@ -73,13 +73,15 @@ export default function AuthorHeaderBlock({ article, authorMetrics }) {
                     </div>
                   </div>
 
-                  <a
-                    href={`mailto:${author.co_author_email}`}
-                    className="flex items-center space-x-2.5 p-2 rounded-xl bg-zinc-50 dark:bg-zinc-955 hover:bg-blue-500/[0.02] border border-zinc-100 dark:border-zinc-850 transition-colors font-sans"
-                  >
-                    <Mail className="w-3.5 h-3.5 text-zinc-400" />
-                    <span className="truncate font-semibold text-zinc-600 dark:text-zinc-350">{author.co_author_email}</span>
-                  </a>
+                  {author.co_author_email && (
+                    <a
+                      href={`mailto:${author.co_author_email}`}
+                      className="flex items-center space-x-2.5 p-2 rounded-xl bg-zinc-50 dark:bg-zinc-955 hover:bg-blue-500/[0.02] border border-zinc-100 dark:border-zinc-850 transition-colors font-sans"
+                    >
+                      <Mail className="w-3.5 h-3.5 text-zinc-400" />
+                      <span className="truncate font-semibold text-zinc-600 dark:text-zinc-350">{author.co_author_email}</span>
+                    </a>
+                  )}
 
                   {author.university_name && (
                     <div className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium font-sans flex items-center space-x-2">
@@ -87,11 +89,6 @@ export default function AuthorHeaderBlock({ article, authorMetrics }) {
                       <span className="truncate font-semibold">{author.university_name}</span>
                     </div>
                   )}
-
-                  <div className="flex items-center space-x-2 pt-2 border-t border-zinc-100 dark:border-zinc-850 text-[9px] text-zinc-400 font-mono font-bold uppercase tracking-wider text-left">
-                    <Shield className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>Scope: {author.can_edit ? 'Edit & Collaborate' : 'View Only'}</span>
-                  </div>
                 </div>
               </span>
               {index < coAuthors.length - 1 && <span className="text-zinc-400 font-medium mr-1.5">,</span>}

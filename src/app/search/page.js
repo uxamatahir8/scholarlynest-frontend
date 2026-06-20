@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -55,7 +56,7 @@ function SearchResultsContent() {
       setTotalResults(data.total || 0);
       setTotalPages(data.last_page || 1);
     } catch (err) {
-      console.error('Error fetching search results:', err);
+      logError('Error fetching search results:', err);
       setError('Could not query the index. Please verify your connection.');
     } finally {
       setLoading(false);

@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
+import { logError } from '../../utils/safeLogger';
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Check, CheckCircle2, ClipboardCheck, Download, FileCheck2, History, Loader2, Send, Upload, UserPlus } from 'lucide-react';
 import api from '../../utils/api';
@@ -148,7 +150,7 @@ export default function WorkflowActionPanel({
       });
       setAssignees((prev) => ({ ...prev, [role]: res.data?.data || [] }));
     } catch (err) {
-      console.error(`Failed to load ${role} assignees`, err);
+      logError(`Failed to load ${role} assignees`, err);
     }
   };
 
@@ -173,7 +175,7 @@ export default function WorkflowActionPanel({
         const res = await api.get('/admin/issues', { params: { magazine_id: article.magazine_id, per_page: 100 } });
         setIssues(res.data?.data || []);
       } catch (err) {
-        console.error('Failed to load issues', err);
+        logError('Failed to load issues', err);
       }
     };
     loadIssues();
@@ -186,8 +188,8 @@ export default function WorkflowActionPanel({
       toast(successMessage, 'success');
       await onWorkflowChanged();
     } catch (err) {
-      console.error(err);
-      toast(err.response?.data?.message || 'Workflow action failed.', 'error');
+      logError(err);
+      toast(safeApiMessage(err, 'Workflow action failed.'), 'error');
     } finally {
       setBusyAction('');
     }

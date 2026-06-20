@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -37,19 +39,23 @@ export default function Login() {
       toast('Authentication successful. Welcome to ScholarlyNest!', 'success');
       router.push('/admin');
     } catch (err) {
-      console.error(err);
+      logError(err);
       if (err.response?.status === 404 && err.response?.data?.message === 'no_account_exists') {
         toast('No academic profile exists with this Google account. Redirecting to sign up...', 'warning');
         // Store credential and info for pre-filling on sign up
         sessionStorage.setItem('google_signup_credential', response.credential);
-        if (err.response.data.google_info) {
-          sessionStorage.setItem('google_signup_info', JSON.stringify(err.response.data.google_info));
+        const googleInfo = err.response?.data?.google_info;
+        if (googleInfo) {
+          sessionStorage.setItem('google_signup_info', JSON.stringify({
+            name: googleInfo.name || '',
+            email: googleInfo.email || '',
+          }));
         }
         setTimeout(() => {
           router.push('/register');
         }, 1500);
       } else {
-        const msg = err.response?.data?.message || 'Google Sign In failed.';
+        const msg = safeApiMessage(err, 'Google Sign In failed.');
         setError(msg);
         toast(msg, 'error');
       }
@@ -61,8 +67,9 @@ export default function Login() {
   useEffect(() => {
     const initGoogle = () => {
       if (window.google?.accounts?.id) {
+        if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) return;
         window.google.accounts.id.initialize({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '606295156376-526b5jjq2lbdc2i10v9l1phaa32sc7qd.apps.googleusercontent.com',
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
           callback: handleGoogleCallback
         });
         const isDark = document.documentElement.classList.contains('dark');

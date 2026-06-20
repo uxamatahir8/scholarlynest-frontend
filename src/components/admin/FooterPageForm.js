@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useToast } from '../../context/ToastContext';
@@ -101,8 +103,8 @@ export default function FooterPageForm({ categories, initialData, onSave, onCanc
       }
       onSave();
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Failed to save footer page.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Failed to save footer page.');
       toast(msg, 'error');
     } finally {
       setIsSubmitting(false);

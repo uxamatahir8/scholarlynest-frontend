@@ -1,5 +1,6 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -48,7 +49,7 @@ function Verify2FAForm() {
       loginWithPayload(res.data.user, res.data.access_token);
       router.push('/admin');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Authentication failed. Please verify the code.';
+      const msg = safeApiMessage(err, 'Authentication failed. Please verify the code.');
       setError(msg);
       toast(msg, 'error');
     } finally {

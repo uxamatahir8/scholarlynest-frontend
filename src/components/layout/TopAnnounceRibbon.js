@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import api from '../../utils/api';
@@ -47,7 +48,7 @@ export default function TopAnnounceRibbon() {
 
         setItems(combined);
       } catch (err) {
-        console.error('Failed to fetch announcement ribbon data:', err);
+        logError('Failed to fetch announcement ribbon data:', err);
         setItems([]);
       } finally {
         setLoading(false);

@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../utils/safeErrors';
+import { logError } from '../../../utils/safeLogger';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, BookOpen, CheckCircle2, FileCheck2, Loader2, Newspaper, RefreshCw } from 'lucide-react';
@@ -119,8 +121,8 @@ export default function PublisherDashboardPage() {
         article_id: current.article_id || String(nextDashboard.ready_articles[0]?.id || ''),
       }));
     } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || 'Unable to load publisher dashboard.');
+      logError(err);
+      setError(safeApiMessage(err, 'Unable to load publisher dashboard.'));
     } finally {
       setLoading(false);
     }
@@ -166,8 +168,8 @@ export default function PublisherDashboardPage() {
       });
       await fetchDashboard();
     } catch (err) {
-      console.error(err);
-      toast(err.response?.data?.message || 'Unable to publish article.', 'error');
+      logError(err);
+      toast(safeApiMessage(err, 'Unable to publish article.'), 'error');
     } finally {
       setPublishing(false);
     }

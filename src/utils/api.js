@@ -40,7 +40,8 @@ api.interceptors.response.use(
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('api-request-ended'));
     }
-    if (error.response && error.response.status === 401) {
+    const status = error?.response?.status;
+    if (status === 401) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');

@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../../utils/safeErrors';
+import { logError } from '../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../context/ToastContext';
@@ -57,7 +59,7 @@ export default function FaqManagementWorkspace() {
       const response = await api.get('/admin/faqs');
       setFaqs(response.data || []);
     } catch (err) {
-      console.error('Failed to load FAQs', err);
+      logError('Failed to load FAQs', err);
       setErrorMsg('Failed to download the FAQ list from the database.');
       toast('Failed to load FAQs.', 'error');
     } finally {
@@ -126,8 +128,8 @@ export default function FaqManagementWorkspace() {
       // Refresh list
       fetchFaqs();
     } catch (err) {
-      console.error('Failed to create FAQ', err);
-      toast(err.response?.data?.message || 'Error occurred while saving FAQ.', 'error');
+      logError('Failed to create FAQ', err);
+      toast(safeApiMessage(err, 'Error occurred while saving FAQ.'), 'error');
     } finally {
       setCreating(false);
     }
@@ -181,8 +183,8 @@ export default function FaqManagementWorkspace() {
       // Refresh list
       fetchFaqs();
     } catch (err) {
-      console.error('Failed to update FAQ', err);
-      toast(err.response?.data?.message || 'Error occurred while updating FAQ.', 'error');
+      logError('Failed to update FAQ', err);
+      toast(safeApiMessage(err, 'Error occurred while updating FAQ.'), 'error');
     } finally {
       setSavingId(null);
     }
@@ -197,7 +199,7 @@ export default function FaqManagementWorkspace() {
       toast('FAQ deleted successfully.', 'success');
       fetchFaqs();
     } catch (err) {
-      console.error('Failed to delete FAQ', err);
+      logError('Failed to delete FAQ', err);
       toast('Failed to delete FAQ.', 'error');
     } finally {
       setDeletingId(null);
@@ -213,7 +215,7 @@ export default function FaqManagementWorkspace() {
       toast(`FAQ is now ${!faq.is_active ? 'visible' : 'hidden'} on homepage.`, 'success');
       fetchFaqs();
     } catch (err) {
-      console.error('Failed to toggle FAQ status', err);
+      logError('Failed to toggle FAQ status', err);
       toast('Failed to update FAQ status.', 'error');
     }
   };

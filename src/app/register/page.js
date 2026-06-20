@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -46,7 +48,7 @@ export default function Register() {
         if (info.name) setName(info.name);
         if (info.email) setEmail(info.email);
       } catch (e) {
-        console.error('Failed to parse saved Google info:', e);
+        logError('Failed to parse saved Google info:', e);
       }
     }
   }, []);
@@ -69,14 +71,14 @@ export default function Register() {
       sessionStorage.removeItem('google_signup_info');
       router.push('/admin');
     } catch (err) {
-      console.error(err);
+      logError(err);
       if (err.response?.status === 422 && err.response?.data?.message === 'account_already_exists') {
         toast('An academic profile already exists with this Google account. Redirecting to login...', 'info');
         setTimeout(() => {
           router.push('/login');
         }, 1500);
       } else {
-        const msg = err.response?.data?.message || 'Google Sign Up failed.';
+        const msg = safeApiMessage(err, 'Google Sign Up failed.');
         setError(msg);
         toast(msg, 'error');
       }
@@ -88,8 +90,9 @@ export default function Register() {
   useEffect(() => {
     const initGoogle = () => {
       if (window.google?.accounts?.id) {
+        if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) return;
         window.google.accounts.id.initialize({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '606295156376-526b5jjq2lbdc2i10v9l1phaa32sc7qd.apps.googleusercontent.com',
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
           callback: handleGoogleCallback
         });
         const isDark = document.documentElement.classList.contains('dark');

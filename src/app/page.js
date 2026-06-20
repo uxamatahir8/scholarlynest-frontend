@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -49,7 +50,7 @@ export default function Home() {
           setFaqs(response.data);
         }
       } catch (err) {
-        console.error('Failed to fetch FAQs from DB:', err);
+        logError('Failed to fetch FAQs from DB:', err);
       }
     };
     fetchFaqs();

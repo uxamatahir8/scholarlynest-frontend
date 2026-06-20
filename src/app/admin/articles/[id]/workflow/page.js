@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../../../utils/safeErrors';
+import { logError } from '../../../../../utils/safeLogger';
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -119,8 +121,8 @@ export default function ArticleWorkflowPage() {
       } : null;
       setArticle(nextArticle);
     } catch (err) {
-      console.error(err);
-      setError(err.response?.data?.message || 'Unable to load this article workflow.');
+      logError(err);
+      setError(safeApiMessage(err, 'Unable to load this article workflow.'));
     } finally {
       setLoading(false);
     }

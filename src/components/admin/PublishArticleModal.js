@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../../utils/safeLogger';
 import React, { useEffect, useState } from 'react';
 import { Calendar, CheckCircle2, Loader2, Upload, X } from 'lucide-react';
 import api from '../../utils/api';
@@ -23,7 +24,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
         const res = await api.get('/admin/issues', { params: { magazine_id: magazineId, per_page: 100 } });
         setIssues(res.data?.data || []);
       } catch (err) {
-        console.error('Failed to load magazine issues', err);
+        logError('Failed to load magazine issues', err);
         setIssues([]);
       }
     };
@@ -58,7 +59,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
         publication_pdf: publicationPdf,
       });
     } catch (err) {
-      console.error(err);
+      logError(err);
     } finally {
       setSubmitting(false);
     }

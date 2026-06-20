@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -20,7 +21,7 @@ const Footer = () => {
         }
       })
       .catch((err) => {
-        console.error('Failed to load footer dynamic links:', err);
+        logError('Failed to load footer dynamic links:', err);
       });
     return () => {
       active = false;
@@ -38,7 +39,7 @@ const Footer = () => {
           setEmail('');
         }, 4000);
       } catch (err) {
-        console.error('Failed to subscribe to newsletter:', err);
+        logError('Failed to subscribe to newsletter:', err);
       }
     }
   };

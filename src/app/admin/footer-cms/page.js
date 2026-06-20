@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../utils/safeErrors';
+import { logError } from '../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../../context/AuthContext';
@@ -49,7 +51,7 @@ export default function FooterCmsAdmin() {
       setCategories(categoriesRes.data || []);
       setPages(pagesRes.data || []);
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to retrieve footer management data.', 'error');
     } finally {
       setLoading(false);
@@ -90,7 +92,7 @@ export default function FooterCmsAdmin() {
       setShowCategoryForm(false);
       await fetchData();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to save category.';
+      const msg = safeApiMessage(err, 'Failed to save category.');
       toast(msg, 'error');
     } finally {
       setIsCategorySubmitting(false);
@@ -136,7 +138,7 @@ export default function FooterCmsAdmin() {
       setDeleteTargetName('');
       await fetchData();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to delete target.';
+      const msg = safeApiMessage(err, 'Failed to delete target.');
       toast(msg, 'error');
     }
   };

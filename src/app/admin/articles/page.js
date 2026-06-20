@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
@@ -75,7 +76,7 @@ export default function AdminArticlesBoard() {
       setIsPublishModalOpen(false);
       fetchArticles();
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to finalize article publication.', 'error');
     }
   };
@@ -110,7 +111,7 @@ export default function AdminArticlesBoard() {
         const response = await api.get(endpoint, { params: { all: true } });
         setMagazines(response.data || []);
       } catch (err) {
-        console.error('Failed to fetch magazines for filter', err);
+        logError('Failed to fetch magazines for filter', err);
       } finally {
         setLoadingMagazines(false);
       }
@@ -157,7 +158,7 @@ export default function AdminArticlesBoard() {
         setTotalPages(1);
       }
     } catch (err) {
-      console.error(err);
+      logError(err);
       setError('Could not download the articles registry database.');
     } finally {
       setLoading(false);
@@ -180,7 +181,7 @@ export default function AdminArticlesBoard() {
   };
 
   const getAbsoluteFileUrl = (art) => {
-    if (!art?.pdf_path) return '';
+    if (!art?.has_pdf) return '';
     const baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
     return `${baseApiUrl}/articles/${art.id}/download-pdf`;
   };
@@ -406,7 +407,7 @@ export default function AdminArticlesBoard() {
                         <span>{isAdminOrEditor ? "Manage Workflow" : "View Workflow"}</span>
                       </Link>
 
-                      {art.pdf_path && (
+                      {art.has_pdf && (
                         <a
                           href={getAbsoluteFileUrl(art)}
                           target="_blank"

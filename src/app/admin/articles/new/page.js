@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../../utils/safeErrors';
+import { logError } from '../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -104,7 +106,7 @@ export default function AdminNewArticle() {
           setMagazineId(response.data[0].id.toString());
         }
       } catch (err) {
-        console.error(err);
+        logError(err);
         toast('Failed to load magazines list.', 'error');
       } finally {
         setLoadingMagazines(false);
@@ -145,7 +147,7 @@ export default function AdminNewArticle() {
           return updated;
         });
       } catch (err) {
-        console.error('Failed to load classifications', err);
+        logError('Failed to load classifications', err);
       }
     };
     fetchClassifications();
@@ -161,7 +163,7 @@ export default function AdminNewArticle() {
         setAvailableTags(response.data);
         setSelectedTags([]); // Reset selection when magazine changes
       } catch (err) {
-        console.error(err);
+        logError(err);
       } finally {
         setLoadingTags(false);
       }
@@ -308,7 +310,7 @@ export default function AdminNewArticle() {
               }
             });
           } catch (uploadErr) {
-            console.error('Failed to upload asset', file.name, uploadErr);
+            logError('Failed to upload asset', file.name, uploadErr);
             uploadFailedCount++;
             toast(`Failed to upload supplementary asset: ${file.name}`, 'error');
           }
@@ -333,8 +335,8 @@ export default function AdminNewArticle() {
 
       router.push('/admin/articles');
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Failed to submit the article.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Failed to submit the article.');
       toast(msg, 'error');
     } finally {
       setSaving(false);

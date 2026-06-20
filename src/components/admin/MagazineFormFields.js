@@ -1,3 +1,4 @@
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
 
@@ -11,7 +12,7 @@ export default function MagazineFormFields({ value, onChange, disabled = false }
         const res = await api.get('/admin/users?role=editor');
         setEditors(res.data || []);
       } catch (err) {
-        console.error('Failed to fetch magazine editors', err);
+        logError('Failed to fetch magazine editors', err);
       } finally {
         setLoading(false);
       }

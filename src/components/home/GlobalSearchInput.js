@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Loader2, BookOpen, FileText, Globe, ArrowRight, X } from 'lucide-react';
@@ -51,7 +52,7 @@ export default function GlobalSearchInput({
         setSuggestions((response.data || []).slice(0, 5));
         setFocusedIndex(-1);
       } catch (err) {
-        console.error('Error fetching search preview suggestions:', err);
+        logError('Error fetching search preview suggestions:', err);
       } finally {
         setLoading(false);
       }

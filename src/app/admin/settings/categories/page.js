@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../../utils/safeErrors';
+import { logError } from '../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../context/ToastContext';
@@ -40,7 +42,7 @@ export default function ArticleCategoryManagement() {
       const response = await api.get('/article-categories');
       setCategories(response.data || []);
     } catch (err) {
-      console.error('Failed to load categories', err);
+      logError('Failed to load categories', err);
       setErrorMsg('Failed to fetch article categories from the server.');
       toast('Failed to load categories.', 'error');
     } finally {
@@ -96,8 +98,8 @@ export default function ArticleCategoryManagement() {
       setIsFormOpen(false);
       fetchCategories();
     } catch (err) {
-      console.error('Failed to save category', err);
-      toast(err.response?.data?.message || 'Error occurred while saving.', 'error');
+      logError('Failed to save category', err);
+      toast(safeApiMessage(err, 'Error occurred while saving.'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -110,8 +112,8 @@ export default function ArticleCategoryManagement() {
       toast('Category deleted successfully.', 'success');
       fetchCategories();
     } catch (err) {
-      console.error('Failed to delete category', err);
-      toast(err.response?.data?.message || 'Failed to delete category.', 'error');
+      logError('Failed to delete category', err);
+      toast(safeApiMessage(err, 'Failed to delete category.'), 'error');
     } finally {
       setDeletingId(null);
     }
@@ -125,7 +127,7 @@ export default function ArticleCategoryManagement() {
       toast(`Category status updated.`, 'success');
       fetchCategories();
     } catch (err) {
-      console.error('Failed to toggle status', err);
+      logError('Failed to toggle status', err);
       toast('Failed to update status.', 'error');
     }
   };

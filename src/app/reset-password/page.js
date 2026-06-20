@@ -1,5 +1,6 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -51,7 +52,7 @@ function ResetPasswordForm() {
           setCodeVerified(true);
           toast('Account verified successfully. Please create your password.', 'success');
         } catch (err) {
-          const msg = err.response?.data?.message || 'Invalid or expired verification code.';
+          const msg = safeApiMessage(err, 'Invalid or expired verification code.');
           setError(msg);
         } finally {
           setVerifying(false);
@@ -81,7 +82,7 @@ function ResetPasswordForm() {
       setCodeVerified(true);
       toast('Verification code verified. Please set your new password.', 'success');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Invalid or expired verification code.';
+      const msg = safeApiMessage(err, 'Invalid or expired verification code.');
       setError(msg);
       toast(msg, 'error');
     } finally {
@@ -127,7 +128,7 @@ function ResetPasswordForm() {
       toast('Password has been reset successfully! Please log in.', 'success');
       router.push('/login');
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to reset password.';
+      const msg = safeApiMessage(err, 'Failed to reset password.');
       setError(msg);
       toast(msg, 'error');
     } finally {

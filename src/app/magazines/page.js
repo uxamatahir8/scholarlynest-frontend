@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { BookOpen, ArrowRight, FileText, Loader2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../utils/api';
+import { logError } from '../../utils/safeLogger';
 import MagazineCard from '../../components/magazine/MagazineCard';
 import Pagination from '../../components/ui/Pagination';
 
@@ -30,7 +31,7 @@ export default function MagazinesRegistry() {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       } catch (err) {
-        console.error('Failed to load magazines', err);
+        logError('Failed to load magazines', err);
         setError('We were unable to load the scientific magazines registry at this time.');
       } finally {
         setLoading(false);

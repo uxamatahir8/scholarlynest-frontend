@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -58,7 +59,7 @@ export default function Dashboard() {
           });
         }
       } catch (err) {
-        console.error('Failed to fetch dashboard metrics:', err);
+        logError('Failed to fetch dashboard metrics:', err);
         toast('Failed to download dashboard statistics.', 'error');
       } finally {
         setStatsLoading(false);

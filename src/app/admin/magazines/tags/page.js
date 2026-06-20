@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../../utils/safeErrors';
+import { logError } from '../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { 
   Tag as TagIcon, Plus, Edit2, Trash2, Loader2, 
@@ -59,7 +61,7 @@ export default function AdminMagazineTags() {
         setNewTagMagazineId(response.data[0].id.toString());
       }
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to load magazines.', 'error');
     } finally {
       setLoadingMagazines(false);
@@ -90,7 +92,7 @@ export default function AdminMagazineTags() {
       setTotalPages(response.data.last_page || 1);
       setTotalResults(response.data.total || 0);
     } catch (err) {
-      console.error(err);
+      logError(err);
       setError('Could not retrieve tags registry.');
     } finally {
       setLoadingTags(false);
@@ -143,8 +145,8 @@ export default function AdminMagazineTags() {
       setNewTagName('');
       fetchTags();
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Failed to create tag.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Failed to create tag.');
       toast(msg, 'error');
     } finally {
       setSubmittingAdd(false);
@@ -171,8 +173,8 @@ export default function AdminMagazineTags() {
       setEditingTagName('');
       fetchTags();
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Failed to update tag.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Failed to update tag.');
       toast(msg, 'error');
     } finally {
       setSubmittingEdit(false);
@@ -191,7 +193,7 @@ export default function AdminMagazineTags() {
       setDeletingTag(null);
       fetchTags();
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to delete tag.', 'error');
     } finally {
       setSubmittingDelete(false);

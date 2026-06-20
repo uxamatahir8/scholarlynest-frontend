@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../utils/safeErrors';
+import { logError } from '../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import {
   Mail,
@@ -85,7 +87,7 @@ export default function NewsletterAdmin() {
       setSubscribers(subRes.data || []);
       setCampaigns(campRes.data || []);
     } catch (err) {
-      console.error('Failed to load newsletter data:', err);
+      logError('Failed to load newsletter data:', err);
       toast('Failed to load newsletter subscriber lists or campaigns.', 'error');
     } finally {
       setLoading(false);
@@ -128,8 +130,8 @@ export default function NewsletterAdmin() {
       // Refresh list
       await fetchData();
     } catch (err) {
-      console.error('Failed to dispatch campaign:', err);
-      toast(err.response?.data?.message || 'Failed to dispatch newsletter campaign.', 'error');
+      logError('Failed to dispatch campaign:', err);
+      toast(safeApiMessage(err, 'Failed to dispatch newsletter campaign.'), 'error');
     } finally {
       setSending(false);
     }
