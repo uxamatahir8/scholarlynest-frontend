@@ -191,6 +191,7 @@ export default function UserAccountsPage() {
                     <th className="px-6 py-4">Assigned Role</th>
                     <th className="px-6 py-4">Account Status</th>
                     <th className="px-6 py-4">Created Date</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--muted-border)]/50 text-xs">
@@ -219,6 +220,17 @@ export default function UserAccountsPage() {
                       </td>
                       <td className="px-6 py-4 font-medium text-[var(--muted)]">
                         {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <Link href={`/admin/users/${u.id}/edit`} passHref legacyBehavior>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 text-[10px] font-bold uppercase py-1 px-2.5 h-auto cursor-pointer rounded-lg"
+                          >
+                            Edit
+                          </Button>
+                        </Link>
                       </td>
                     </tr>
                   ))}
