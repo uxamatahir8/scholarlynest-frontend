@@ -1,12 +1,8 @@
 export const logError = (...args) => {
   if (process.env.NODE_ENV !== 'production') {
     const sanitized = args.map(arg => {
-      if (arg && typeof arg === 'object') {
-        const copy = { ...arg };
-        if (copy[ 'config' ]) delete copy[ 'config' ];
-        if (copy[ 'request' ]) delete copy[ 'request' ];
-        if (copy[ 'headers' ]) delete copy[ 'headers' ];
-        return copy;
+      if (arg instanceof Error || (arg && typeof arg === 'object')) {
+        return `[Error: ${arg.message || 'An object error occurred'}]`;
       }
       return arg;
     });
@@ -17,12 +13,8 @@ export const logError = (...args) => {
 export const logWarn = (...args) => {
   if (process.env.NODE_ENV !== 'production') {
     const sanitized = args.map(arg => {
-      if (arg && typeof arg === 'object') {
-        const copy = { ...arg };
-        if (copy[ 'config' ]) delete copy[ 'config' ];
-        if (copy[ 'request' ]) delete copy[ 'request' ];
-        if (copy[ 'headers' ]) delete copy[ 'headers' ];
-        return copy;
+      if (arg instanceof Error || (arg && typeof arg === 'object')) {
+        return `[Warning: ${arg.message || 'An object warning occurred'}]`;
       }
       return arg;
     });
