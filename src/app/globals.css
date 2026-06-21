@@ -328,16 +328,7 @@ select option {
 
 /* Shift the header down when the announcement ribbon is active */
 .fixed-header-offset {
-  transition: top 0.5s ease, background-color 0.5s ease, border-color 0.5s ease;
-}
-
-:root.has-top-ribbon .fixed-header-offset {
-  top: 36px;
-}
-
-
-:root.has-top-ribbon .fixed-header-offset.scrolled {
-  top: 0;
+  transition: background-color 0.5s ease, border-color 0.5s ease;
 }
 
 /* ========================================

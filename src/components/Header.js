@@ -88,7 +88,7 @@ export default function Header() {
   };
 
   return (
-    <header className={`fixed-header-offset fixed left-0 top-0 z-50 w-full border-b transition-colors duration-300 ${scrolled ? 'border-zinc-200 bg-white/95 shadow-sm backdrop-blur dark:border-zinc-850 dark:bg-zinc-950/95' : 'border-transparent bg-white/80 backdrop-blur-sm dark:bg-zinc-950/70'}`}>
+    <header className={`fixed-header-offset relative w-full border-b transition-colors duration-300 ${scrolled ? 'border-zinc-200 bg-white/95 shadow-sm backdrop-blur dark:border-zinc-850 dark:bg-zinc-950/95' : 'border-transparent bg-white/80 backdrop-blur-sm dark:bg-zinc-950/70'}`}>
       <div className="mx-auto flex h-20 w-full max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex min-w-0 items-center gap-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950" aria-label="Scholarly Nest home">
           <Image src="/logo.png" alt="Scholarly Nest" width={690} height={362} className="h-10 w-auto object-contain" priority />
