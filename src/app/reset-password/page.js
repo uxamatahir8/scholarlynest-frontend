@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '../../context/ToastContext';
-import { Lock, Mail, ShieldAlert, Loader2, AlertCircle, Check, X, Eye, EyeOff } from 'lucide-react';
+import { Lock, ShieldAlert, Loader2, AlertCircle, Check, X, Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
 
 function ResetPasswordForm() {
@@ -16,15 +16,14 @@ function ResetPasswordForm() {
   const codeParam = searchParams.get('code') || '';
   const errorRef = useRef(null);
 
-  const [email, setEmail] = useState(emailParam);
-  const [code, setCode] = useState(codeParam);
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [verifying, setVerifying] = useState(false);
+  const [verifying, setVerifying] = useState(true);
   const [codeVerified, setCodeVerified] = useState(false);
+  const [verificationFailed, setVerificationFailed] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -38,60 +37,28 @@ function ResetPasswordForm() {
   const isPasswordStrong = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSymbol;
 
   useEffect(() => {
-    if (emailParam) {
-      setEmail(emailParam);
-    }
-    if (codeParam) {
-      setCode(codeParam);
-    }
-    if (emailParam && codeParam) {
-      const autoVerify = async () => {
-        setVerifying(true);
-        setError('');
-        try {
-          await api.post('/password/verify-reset-code', { email: emailParam, code: codeParam });
-          setCodeVerified(true);
-          toast('Account verified successfully. Please create your password.', 'success');
-        } catch (err) {
-          const msg = safeApiMessage(err, 'Invalid or expired verification code.');
-          setError(msg);
-          setTimeout(() => errorRef.current?.focus(), 100);
-        } finally {
-          setVerifying(false);
-        }
-      };
-      autoVerify();
-    }
-  }, [emailParam, codeParam]);
-
-  const handleVerifyCode = async () => {
-    setError('');
-    setFieldErrors({});
-
-    if (!email) {
-      setFieldErrors({ email: 'Email address is required.' });
-      return;
-    }
-
-    if (!code || code.length !== 6) {
-      setFieldErrors({ code: 'Please enter the 6-digit verification code.' });
-      return;
-    }
-
-    setVerifying(true);
-    try {
-      await api.post('/password/verify-reset-code', { email, code });
-      setCodeVerified(true);
-      toast('Verification code verified. Please set your new password.', 'success');
-    } catch (err) {
-      const msg = safeApiMessage(err, 'Invalid or expired verification code.');
-      setError(msg);
-      toast(msg, 'error');
-      setTimeout(() => errorRef.current?.focus(), 100);
-    } finally {
+    if (!emailParam || !codeParam) {
       setVerifying(false);
+      setVerificationFailed(true);
+      return;
     }
-  };
+
+    const autoVerify = async () => {
+      setVerifying(true);
+      setError('');
+      try {
+        await api.post('/password/verify-reset-code', { email: emailParam, code: codeParam });
+        setCodeVerified(true);
+      } catch (err) {
+        setVerificationFailed(true);
+        const msg = safeApiMessage(err, 'Your password reset link is invalid or has expired.');
+        setError(msg);
+      } finally {
+        setVerifying(false);
+      }
+    };
+    autoVerify();
+  }, [emailParam, codeParam]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -99,7 +66,6 @@ function ResetPasswordForm() {
     setFieldErrors({});
 
     if (!codeVerified) {
-      toast('Please verify your code first.', 'error');
       return;
     }
 
@@ -123,8 +89,8 @@ function ResetPasswordForm() {
 
     try {
       await api.post('/reset-password', {
-        email,
-        code,
+        email: emailParam,
+        code: codeParam,
         password,
         password_confirmation: passwordConfirmation,
       });
@@ -140,27 +106,62 @@ function ResetPasswordForm() {
     }
   };
 
+  if (verifying) {
+    return (
+      <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md flex flex-col items-center justify-center min-h-[250px]">
+        <Loader2 className="w-8 h-8 text-amber-600 dark:text-accent-gold animate-spin" />
+        <p className="text-xs text-muted mt-4 font-semibold">Verifying reset credentials...</p>
+      </div>
+    );
+  }
+
+  if (verificationFailed) {
+    return (
+      <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md space-y-6 text-center animate-in fade-in duration-200">
+        <div className="mx-auto w-12 h-12 bg-danger/10 border border-danger/25 rounded-full flex items-center justify-center text-danger">
+          <ShieldAlert className="w-6 h-6" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="font-serif text-2xl font-black text-foreground text-center">
+            Link Invalid or Expired
+          </h2>
+          <p className="text-xs text-muted leading-relaxed max-w-sm mx-auto font-medium">
+            Your password reset link is invalid or has expired. Please request a new link.
+          </p>
+        </div>
+        <div className="pt-2">
+          <Link
+            href="/forgot-password"
+            className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-950 py-2.5 rounded-xl transition-all shadow-sm"
+          >
+            Request New Reset Link
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md space-y-6">
-      
+    <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md space-y-6 animate-in fade-in duration-200">
+
       {/* Title */}
       <div className="text-center space-y-3">
         <div className="mx-auto w-12 h-12 bg-accent/5 dark:bg-accent-gold/10 border border-accent/10 dark:border-accent-gold/25 rounded-full flex items-center justify-center text-accent dark:text-accent-gold">
-          <ShieldAlert className="w-6 h-6" />
+          <Lock className="w-6 h-6" />
         </div>
         <div className="space-y-1">
           <h2 className="font-serif text-2xl font-black text-foreground">
             Establish New Password
           </h2>
           <p className="text-xs text-muted max-w-xs mx-auto leading-relaxed">
-            Verify the 6-digit confirmation code sent to your academic email address to authorize and reset your password credentials.
+            Please enter your new secure password credentials to authorize and update your scholar account.
           </p>
         </div>
       </div>
 
       {/* Error notification summary */}
       {error && (
-        <div 
+        <div
           ref={errorRef}
           tabIndex="-1"
           aria-live="assertive"
@@ -172,67 +173,6 @@ function ResetPasswordForm() {
       )}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
-        
-        {/* Scholar Email */}
-        <div className="space-y-1.5">
-          <label htmlFor="reset-email" className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono">
-            Scholar Email
-          </label>
-          <div className="relative flex items-center">
-            <input
-              type="email"
-              id="reset-email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@university.edu"
-              disabled={!!emailParam || codeVerified}
-              aria-invalid={!!fieldErrors.email}
-              className="w-full text-xs font-semibold pl-9 pr-3 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-655 transition-all disabled:opacity-60"
-            />
-            <Mail className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
-          </div>
-          {fieldErrors.email && (
-            <span className="text-[10px] text-danger font-semibold mt-1 block">{fieldErrors.email}</span>
-          )}
-        </div>
-
-        {/* Verification Code input */}
-        <div className="space-y-1.5">
-          <label htmlFor="reset-code" className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono">
-            Verification Code
-          </label>
-          <div className="flex space-x-3">
-            <input
-              type="text"
-              id="reset-code"
-              maxLength={6}
-              value={code}
-              disabled={codeVerified}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="••••••"
-              aria-invalid={!!fieldErrors.code}
-              className="w-full text-center tracking-[0.5em] font-mono text-base font-bold py-2 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-300 dark:placeholder-zinc-700 disabled:opacity-60"
-            />
-            {!codeVerified && (
-              <button
-                type="button"
-                onClick={handleVerifyCode}
-                disabled={verifying || code.length !== 6}
-                className="px-6 bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-950 text-xs font-bold uppercase tracking-wider rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-sm"
-              >
-                {verifying ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : 'Verify'}
-              </button>
-            )}
-          </div>
-          {fieldErrors.code && (
-            <span className="text-[10px] text-danger font-semibold block mt-1">{fieldErrors.code}</span>
-          )}
-          {codeVerified && (
-            <p className="text-[10px] font-semibold text-success flex items-center mt-1.5">
-              <Check className="w-4.5 h-4.5 mr-1 text-success shrink-0" /> Authorization code verified. Enter password details below.
-            </p>
-          )}
-        </div>
 
         {/* New Password */}
         <div className="space-y-1.5">
@@ -244,23 +184,20 @@ function ResetPasswordForm() {
               type={showPassword ? "text" : "password"}
               id="reset-password"
               value={password}
-              disabled={!codeVerified}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={codeVerified ? '••••••••' : 'Verify reset code first'}
+              placeholder="••••••••"
               aria-invalid={!!fieldErrors.password}
-              className="w-full text-xs font-semibold pl-9 pr-10 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-655 transition-all disabled:opacity-50"
+              className="w-full text-xs font-semibold pl-9 pr-10 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-655 transition-all"
             />
             <Lock className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
-            {codeVerified && (
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute right-3 text-zinc-400 dark:text-zinc-600 hover:text-foreground transition-colors p-0.5 focus:outline-none focus:ring-1 focus:ring-accent-gold rounded"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-3 text-zinc-400 dark:text-zinc-600 hover:text-foreground transition-colors p-0.5 focus:outline-none focus:ring-1 focus:ring-accent-gold rounded"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
           {fieldErrors.password && (
             <span className="text-[10px] text-danger font-semibold mt-1 block">{fieldErrors.password}</span>
@@ -277,23 +214,20 @@ function ResetPasswordForm() {
               type={showConfirmPassword ? "text" : "password"}
               id="reset-confirm"
               value={passwordConfirmation}
-              disabled={!codeVerified}
               onChange={(e) => setPasswordConfirmation(e.target.value)}
-              placeholder={codeVerified ? '••••••••' : 'Verify reset code first'}
+              placeholder="••••••••"
               aria-invalid={!!fieldErrors.passwordConfirmation}
-              className="w-full text-xs font-semibold pl-9 pr-10 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-655 transition-all disabled:opacity-50"
+              className="w-full text-xs font-semibold pl-9 pr-10 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-655 transition-all"
             />
             <Lock className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
-            {codeVerified && (
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                aria-label={showConfirmPassword ? "Hide password confirmation" : "Show password confirmation"}
-                className="absolute right-3 text-zinc-400 dark:text-zinc-600 hover:text-foreground transition-colors p-0.5 focus:outline-none focus:ring-1 focus:ring-accent-gold rounded"
-              >
-                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              aria-label={showConfirmPassword ? "Hide password confirmation" : "Show password confirmation"}
+              className="absolute right-3 text-zinc-400 dark:text-zinc-600 hover:text-foreground transition-colors p-0.5 focus:outline-none focus:ring-1 focus:ring-accent-gold rounded"
+            >
+              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
           {fieldErrors.passwordConfirmation && (
             <span className="text-[10px] text-danger font-semibold mt-1 block">{fieldErrors.passwordConfirmation}</span>
@@ -301,7 +235,7 @@ function ResetPasswordForm() {
         </div>
 
         {/* Password Strength Validation Checklist */}
-        {codeVerified && password && (
+        {password && (
           <div className="p-4 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/60 rounded-xl space-y-2 animate-in fade-in duration-300 text-left">
             <h4 className="text-[9px] font-bold uppercase tracking-widest text-muted">Password Security Guidance</h4>
             <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold text-zinc-550 dark:text-zinc-400">
@@ -336,12 +270,12 @@ function ResetPasswordForm() {
         {/* Submit button */}
         <button
           type="submit"
-          disabled={loading || !codeVerified || !isPasswordStrong || !passwordsMatch}
-          className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-950 py-2.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-sm"
+          disabled={loading || !isPasswordStrong || !passwordsMatch}
+          className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-955 py-2.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-sm"
         >
           {loading ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin animate-spin" />
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Resetting Password...
             </>
           ) : (
@@ -354,8 +288,8 @@ function ResetPasswordForm() {
       <div className="text-center pt-4 border-t border-border dark:border-zinc-850">
         <p className="text-[11px] font-semibold text-muted">
           Remembered your credentials?{' '}
-          <Link 
-            href="/login" 
+          <Link
+            href="/login"
             className="text-accent dark:text-accent-gold hover:underline"
           >
             Sign In here

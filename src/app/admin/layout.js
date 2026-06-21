@@ -632,7 +632,7 @@ export default function AdminLayout({ children }) {
                       className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${pathname === '/admin/settings' ? 'text-amber-500' : 'text-zinc-400 hover:text-white'}`}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                      <span>Security Settings</span>
+                      <span>Profile & Security</span>
                     </Link>
                     <Link
                       href="/admin/settings/types"
@@ -671,7 +671,7 @@ export default function AdminLayout({ children }) {
                 className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-300 ${pathname === '/admin/settings' ? 'bg-amber-500/5 text-amber-450 border border-amber-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/35 border border-transparent'}`}
               >
                 <Settings className="w-4 h-4" />
-                <span>Security Settings</span>
+                <span>My Account</span>
               </Link>
             )}
           </nav>

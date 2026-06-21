@@ -369,10 +369,10 @@ export default function SecuritySettings() {
     <div className="space-y-6 w-full">
       <div className="space-y-1">
         <h1 className="font-serif text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-          Account Settings & Profile
+          My Account
         </h1>
         <p className="text-xs text-zinc-400 dark:text-zinc-500">
-          Manage your scholar credentials, academic profile details, and security keys.
+          Manage your personal scholar credentials, academic profile details, and security keys.
         </p>
       </div>
 

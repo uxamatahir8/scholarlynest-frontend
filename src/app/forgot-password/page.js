@@ -16,6 +16,7 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,8 +31,8 @@ export default function ForgotPassword() {
 
     try {
       await api.post('/forgot-password', { email });
-      toast('Verification code sent to your email. Redirecting...', 'success');
-      router.push(`/reset-password?email=${encodeURIComponent(email)}`);
+      toast('Verification instructions sent if the account exists.', 'success');
+      setSubmitted(true);
     } catch (err) {
       const msg = safeApiMessage(err, 'Failed to send password reset code.');
       setError(msg);
@@ -44,9 +45,9 @@ export default function ForgotPassword() {
 
   return (
     <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
-      
+
       <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md space-y-6">
-        
+
         {/* Header */}
         <div className="text-center space-y-3">
           <div className="mx-auto w-12 h-12 bg-accent/5 dark:bg-accent-gold/10 border border-accent/10 dark:border-accent-gold/25 rounded-full flex items-center justify-center text-accent dark:text-accent-gold">
@@ -57,14 +58,14 @@ export default function ForgotPassword() {
               Recover Password
             </h2>
             <p className="text-xs text-muted max-w-xs mx-auto leading-relaxed">
-              Enter your registered scholar email below and we will send you a 6-digit confirmation code to establish a new password.
+              Enter your registered scholar email below and we will send you a secure link and code to establish a new password.
             </p>
           </div>
         </div>
 
         {/* Safe Error Banner */}
         {error && (
-          <div 
+          <div
             ref={errorRef}
             tabIndex="-1"
             aria-live="assertive"
@@ -75,50 +76,66 @@ export default function ForgotPassword() {
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          
-          {/* Email input */}
-          <div className="space-y-1.5">
-            <label htmlFor="forgot-email" className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono">
-              Scholar Email
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type="email"
-                id="forgot-email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@university.edu"
-                className="w-full text-xs font-semibold pl-9 pr-3 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-655 transition-all"
-              />
-              <Mail className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
+        {/* Form or Submitted State */}
+        {submitted ? (
+          <div className="space-y-4 text-center py-4">
+            <p className="text-xs text-muted leading-relaxed max-w-sm mx-auto font-medium">
+              If the email address matches an active account, you will receive a secure password reset link and verification code shortly. Please check your inbox and follow the instructions to establish your new credentials.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/login"
+                className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-950 py-2.5 rounded-xl transition-all shadow-sm"
+              >
+                Return to Sign In
+              </Link>
             </div>
           </div>
+        ) : (
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
 
-          {/* Submit action */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-955 py-2.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-sm"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Sending Reset Code...
-              </>
-            ) : (
-              'Send Reset Code'
-            )}
-          </button>
-        </form>
+            {/* Email input */}
+            <div className="space-y-1.5">
+              <label htmlFor="forgot-email" className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono">
+                Scholar Email
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  type="email"
+                  id="forgot-email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@university.edu"
+                  className="w-full text-xs font-semibold pl-9 pr-3 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-655 transition-all"
+                />
+                <Mail className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
+              </div>
+            </div>
+
+            {/* Submit action */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-955 py-2.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-sm"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending Reset Code...
+                </>
+              ) : (
+                'Send Reset Code'
+              )}
+            </button>
+          </form>
+        )}
 
         {/* Back to sign in pathway */}
         <div className="text-center pt-4 border-t border-border dark:border-zinc-850">
           <p className="text-[11px] font-semibold text-muted">
             Remembered your credentials?{' '}
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="text-accent dark:text-accent-gold hover:underline"
             >
               Sign In here
