@@ -403,3 +403,117 @@ select option {
 .dark .fixed-header-offset:not(.scrolled) .text-zinc-500 {
   color: rgba(255, 255, 255, 0.65) !important;
 }
+
+/* ========================================
+   Premium CMS / Article Prose Styles
+   ======================================== */
+.cms-content-prose {
+  font-family: Georgia, "Times New Roman", serif;
+  line-height: 1.75;
+  color: var(--foreground);
+}
+
+.cms-content-prose h1,
+.cms-content-prose h2,
+.cms-content-prose h3,
+.cms-content-prose h4 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  line-height: 1.25;
+}
+
+.cms-content-prose h1 { font-size: 2rem; }
+.cms-content-prose h2 { font-size: 1.65rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+.cms-content-prose h3 { font-size: 1.35rem; }
+.cms-content-prose h4 { font-size: 1.15rem; }
+
+.cms-content-prose p {
+  margin-bottom: 1.25rem;
+}
+
+.cms-content-prose a {
+  color: var(--accent-gold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.cms-content-prose a:hover {
+  color: var(--accent);
+}
+
+.dark .cms-content-prose a:hover {
+  color: #60a5fa;
+}
+
+.cms-content-prose ul {
+  list-style-type: disc;
+  padding-left: 1.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.cms-content-prose ol {
+  list-style-type: decimal;
+  padding-left: 1.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.cms-content-prose li {
+  margin-bottom: 0.5rem;
+}
+
+.cms-content-prose blockquote {
+  border-left: 4px solid var(--accent-gold);
+  background-color: rgba(191, 161, 105, 0.04);
+  padding: 1.25rem 1.5rem;
+  margin: 1.5rem 0;
+  font-style: italic;
+  color: var(--muted);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.cms-content-prose code {
+  font-family: monospace;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+
+.dark .cms-content-prose code {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.cms-content-prose pre {
+  background-color: #1e1e24;
+  color: #f8f8f2;
+  padding: 1.25rem;
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.cms-content-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+}
+
+.cms-content-prose th,
+.cms-content-prose td {
+  border: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+  text-align: left;
+}
+
+.cms-content-prose th {
+  background-color: var(--surface-muted);
+  font-weight: 700;
+}
+
