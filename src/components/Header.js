@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { Search, LogOut, Monitor, Sun, Moon, LayoutDashboard, Menu, X, Shield, User } from 'lucide-react';
+import { getPrimaryRole, getRoleDisplayName } from '../utils/roles';
+import { getStoredTheme, setTheme as persistTheme, applyTheme } from '../utils/theme';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import GlobalSearchInput from './home/GlobalSearchInput';
@@ -43,20 +45,15 @@ const Header = () => {
   }, [pathname]);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme-selection') || 'light';
+    const savedTheme = getStoredTheme();
     setTheme(savedTheme);
     applyTheme(savedTheme);
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleSystemThemeChange = (e) => {
-      const currentSelection = localStorage.getItem('theme-selection') || 'system';
+      const currentSelection = getStoredTheme();
       if (currentSelection === 'system') {
-        const root = document.documentElement;
-        if (e.matches) {
-          root.classList.add('dark');
-        } else {
-          root.classList.remove('dark');
-        }
+        applyTheme('system');
       }
     };
 
@@ -64,29 +61,9 @@ const Header = () => {
     return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
   }, []);
 
-  const applyTheme = (targetTheme) => {
-    const root = document.documentElement;
-    if (targetTheme === 'dark') {
-      root.classList.add('dark');
-      root.classList.remove('light');
-    } else if (targetTheme === 'light') {
-      root.classList.add('light');
-      root.classList.remove('dark');
-    } else {
-      root.classList.remove('light');
-      const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (isSystemDark) {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
-    }
-  };
-
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
-    localStorage.setItem('theme-selection', newTheme);
-    applyTheme(newTheme);
+    persistTheme(newTheme);
     setThemeDropdownOpen(false);
   };
 
@@ -97,19 +74,8 @@ const Header = () => {
     }
   };
 
-  const primaryRole = user?.role || user?.roles?.[0] || null;
-
-  const getRoleLabel = (role) => {
-    if (!role) return 'User';
-    if (role.display_name) return role.display_name;
-
-    switch (role.name?.toLowerCase().replaceAll('_', '-')) {
-      case 'super-admin': return 'Super Admin';
-      case 'editor': return 'Editor';
-      case 'author': return 'Author';
-      default: return 'User';
-    }
-  };
+  const primaryRole = getPrimaryRole(user);
+  const roleLabel = getRoleDisplayName(primaryRole);
 
   return (
     <div className={`fixed-header-offset fixed top-0 left-0 w-full z-50 transition-all duration-500 ${scrolled ? 'scrolled bg-white/95 dark:bg-zinc-950/95 shadow-sm border-b border-zinc-150 dark:border-zinc-900/60 backdrop-blur-md' : 'bg-transparent'}`}>
@@ -206,7 +172,7 @@ const Header = () => {
                     <div className="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-200 bg-white/95 dark:border-zinc-800 dark:bg-zinc-900 p-1 shadow-lg z-50 text-[10px] font-sans font-bold uppercase tracking-wider animate-in fade-in duration-200 backdrop-blur-md">
                       <div className="px-3 py-2 mb-1 bg-zinc-50 dark:bg-zinc-950 rounded-lg border border-zinc-100 dark:border-zinc-850">
                         <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block mb-1">Access Level</span>
-                        <Badge variant="gold">{getRoleLabel(primaryRole)}</Badge>
+                        <Badge variant="gold">{roleLabel}</Badge>
                       </div>
 
                       <Link

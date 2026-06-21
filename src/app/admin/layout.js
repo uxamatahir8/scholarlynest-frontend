@@ -6,6 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
 import api from '../../utils/api';
 import { logError } from '../../utils/safeLogger';
+import { getRoleDisplayName } from '../../utils/roles';
+import { getStoredTheme, setTheme as persistTheme, applyTheme } from '../../utils/theme';
 import UniversityGateModal from '../../components/dashboard/UniversityGateModal';
 import Image from 'next/image';
 import {
@@ -147,34 +149,15 @@ export default function AdminLayout({ children }) {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme-selection') || 'light';
+      const savedTheme = getStoredTheme();
       setTheme(savedTheme);
+      applyTheme(savedTheme);
     }
   }, []);
 
-  const applyTheme = (targetTheme) => {
-    const root = document.documentElement;
-    if (targetTheme === 'dark') {
-      root.classList.add('dark');
-      root.classList.remove('light');
-    } else if (targetTheme === 'light') {
-      root.classList.add('light');
-      root.classList.remove('dark');
-    } else {
-      root.classList.remove('light');
-      const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (isSystemDark) {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
-    }
-  };
-
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
-    localStorage.setItem('theme-selection', newTheme);
-    applyTheme(newTheme);
+    persistTheme(newTheme);
     setThemeDropdownOpen(false);
   };
 
@@ -193,10 +176,7 @@ export default function AdminLayout({ children }) {
     setNotifications(notifications.map(n => ({ ...n, unread: false })));
   };
 
-  const getRoleLabel = () => {
-    if (!user) return '';
-    return user.role?.display_name || user.roles?.[0]?.display_name || 'User';
-  };
+  const getRoleLabel = () => getRoleDisplayName(user);
 
   useEffect(() => {
     if (pathname && pathname.startsWith('/admin/cms')) {

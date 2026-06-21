@@ -23,6 +23,7 @@ import Link from 'next/link';
 import api from '../../../utils/api';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
+import { getRoleDisplayName } from '../../../utils/roles';
 
 export default function NewsletterAdmin() {
   const { toast } = useToast();
@@ -624,17 +625,8 @@ export default function NewsletterAdmin() {
 
                 return targetList.map(sub => {
                   const isChecked = selectedEmails.includes(sub.email);
-                  const roleDisplayName = (r) => {
-                    const name = typeof r === 'object' ? r?.name : r;
-                    const normalized = name?.toLowerCase().replace('_', '-');
-                    if (normalized === 'super_admin') return 'Super Admin';
-                    if (normalized === 'admin') return 'Admin';
-                    if (normalized === 'editor') return 'Journal Editor';
-                    if (normalized === 'author') return 'Research Author';
-                    return name || '';
-                  };
                   const roleString = sub.roles && sub.roles.length > 0
-                    ? ` [${sub.roles.map(r => roleDisplayName(r)).filter(Boolean).join(', ')}]`
+                    ? ` [${sub.roles.map(r => getRoleDisplayName(r)).filter(Boolean).join(', ')}]`
                     : '';
 
                   return (

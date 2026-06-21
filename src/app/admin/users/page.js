@@ -10,8 +10,10 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
+import RoleBadge from '../../../components/ui/RoleBadge';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../context/ToastContext';
+import { hasRole as userHasRole } from '../../../utils/roles';
 
 export default function UserAccountsPage() {
   const { user: authUser, hasRole, loading: authLoading, impersonationStatus, startImpersonationSession } = useAuth();
@@ -227,9 +229,7 @@ export default function UserAccountsPage() {
                       </td>
                       <td className="px-6 py-4 font-medium text-[var(--muted)] truncate max-w-[200px]">{u.email}</td>
                       <td className="px-6 py-4">
-                        <Badge variant={u.roles?.[0]?.name === 'super_admin' ? 'gold' : u.roles?.[0]?.name === 'editor' ? 'default' : 'outline'}>
-                          {u.roles?.[0]?.display_name || 'No Role Assigned'}
-                        </Badge>
+                        <RoleBadge user={u} />
                       </td>
                       <td className="px-6 py-4">
                         <Badge variant={u.status === 'active' ? 'success' : 'warning'}>
@@ -240,7 +240,7 @@ export default function UserAccountsPage() {
                         {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4 text-right flex items-center justify-end space-x-2">
-                        {isSuperAdmin && u.id !== authUser.id && u.status === 'active' && u.roles?.[0]?.name !== 'super_admin' && !impersonationStatus.active && (
+                        {isSuperAdmin && u.id !== authUser.id && u.status === 'active' && !userHasRole(u, 'super_admin') && !impersonationStatus.active && (
                           <Button
                             variant="outline"
                             size="sm"

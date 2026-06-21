@@ -1,17 +1,26 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useId } from 'react';
 
-const baseInputStyles = 'w-full rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-950 shadow-sm transition-all duration-300 placeholder:text-zinc-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/40 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-650';
+const baseStyles = 'w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 placeholder:text-zinc-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-60 read-only:bg-[var(--surface-muted)] dark:placeholder:text-zinc-650';
 
-export const Textarea = forwardRef(({ className = '', error, ...props }, ref) => {
-  const errorStyles = error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/40 dark:border-red-500' : '';
+export const Textarea = forwardRef(({ className = '', error, helperText, id, 'aria-describedby': describedBy, ...props }, ref) => {
+  const generatedId = useId();
+  const textareaId = id || generatedId;
+  const errorId = error ? `${textareaId}-error` : undefined;
+  const helperId = helperText ? `${textareaId}-helper` : undefined;
+  const description = [describedBy, helperId, errorId].filter(Boolean).join(' ') || undefined;
+
   return (
     <div className="w-full">
       <textarea
-        className={`${baseInputStyles} min-h-32 resize-y ${errorStyles} ${className}`}
+        id={textareaId}
+        className={`${baseStyles} min-h-32 resize-y ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30' : ''} ${className}`}
         ref={ref}
+        aria-invalid={error ? 'true' : undefined}
+        aria-describedby={description}
         {...props}
       />
-      {error && <span className="mt-1.5 block text-[11px] font-semibold text-red-600 dark:text-red-400">{error}</span>}
+      {helperText && <span id={helperId} className="mt-1.5 block text-xs text-[var(--muted)]">{helperText}</span>}
+      {error && <span id={errorId} className="mt-1.5 block text-xs font-semibold text-red-600 dark:text-red-400">{error}</span>}
     </div>
   );
 });
