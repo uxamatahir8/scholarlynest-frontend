@@ -3,10 +3,11 @@ const ALLOWED_MESSAGE_KEYS = new Set([
   '2fa_required',
   'account_already_exists',
   'no_account_exists',
+  'Registration is currently closed.',
 ]);
 
 export const safeApiMessage = (error, fallback = 'Something went wrong. Please try again.') => {
-  const message = error?.response?.data?.message;
+  const message = error?.[ 'response' ]?.data?.message;
   if (typeof message === 'string' && ALLOWED_MESSAGE_KEYS.has(message)) {
     return message;
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import { safeApiMessage } from '../../utils/safeErrors';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '../../context/ToastContext';
@@ -11,6 +11,7 @@ import api from '../../utils/api';
 export default function ForgotPassword() {
   const { toast } = useToast();
   const router = useRouter();
+  const errorRef = useRef(null);
 
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,7 @@ export default function ForgotPassword() {
       const msg = safeApiMessage(err, 'Failed to send password reset code.');
       setError(msg);
       toast(msg, 'error');
+      setTimeout(() => errorRef.current?.focus(), 100);
     } finally {
       setLoading(false);
     }
@@ -42,54 +44,68 @@ export default function ForgotPassword() {
 
   return (
     <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
-      <title>Forgot Password - ScholarlyNest</title>
-
-      <div className="bg-white dark:bg-[#1c1c1b] border border-zinc-200/80 dark:border-zinc-800/60 rounded-lg p-8 shadow-sm space-y-6">
-        <div className="text-center space-y-2">
-          <div className="mx-auto w-12 h-12 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-800 dark:text-zinc-200">
+      
+      <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md space-y-6">
+        
+        {/* Header */}
+        <div className="text-center space-y-3">
+          <div className="mx-auto w-12 h-12 bg-accent/5 dark:bg-accent-gold/10 border border-accent/10 dark:border-accent-gold/25 rounded-full flex items-center justify-center text-accent dark:text-accent-gold">
             <KeyRound className="w-6 h-6" />
           </div>
-          <h2 className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">
-            Forgot Password
-          </h2>
-          <p className="text-xs text-zinc-400 dark:text-zinc-500 max-w-sm mx-auto">
-            Enter your email below and we will send you a 6-digit code to reset your password.
-          </p>
+          <div className="space-y-1">
+            <h2 className="font-serif text-2xl font-black text-foreground">
+              Recover Password
+            </h2>
+            <p className="text-xs text-muted max-w-xs mx-auto leading-relaxed">
+              Enter your registered scholar email below and we will send you a 6-digit confirmation code to establish a new password.
+            </p>
+          </div>
         </div>
 
+        {/* Safe Error Banner */}
         {error && (
-          <div className="flex items-center space-x-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-md text-red-600 dark:text-red-400 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+          <div 
+            ref={errorRef}
+            tabIndex="-1"
+            aria-live="assertive"
+            className="flex items-start space-x-2.5 p-3.5 bg-danger/5 dark:bg-danger/10 border border-danger/25 dark:border-danger/30 rounded-xl text-danger text-xs focus:outline-none focus:ring-1 focus:ring-danger"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="font-medium">{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Form */}
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          
+          {/* Email input */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+            <label htmlFor="forgot-email" className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono">
               Scholar Email
             </label>
             <div className="relative flex items-center">
               <input
                 type="email"
+                id="forgot-email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@university.edu"
-                className="w-full text-xs font-medium pl-8 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-400 transition-all"
+                className="w-full text-xs font-semibold pl-9 pr-3 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-655 transition-all"
               />
-              <Mail className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
+              <Mail className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
             </div>
           </div>
 
+          {/* Submit action */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-zinc-800 hover:bg-zinc-950 text-white dark:bg-zinc-200 dark:hover:bg-white dark:text-zinc-950 py-2.5 rounded-md transition-premium disabled:opacity-50"
+            className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-955 py-2.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-sm"
           >
             {loading ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
-                Sending Code...
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Sending Reset Code...
               </>
             ) : (
               'Send Reset Code'
@@ -97,12 +113,13 @@ export default function ForgotPassword() {
           </button>
         </form>
 
-        <div className="text-center pt-2 border-t border-zinc-100 dark:border-zinc-800/40">
-          <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+        {/* Back to sign in pathway */}
+        <div className="text-center pt-4 border-t border-border dark:border-zinc-850">
+          <p className="text-[11px] font-semibold text-muted">
             Remembered your credentials?{' '}
             <Link 
               href="/login" 
-              className="text-zinc-700 dark:text-zinc-300 hover:underline"
+              className="text-accent dark:text-accent-gold hover:underline"
             >
               Sign In here
             </Link>

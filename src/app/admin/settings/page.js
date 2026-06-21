@@ -448,9 +448,16 @@ export default function SecuritySettings() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                  Academic Email
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                    Academic Email
+                  </label>
+                  {user?.email_verified_at && (
+                    <span className="inline-flex items-center text-[9px] font-bold text-emerald-650 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded border border-emerald-250/20">
+                      <Check className="w-3 h-3 mr-0.5 shrink-0" /> Verified
+                    </span>
+                  )}
+                </div>
                 <div className="flex space-x-2">
                   <input
                     type="email"
