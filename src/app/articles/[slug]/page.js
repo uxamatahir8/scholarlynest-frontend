@@ -374,7 +374,7 @@ export default function ArticleDetail() {
           {/* 2. Article Type */}
           <div className="text-left space-y-3">
             <span className="text-[9px] font-sans font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 bg-amber-500/5 border border-amber-500/20 px-3 py-1.5 rounded-lg inline-block">
-              Research Manuscript
+              {article.article_type || 'Article'}
             </span>
             
             {/* 3. Title */}
@@ -396,7 +396,7 @@ export default function ArticleDetail() {
               <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-mono block">
                 Contributing Scholars
               </span>
-              <AuthorHeaderBlock article={article} authorMetrics={authorMetrics} />
+              <AuthorHeaderBlock article={article} />
             </div>
 
             {/* Quick action controls inline */}
@@ -439,12 +439,6 @@ export default function ArticleDetail() {
               <div className="flex items-center">
                 <FileText className="w-3.5 h-3.5 mr-1.5 text-zinc-400" />
                 <span>Pages: {article.page_start} - {article.page_end}</span>
-              </div>
-            )}
-            {authorMetrics?.total_papers_approved > 0 && (
-              <div className="flex items-center">
-                <Award className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
-                <span>Author Index: {authorMetrics.total_papers_approved} approved</span>
               </div>
             )}
           </div>

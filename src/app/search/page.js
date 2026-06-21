@@ -100,7 +100,7 @@ function SearchResultsContent() {
               <div className="flex items-center space-x-2">
                 <span className="inline-flex items-center space-x-1.5 text-[9px] font-bold uppercase tracking-wider font-mono text-amber-700 dark:text-amber-400 bg-amber-500/5 border border-amber-500/10 px-2 py-0.5 rounded-md">
                   <BookOpen className="w-3 h-3 text-amber-500" />
-                  <span>Magazine issue</span>
+                  <span>Magazine</span>
                 </span>
               </div>
               <h3 className="font-serif text-lg font-bold text-zinc-900 dark:text-white leading-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
@@ -133,7 +133,7 @@ function SearchResultsContent() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center space-x-1.5 text-[9px] font-bold uppercase tracking-wider font-mono text-blue-700 dark:text-blue-400 bg-blue-500/5 border border-blue-500/10 px-2 py-0.5 rounded-md">
                 <FileText className="w-3 h-3 text-blue-500" />
-                <span>Research Manuscript</span>
+                <span>Article</span>
               </span>
               {item.additional?.magazine_title && (
                 <span className="text-[10px] font-sans font-bold text-zinc-400 dark:text-zinc-500">
@@ -180,7 +180,7 @@ function SearchResultsContent() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center space-x-1.5 text-[9px] font-bold uppercase tracking-wider font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-2 py-0.5 rounded-md">
                 <Globe className="w-3 h-3 text-emerald-500" />
-                <span>Guidelines page</span>
+                <span>Public Page</span>
               </span>
               <span className="text-[10px] font-sans font-bold text-zinc-400 dark:text-zinc-500">
                 Source: {item.additional?.source === 'magazine_page' ? 'Magazine Custom Section' : 'System Guidelines'}

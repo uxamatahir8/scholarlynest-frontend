@@ -33,8 +33,10 @@ export default function UnsubscribePage() {
       
       // Safety precaution: Exclude any raw database trace or system exceptions
       let msg = 'The unsubscribe link is invalid or has expired.';
-      if (error?.response?.data?.message) {
-        const responseMsg = error.response.data.message;
+      const responseObj = error && error['response'] ? error['response'] : null;
+      const responseData = responseObj && responseObj['data'] ? responseObj['data'] : null;
+      if (responseData && responseData['message']) {
+        const responseMsg = responseData['message'];
         const containsSqlOrException = 
           responseMsg.includes('SQLSTATE') || 
           responseMsg.includes('database') || 
