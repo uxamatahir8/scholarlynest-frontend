@@ -1,47 +1,52 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { LogOut, Menu, Monitor, Moon, Search, Sun, UserRound, X, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { Search, LogOut, Monitor, Sun, Moon, LayoutDashboard, Menu, X, Shield, User } from 'lucide-react';
 import { getPrimaryRole, getRoleDisplayName } from '../utils/roles';
-import { getStoredTheme, setTheme as persistTheme, applyTheme } from '../utils/theme';
+import { applyTheme, getStoredTheme, setTheme as persistTheme } from '../utils/theme';
 import { Button } from './ui/Button';
-import { Badge } from './ui/Badge';
+import Dialog from './ui/Dialog';
+import RoleBadge from './ui/RoleBadge';
 import GlobalSearchInput from './home/GlobalSearchInput';
 
 const PUBLIC_NAV_LINKS = [
   { label: 'Home', href: '/' },
+  { label: 'Explore Magazines', href: '/magazines' },
   { label: 'About', href: '/about' },
-  { label: 'Magazines', href: '/magazines' },
-  { label: 'Contact', href: '/contact' }
+  { label: 'Contact', href: '/contact' },
 ];
 
-const Header = () => {
-  const { user, logout } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light', Icon: Sun },
+  { value: 'dark', label: 'Dark', Icon: Moon },
+  { value: 'system', label: 'System', Icon: Monitor },
+];
 
-  // Theme states
+export default function Header() {
+  const { user, logout } = useAuth();
+  const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [theme, setTheme] = useState('light');
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const mobileCloseRef = useRef(null);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => setScrolled(window.scrollY > 8);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   useEffect(() => {
     setMobileMenuOpen(false);
+    setThemeDropdownOpen(false);
+    setUserDropdownOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -50,249 +55,185 @@ const Header = () => {
     applyTheme(savedTheme);
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleSystemThemeChange = (e) => {
-      const currentSelection = getStoredTheme();
-      if (currentSelection === 'system') {
-        applyTheme('system');
-      }
+    const handleSystemThemeChange = () => {
+      if (getStoredTheme() === 'system') applyTheme('system');
     };
 
     mediaQuery.addEventListener('change', handleSystemThemeChange);
     return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
   }, []);
 
-  const handleThemeChange = (newTheme) => {
-    setTheme(newTheme);
-    persistTheme(newTheme);
+  const roleLabel = getRoleDisplayName(getPrimaryRole(user));
+  const CurrentThemeIcon = THEME_OPTIONS.find((option) => option.value === theme)?.Icon || Sun;
+
+  const handleThemeChange = (nextTheme) => {
+    setTheme(nextTheme);
+    persistTheme(nextTheme);
     setThemeDropdownOpen(false);
   };
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
-    }
+  const handleLogout = () => {
+    setUserDropdownOpen(false);
+    setMobileMenuOpen(false);
+    logout();
   };
 
-  const primaryRole = getPrimaryRole(user);
-  const roleLabel = getRoleDisplayName(primaryRole);
+  const navLinkClass = (href) => {
+    const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+    return `inline-flex h-10 items-center border-b-2 px-1 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950 ${
+      active
+        ? 'border-amber-600 text-zinc-950 dark:border-amber-400 dark:text-white'
+        : 'border-transparent text-zinc-600 hover:text-zinc-950 dark:text-zinc-350 dark:hover:text-white'
+    }`;
+  };
 
   return (
-    <div className={`fixed-header-offset fixed top-0 left-0 w-full z-50 transition-all duration-500 ${scrolled ? 'scrolled bg-white/95 dark:bg-zinc-950/95 shadow-sm border-b border-zinc-150 dark:border-zinc-900/60 backdrop-blur-md' : 'bg-transparent'}`}>
-      <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col transition-all duration-500">
-          {/* Main Header Row */}
-          <div className="flex items-center justify-between w-full h-20">
-            {/* Left Brand Area */}
-            <div className="flex items-center shrink-0">
-              <Link href="/" className="flex items-center group">
-                <Image
-                  src="/logo.png"
-                  alt="ScholarlyNest Logo"
-                  width={690}
-                  height={362}
-                  className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-[1.02]"
-                  priority
-                />
-              </Link>
-            </div>
+    <header className={`fixed-header-offset fixed left-0 top-0 z-50 w-full border-b transition-colors duration-300 ${scrolled ? 'border-zinc-200 bg-white/95 shadow-sm backdrop-blur dark:border-zinc-850 dark:bg-zinc-950/95' : 'border-transparent bg-white/80 backdrop-blur-sm dark:bg-zinc-950/70'}`}>
+      <div className="mx-auto flex h-20 w-full max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex min-w-0 items-center gap-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950" aria-label="Scholarly Nest home">
+          <Image src="/logo.png" alt="Scholarly Nest" width={690} height={362} className="h-10 w-auto object-contain" priority />
+        </Link>
 
-            {/* Desktop Center Navigation Links */}
-            <nav className="hidden md:flex items-center space-x-8 text-[11px] font-sans font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              {PUBLIC_NAV_LINKS.map((link) => {
-                const isActive = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`transition-colors py-1.5 relative ${isActive ? 'text-amber-600 dark:text-amber-400' : 'hover:text-zinc-900 dark:hover:text-zinc-100'}`}
-                  >
-                    {link.label}
-                    {isActive && (
-                      <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-amber-500 rounded-full" />
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
+        <nav className="hidden items-center gap-7 md:flex" aria-label="Primary navigation">
+          {PUBLIC_NAV_LINKS.map((link) => (
+            <Link key={link.href} href={link.href} className={navLinkClass(link.href)} aria-current={(link.href === '/' ? pathname === '/' : pathname.startsWith(link.href)) ? 'page' : undefined}>
+              {link.label}
+            </Link>
+          ))}
+        </nav>
 
-            {/* Right Search Input & User Controls */}
-            <div className="flex items-center space-x-3 sm:space-x-4">
-              {/* Search Bar (Desktop Only) */}
-              <div className="hidden lg:block w-56 xl:w-72 relative z-50">
-                <GlobalSearchInput size="sm" placeholder="Search registry..." />
-              </div>
+        <div className="flex min-w-0 items-center justify-end gap-2 sm:gap-3">
+          <div className="hidden w-64 lg:block xl:w-80">
+            <GlobalSearchInput size="sm" placeholder="Search articles, authors, magazines..." />
+          </div>
 
-              {/* Theme Selector */}
-              <div className="relative">
+          <button
+            type="button"
+            onClick={() => setThemeDropdownOpen((open) => !open)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:text-zinc-350 dark:hover:bg-zinc-900 dark:hover:text-white dark:focus:ring-offset-zinc-950"
+            aria-label="Change color theme"
+            aria-expanded={themeDropdownOpen}
+          >
+            <CurrentThemeIcon className="h-4 w-4" aria-hidden="true" />
+          </button>
+
+          {themeDropdownOpen && (
+            <div className="absolute right-20 top-16 z-50 w-40 rounded-lg border border-zinc-200 bg-white p-1.5 shadow-lg dark:border-zinc-800 dark:bg-zinc-950 sm:right-28">
+              {THEME_OPTIONS.map(({ value, label, Icon }) => (
                 <button
-                  onClick={() => setThemeDropdownOpen(!themeDropdownOpen)}
-                  className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
-                  aria-label="Change Color Theme"
+                  key={value}
+                  type="button"
+                  onClick={() => handleThemeChange(value)}
+                  className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === value ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300' : 'text-zinc-650 hover:bg-zinc-100 dark:text-zinc-350 dark:hover:bg-zinc-900'}`}
                 >
-                  {theme === 'light' && <Sun className="w-4 h-4 text-amber-500" />}
-                  {theme === 'dark' && <Moon className="w-4 h-4 text-amber-400" />}
-                  {theme === 'system' && <Monitor className="w-4 h-4" />}
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  {label}
                 </button>
+              ))}
+            </div>
+          )}
 
-                {themeDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-32 rounded-xl border border-zinc-200 bg-white/95 dark:border-zinc-800 dark:bg-zinc-900 p-1 shadow-lg z-50 text-[10px] font-sans font-bold uppercase tracking-wider animate-in fade-in duration-200 backdrop-blur-md">
-                    {['light', 'dark', 'system'].map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => handleThemeChange(t)}
-                        className={`w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-left transition-colors ${theme === t ? 'bg-amber-500/5 text-amber-600 dark:text-amber-400 border border-amber-500/10' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200 border border-transparent'}`}
-                      >
-                        {t === 'light' && <Sun className="w-3.5 h-3.5 text-amber-500" />}
-                        {t === 'dark' && <Moon className="w-3.5 h-3.5 text-amber-400" />}
-                        {t === 'system' && <Monitor className="w-3.5 h-3.5" />}
-                        <span className="capitalize">{t}</span>
-                      </button>
-                    ))}
+          {user ? (
+            <div className="relative hidden sm:block">
+              <button
+                type="button"
+                onClick={() => setUserDropdownOpen((open) => !open)}
+                className="inline-flex max-w-[220px] items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold text-zinc-850 transition-colors hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:text-zinc-100 dark:hover:bg-zinc-900 dark:focus:ring-offset-zinc-950"
+                aria-label="Open account menu"
+                aria-expanded={userDropdownOpen}
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-500/30 bg-amber-50 text-xs font-bold text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                  {(user.name || user.email || 'U').charAt(0)}
+                </span>
+                <span className="truncate">{user.name || 'Account'}</span>
+              </button>
+
+              {userDropdownOpen && (
+                <div className="absolute right-0 mt-3 w-72 rounded-lg border border-zinc-200 bg-white p-2 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
+                  <div className="rounded-md bg-zinc-50 p-3 dark:bg-zinc-900/70">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Signed in as</p>
+                    <p className="mt-1 truncate text-sm font-bold text-zinc-950 dark:text-white">{user.name || user.email}</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs font-semibold text-zinc-500">Role</span>
+                      <RoleBadge user={user} />
+                    </div>
                   </div>
-                )}
-              </div>
-
-              {/* User Account / Auth Dropdown */}
-              {user ? (
-                <div className="relative">
-                  <button
-                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                    className="flex items-center space-x-2 px-1.5 py-1 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors border border-transparent"
-                  >
-                    <div className="w-7 h-7 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-400 flex items-center justify-center font-sans font-bold text-[10px] uppercase border border-amber-500/20">
-                      {user.name.charAt(0)}
-                    </div>
-                    <span className="hidden sm:inline text-xs font-semibold pr-1 max-w-[100px] truncate text-zinc-750 dark:text-zinc-200">
-                      {user.name}
-                    </span>
+                  <Link href="/admin" onClick={() => setUserDropdownOpen(false)} className="mt-2 flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-250 dark:hover:bg-zinc-900">
+                    <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+                    Console dashboard
+                  </Link>
+                  <Link href="/admin/settings" onClick={() => setUserDropdownOpen(false)} className="flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-250 dark:hover:bg-zinc-900">
+                    <UserRound className="h-4 w-4" aria-hidden="true" />
+                    Profile and account
+                  </Link>
+                  <button type="button" onClick={handleLogout} className="mt-1 flex w-full items-center gap-2 rounded-md border-t border-zinc-100 px-3 py-2.5 text-left text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-zinc-850 dark:hover:bg-red-950/20">
+                    <LogOut className="h-4 w-4" aria-hidden="true" />
+                    Log out
                   </button>
-
-                  {userDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-200 bg-white/95 dark:border-zinc-800 dark:bg-zinc-900 p-1 shadow-lg z-50 text-[10px] font-sans font-bold uppercase tracking-wider animate-in fade-in duration-200 backdrop-blur-md">
-                      <div className="px-3 py-2 mb-1 bg-zinc-50 dark:bg-zinc-950 rounded-lg border border-zinc-100 dark:border-zinc-850">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block mb-1">Access Level</span>
-                        <Badge variant="gold">{roleLabel}</Badge>
-                      </div>
-
-                      <Link
-                        href="/admin"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-amber-500/5 hover:text-amber-600 dark:hover:text-amber-400 text-zinc-700 dark:text-zinc-350 transition-colors"
-                      >
-                        <LayoutDashboard className="w-3.5 h-3.5 text-zinc-400" />
-                        <span>Console Dashboard</span>
-                      </Link>
-
-                      <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-1"></div>
-
-                      <button
-                        onClick={() => {
-                          setUserDropdownOpen(false);
-                          logout();
-                        }}
-                        className="w-full flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-red-500/5 text-red-600 dark:text-red-400 transition-colors"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>Log Out Session</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <Link href="/login" className="hidden sm:inline">
-                    <Button variant="ghost" size="sm" className="text-[11px] py-1.5 h-auto">Log In</Button>
-                  </Link>
-                  <Link href="/register">
-                    <Button variant="gold" size="sm" className="text-[11px] py-2 h-auto text-white">Register</Button>
-                  </Link>
                 </div>
               )}
-
-              {/* Mobile Drawer Trigger */}
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 text-zinc-400 hover:text-zinc-905 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900"
-                aria-label="Toggle Navigation Menu"
-              >
-                {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-              </button>
             </div>
-          </div>
+          ) : (
+            <div className="hidden items-center gap-2 sm:flex">
+              <Link href="/login"><Button variant="secondary" size="sm">Log in</Button></Link>
+              <Link href="/register"><Button variant="primary" size="sm">Register</Button></Link>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-zinc-700 transition-colors hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:text-zinc-200 dark:hover:bg-zinc-900 dark:focus:ring-offset-zinc-950 md:hidden"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
       </div>
 
-      {/* Mobile Menu Panel */}
-      {mobileMenuOpen && (
-        <div className="md:hidden w-full border-t border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-950 py-4 px-6 animate-in slide-in-from-top-1 duration-200">
-          <div className="space-y-4">
-            {/* Search Input for Mobile */}
-            <div className="relative z-50">
-              <GlobalSearchInput size="sm" placeholder="Search registry..." />
-            </div>
-
-            <div className="flex flex-col space-y-2.5">
-              {PUBLIC_NAV_LINKS.map(link => {
-                const isActive = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`block py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${isActive ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-500 hover:text-zinc-900'}`}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </div>
-
-            <div className="border-t border-zinc-100 dark:border-zinc-800 pt-4">
-              {user ? (
-                <div className="flex flex-col space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-450 flex items-center justify-center font-bold text-xs uppercase border border-amber-500/20">
-                        {user.name.charAt(0)}
-                      </div>
-                      <div className="flex flex-col text-left">
-                        <span className="text-xs font-bold text-zinc-850 dark:text-zinc-200">{user.name}</span>
-                        <span className="text-[10px] text-zinc-400 font-semibold">{user.email}</span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => { logout(); setMobileMenuOpen(false); }}
-                      className="p-2 text-red-500 hover:bg-red-500/5 rounded-lg transition-colors"
-                      aria-label="Logout"
-                    >
-                      <LogOut className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <Link
-                    href="/admin"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block w-full text-center"
-                  >
-                    <Button className="w-full py-2 text-xs" variant="secondary">Dashboard Console</Button>
-                  </Link>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="w-full">
-                    <Button className="w-full py-2 text-xs" variant="secondary">Log In</Button>
-                  </Link>
-                  <Link href="/register" onClick={() => setMobileMenuOpen(false)} className="w-full">
-                    <Button className="w-full py-2 text-xs bg-amber-600 text-white" variant="gold">Register</Button>
-                  </Link>
-                </div>
-              )}
-            </div>
+      <Dialog open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} title="Menu" description="Navigate Scholarly Nest" initialFocusRef={mobileCloseRef} className="max-w-none sm:max-w-lg">
+        <div className="space-y-6">
+          <button ref={mobileCloseRef} type="button" onClick={() => setMobileMenuOpen(false)} className="sr-only">Close menu</button>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" aria-hidden="true" />
+            <GlobalSearchInput size="sm" placeholder="Search articles, authors, magazines..." />
           </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
-export default Header;
+          <nav className="grid gap-2" aria-label="Mobile navigation">
+            {PUBLIC_NAV_LINKS.map((link) => {
+              const active = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
+              return (
+                <Link key={link.href} href={link.href} className={`rounded-lg px-4 py-3 text-base font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 ${active ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300' : 'text-zinc-750 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900'}`} aria-current={active ? 'page' : undefined}>
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {user ? (
+            <div className="space-y-3 border-t border-zinc-200 pt-5 dark:border-zinc-850">
+              <div className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900/70">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Signed in as</p>
+                <p className="mt-1 text-base font-bold text-zinc-950 dark:text-white">{user.name || user.email}</p>
+                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-350">Role: {roleLabel}</p>
+              </div>
+              <Link href="/admin" className="flex items-center justify-center gap-2 rounded-lg bg-zinc-950 px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">
+                <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+                Console dashboard
+              </Link>
+              <button type="button" onClick={handleLogout} className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 px-4 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-red-900/50 dark:hover:bg-red-950/20">
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                Log out
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 border-t border-zinc-200 pt-5 dark:border-zinc-850">
+              <Link href="/login"><Button variant="secondary" className="w-full">Log in</Button></Link>
+              <Link href="/register"><Button variant="primary" className="w-full">Register</Button></Link>
+            </div>
+          )}
+        </div>
+      </Dialog>
+    </header>
+  );
+}

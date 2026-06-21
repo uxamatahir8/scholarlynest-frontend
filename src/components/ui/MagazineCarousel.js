@@ -137,26 +137,22 @@ export default function MagazineCarousel() {
 
   return (
     <section 
-      className="relative w-full py-20 overflow-hidden bg-gradient-to-b from-[var(--background)] via-[var(--background)]/80 to-[var(--background)] border-t border-b border-[var(--muted-border)]"
+      className="relative w-full py-16 lg:py-20 overflow-hidden bg-[var(--surface)] border-t border-b border-[var(--border)]"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       id="magazine-carousel-section"
     >
-      {/* Visual background ambient glows */}
-      <div className="absolute top-1/2 left-0 -translate-y-1/2 w-72 h-72 bg-[var(--accent)]/5 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute top-1/2 right-0 -translate-y-1/2 w-80 h-80 bg-[var(--accent-gold)]/5 rounded-full blur-[120px] pointer-events-none" />
-
       <div className="w-full px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Header and navigation buttons */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
           <div className="space-y-3 text-left">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 glass-panel rounded-full text-[9px] font-bold uppercase tracking-widest text-[var(--foreground)] border-amber-500/25 dark:border-blue-500/20">
+            <div className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
               <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-[var(--accent-gold)]" /> Magazine Catalog</span>
             </div>
-            <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-[var(--foreground)]">
+            <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-zinc-950 dark:text-white">
               Latest Magazine Issues
             </h2>
-            <p className="text-sm text-[var(--muted)] max-w-xl font-medium">
+            <p className="text-sm leading-7 text-zinc-600 dark:text-zinc-350 max-w-xl">
               Browse our newly published magazine issues and curated digital periodicals.
             </p>
           </div>
@@ -168,7 +164,7 @@ export default function MagazineCarousel() {
                 onClick={handlePrev}
                 id="carousel-prev-button"
                 aria-label="Previous magazine slide"
-                className="inline-flex items-center justify-center w-10 h-10 rounded-xl glass-panel border border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 text-[var(--foreground)] hover:scale-105 transition-all cursor-pointer shadow-sm"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus:ring-2 focus:ring-amber-500"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -176,7 +172,7 @@ export default function MagazineCarousel() {
                 onClick={handleNext}
                 id="carousel-next-button"
                 aria-label="Next magazine slide"
-                className="inline-flex items-center justify-center w-10 h-10 rounded-xl glass-panel border border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 text-[var(--foreground)] hover:scale-105 transition-all cursor-pointer shadow-sm"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus:ring-2 focus:ring-amber-500"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -210,7 +206,7 @@ export default function MagazineCarousel() {
                     : `${100 / magazines.length}%` 
                 }}
               >
-                <div className="h-full hover-glow rounded-2xl transition-all duration-300">
+                <div className="h-full rounded-lg transition-colors">
                   <MagazineCard 
                     id={magazine.id}
                     title={magazine.title}

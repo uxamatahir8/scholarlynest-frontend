@@ -1,187 +1,204 @@
 'use client';
 
-import { logError, logWarn } from '../../utils/safeLogger';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { BookOpen, GraduationCap, FileText, Send, Check } from 'lucide-react';
+import { ArrowUp, Check, Mail, Send } from 'lucide-react';
 import api from '../../utils/api';
+import { logWarn } from '../../utils/safeLogger';
 
-const Footer = () => {
+const EXPLORE_LINKS = [
+  { label: 'Home', href: '/' },
+  { label: 'About', href: '/about' },
+  { label: 'Magazines', href: '/magazines' },
+  { label: 'Search', href: '/search' },
+  { label: 'Contact', href: '/contact' },
+];
+
+const CONTRIBUTOR_LINKS = [
+  { label: 'Submit an Article', href: '/admin/articles/new' },
+  { label: 'Author Login', href: '/login' },
+  { label: 'Reviewer Login', href: '/login' },
+];
+
+export default function Footer() {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     let active = true;
     api.get('/public/footer')
       .then((res) => {
-        if (active && res.data) {
-          setCategories(res.data);
-        }
+        if (active && Array.isArray(res.data)) setCategories(res.data);
       })
       .catch((err) => {
-        logWarn('Dynamic footer fetch failed, using visual fallbacks:', err.message);
+        logWarn('Dynamic footer fetch failed', err.message);
       });
     return () => {
       active = false;
     };
   }, []);
 
-  const handleSubscribeSubmit = async (e) => {
-    e.preventDefault();
-    if (email.trim()) {
-      try {
-        await api.post('/newsletter/subscribe', { email });
-        setSubscribed(true);
-        setTimeout(() => {
-          setSubscribed(false);
-          setEmail('');
-        }, 4000);
-      } catch (err) {
-        logError('Failed to subscribe to newsletter:', err);
-      }
+  const cmsCategories = useMemo(() => (
+    categories
+      .map((category) => ({
+        ...category,
+        pages: Array.isArray(category.pages) ? category.pages.filter((page) => page?.slug && page?.title) : [],
+      }))
+      .filter((category) => category.pages.length > 0)
+  ), [categories]);
+
+  const legalPages = useMemo(() => (
+    cmsCategories
+      .flatMap((category) => category.pages)
+      .filter((page) => /privacy|terms|policy|legal/i.test(`${page.title} ${page.slug}`))
+      .slice(0, 4)
+  ), [cmsCategories]);
+
+  const handleSubscribeSubmit = async (event) => {
+    event.preventDefault();
+    const trimmedEmail = email.trim();
+    setError('');
+    setMessage('');
+
+    if (!trimmedEmail) {
+      setError('Enter an email address to subscribe.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await api.post('/newsletter/subscribe', { email: trimmedEmail });
+      setSubscribed(true);
+      setMessage('Subscription confirmed. Please check your inbox for future updates.');
+      setEmail('');
+    } catch (err) {
+      setError('Subscription could not be completed right now.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  const scrollToTop = () => {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
-    <footer className="bg-zinc-50 dark:bg-zinc-950 border-t border-zinc-100 dark:border-zinc-900/60 mt-auto py-16 text-left font-sans transition-colors duration-300">
-      <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
-          
-          {/* Brand & Editorial Mission Statement (4 cols) */}
-          <div className="md:col-span-4 space-y-4">
-            <div className="flex items-center">
-              <Image 
-                src="/logo.png" 
-                alt="ScholarlyNest Logo" 
-                width={690} 
-                height={362} 
-                className="h-9 w-auto object-contain" 
-              />
-            </div>
-            <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400 max-w-sm">
-              Dedicated to advancing human scientific discovery and open-access knowledge sharing. ScholarlyNest provides a prestigious, peer-reviewed registry where authors and readers collaborate.
+    <footer className="mt-auto border-t border-zinc-200 bg-zinc-50 text-left dark:border-zinc-850 dark:bg-zinc-950">
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-14 sm:px-6 lg:px-8 lg:py-16">
+        <div className="grid gap-10 lg:grid-cols-[1.2fr_1.4fr_1fr] lg:gap-14">
+          <section className="space-y-5" aria-labelledby="footer-brand-heading">
+            <Image src="/logo.png" alt="Scholarly Nest" width={690} height={362} className="h-10 w-auto object-contain" />
+            <h2 id="footer-brand-heading" className="font-serif text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">Scholarly Nest</h2>
+            <p className="max-w-sm text-sm leading-relaxed text-zinc-600 dark:text-zinc-350">
+              Scholarly Nest helps researchers, editors, and institutions publish and discover trusted academic work through clear public archives and structured editorial workflows.
             </p>
-            <div className="flex items-center space-x-3 text-zinc-400 dark:text-zinc-500">
-              <GraduationCap className="w-4 h-4 hover:text-amber-500 transition-colors cursor-pointer" />
-              <BookOpen className="w-4 h-4 hover:text-amber-500 transition-colors cursor-pointer" />
-              <FileText className="w-4 h-4 hover:text-amber-500 transition-colors cursor-pointer" />
-            </div>
-          </div>
-
-          {/* Dynamic Categories (5 cols split) */}
-          <div className="md:col-span-5 grid grid-cols-2 gap-8">
-            {categories.length > 0 ? (
-              categories.map((cat) => (
-                <div key={cat.id} className="space-y-4">
-                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 font-sans">
-                    {cat.name}
-                  </h3>
-                  <ul className="space-y-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-                    {cat.pages && cat.pages.map((p) => (
-                      <li key={p.id}>
-                        <Link href={`/${p.slug}`} className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors block">
-                          {p.title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))
-            ) : (
-              /* Static Fallbacks */
-              <>
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 font-sans">
-                    Resources
-                  </h3>
-                  <ul className="space-y-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-                    <li>
-                      <Link href="/editorial-board" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors block">
-                        Editorial Board
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-400 font-sans">
-                    Institutional
-                  </h3>
-                  <ul className="space-y-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-                    <li>
-                      <Link href="/privacy" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors block">
-                        Privacy Policy
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/terms" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors block">
-                        Terms of Service
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/manifests" className="hover:text-amber-600 dark:hover:text-amber-400 transition-colors block">
-                        Metadata Manifests
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Newsletter (3 cols) */}
-          <div className="md:col-span-3 space-y-4">
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-455 dark:text-zinc-400 font-sans">
-              Newsletter Sign-Up
-            </h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Stay synchronized with recent scientific announcements and platform enhancements.
+            <p className="max-w-sm text-sm font-semibold leading-relaxed text-zinc-800 dark:text-zinc-200">
+              Open discovery, careful review, and durable scholarly records.
             </p>
+          </section>
 
-            {subscribed ? (
-              <div className="flex items-center space-x-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-500 bg-emerald-500/[0.04] border border-emerald-500/10 px-3.5 py-2.5 rounded-lg transition-all">
-                <Check className="w-4 h-4 shrink-0" />
-                <span>Affiliation Subscribed</span>
+          <nav className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3" aria-label="Footer navigation">
+            <div>
+              <h3 className="text-sm font-bold text-zinc-950 dark:text-white">Explore</h3>
+              <ul className="mt-4 space-y-3">
+                {EXPLORE_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-350 dark:hover:text-white">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold text-zinc-950 dark:text-white">For Contributors</h3>
+              <ul className="mt-4 space-y-3">
+                {CONTRIBUTOR_LINKS.map((link) => (
+                  <li key={link.href + link.label}>
+                    <Link href={link.href} className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-350 dark:hover:text-white">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {cmsCategories.slice(0, 2).map((category) => (
+              <div key={category.id || category.name}>
+                <h3 className="text-sm font-bold text-zinc-950 dark:text-white">{category.name}</h3>
+                <ul className="mt-4 space-y-3">
+                  {category.pages.slice(0, 5).map((page) => (
+                    <li key={page.id || page.slug}>
+                      <Link href={`/${page.slug}`} className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-350 dark:hover:text-white">
+                        {page.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            ) : (
-              <form onSubmit={handleSubscribeSubmit} className="flex relative w-full">
+            ))}
+          </nav>
+
+          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-850 dark:bg-zinc-900/40" aria-labelledby="newsletter-heading">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+              <Mail className="h-4 w-4" aria-hidden="true" />
+              <h3 id="newsletter-heading" className="text-sm font-bold text-zinc-950 dark:text-white">Newsletter</h3>
+            </div>
+            <p id="newsletter-help" className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-350">
+              Receive occasional platform updates and newly published research highlights. You can unsubscribe from newsletter preferences at any time.
+            </p>
+
+            <form onSubmit={handleSubscribeSubmit} className="mt-5 space-y-3" noValidate>
+              <label htmlFor="footer-newsletter-email" className="block text-sm font-semibold text-zinc-900 dark:text-zinc-100">Email address</label>
+              <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
                 <input
+                  id="footer-newsletter-email"
                   type="email"
-                  required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="jsmith@university.edu"
-                  className="w-full text-xs font-semibold pl-3 pr-10 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg focus:outline-none focus:border-amber-500/80 transition-colors text-zinc-850 dark:text-zinc-200 shadow-sm"
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setError('');
+                    setMessage('');
+                    setSubscribed(false);
+                  }}
+                  aria-describedby="newsletter-help newsletter-status"
+                  aria-invalid={Boolean(error)}
+                  placeholder="name@university.edu"
+                  className="min-h-11 w-full rounded-lg border border-zinc-250 bg-white px-3 text-sm text-zinc-950 shadow-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-zinc-750 dark:bg-zinc-950 dark:text-white"
                 />
-                <button 
-                  type="submit"
-                  className="absolute right-1.5 top-1.5 p-1.5 bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 rounded-md transition-all duration-300 cursor-pointer"
-                  aria-label="Subscribe"
-                >
-                  <Send className="w-3.5 h-3.5" />
+                <button type="submit" disabled={submitting} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-zinc-950 px-4 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:focus:ring-offset-zinc-900">
+                  {subscribed ? <Check className="h-4 w-4" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+                  {submitting ? 'Sending' : 'Subscribe'}
                 </button>
-              </form>
-            )}
-          </div>
-
+              </div>
+              <p id="newsletter-status" className={`min-h-5 text-sm ${error ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`} role="status" aria-live="polite">
+                {error || message}
+              </p>
+            </form>
+          </section>
         </div>
 
-        {/* Fine-line Typographic Divider & Copyright info */}
-        <div className="border-t border-zinc-100 dark:border-zinc-900/60 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between text-[10px] font-sans font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-          <span>
-            © {new Date().getFullYear()} ScholarlyNest Platform Inc. All rights reserved.
-          </span>
-          <div className="flex space-x-5 mt-4 sm:mt-0">
-            <Link href="/privacy" className="hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">Privacy Statement</Link>
-            <Link href="/terms" className="hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">Terms of Service</Link>
-            <Link href="/manifests" className="hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors">Metadata Manifests</Link>
+        <div className="mt-12 flex flex-col gap-5 border-t border-zinc-200 pt-6 text-sm text-zinc-500 dark:border-zinc-850 dark:text-zinc-450 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span>© {new Date().getFullYear()} Scholarly Nest.</span>
+            {legalPages.map((page) => (
+              <Link key={page.id || page.slug} href={`/${page.slug}`} className="font-medium underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:hover:text-white">
+                {page.title}
+              </Link>
+            ))}
           </div>
+          <button type="button" onClick={scrollToTop} className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-250 px-3 py-2 font-semibold text-zinc-650 transition-colors hover:border-zinc-400 hover:text-zinc-950 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:border-zinc-750 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:text-white">
+            <ArrowUp className="h-4 w-4" aria-hidden="true" />
+            Back to top
+          </button>
         </div>
-
       </div>
     </footer>
   );
-};
-
-export default Footer;
+}

@@ -215,19 +215,19 @@ export default function RecentArticles() {
   }
 
   return (
-    <section className="py-24 bg-gradient-to-b from-[var(--background)] via-[var(--background)]/95 to-[var(--background)] border-t border-[var(--muted-border)] relative overflow-hidden" id="recent-articles-section">
+    <section className="py-16 lg:py-20 bg-[var(--background)] border-t border-[var(--border)] relative overflow-hidden" id="recent-articles-section">
       <div className="w-full px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
           <div className="space-y-3 text-left">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 glass-panel rounded-full text-[9px] font-bold uppercase tracking-widest text-[var(--foreground)] border-amber-500/25 dark:border-blue-500/20">
-              <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-[var(--accent-gold)]" /> Latest Submissions</span>
+            <div className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+              <span className="flex items-center gap-1"><Sparkles className="w-3 h-3 text-[var(--accent-gold)]" /> Latest research</span>
             </div>
 
-            <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-[var(--foreground)]">
+            <h2 className="font-serif text-3xl sm:text-4xl font-bold tracking-tight text-zinc-950 dark:text-white">
               Latest Published Articles
             </h2>
 
-            <p className="text-sm text-[var(--muted)] max-w-2xl font-medium">
+            <p className="text-sm leading-7 text-zinc-600 dark:text-zinc-350 max-w-2xl">
               Explore individual academic papers, scientific drafts, and telemetry analyses newly approved and peer-reviewed across our magazine issues.
             </p>
           </div>
@@ -240,7 +240,7 @@ export default function RecentArticles() {
                   onClick={handlePrev}
                   disabled={!canGoPrev}
                   aria-label="Previous published articles slide"
-                  className="inline-flex items-center justify-center w-10 h-10 rounded-xl glass-panel border border-[var(--muted-border)] text-[var(--foreground)] transition-all shadow-sm hover:bg-[var(--foreground)]/5 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--background)] disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-[var(--background)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
@@ -249,7 +249,7 @@ export default function RecentArticles() {
                   onClick={handleNext}
                   disabled={!canGoNext}
                   aria-label="Next published articles slide"
-                  className="inline-flex items-center justify-center w-10 h-10 rounded-xl glass-panel border border-[var(--muted-border)] text-[var(--foreground)] transition-all shadow-sm hover:bg-[var(--foreground)]/5 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--background)] disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] text-[var(--foreground)] shadow-sm transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-[var(--background)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -301,10 +301,10 @@ export default function RecentArticles() {
                     return (
                       <article
                         key={article.id}
-                        className="glass-panel rounded-2xl p-5 transition-all duration-300 border border-[var(--muted-border)] hover:border-[var(--accent)]/20 hover:bg-[var(--card-bg)] hover-glow min-w-0 h-full flex flex-col"
+                        className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-5 shadow-sm transition-colors hover:border-amber-500/40 min-w-0 h-full flex flex-col"
                       >
                         {imageSrc && (
-                          <div className="w-full aspect-[16/9] rounded-xl overflow-hidden border border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50 relative mb-5">
+                          <div className="w-full aspect-[16/9] rounded-md overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-50 relative mb-5">
                             <img
                               src={imageSrc}
                               alt=""
@@ -325,7 +325,7 @@ export default function RecentArticles() {
                           )}
 
                           <Link href={articleLink} className="block group mb-3">
-                            <h3 className="font-serif text-lg font-bold text-[var(--foreground)] group-hover:text-[var(--accent)] dark:group-hover:text-blue-400 transition-colors leading-snug line-clamp-3">
+                            <h3 className="font-serif text-lg font-bold text-zinc-950 group-hover:text-amber-700 dark:text-white dark:group-hover:text-amber-300 transition-colors leading-snug line-clamp-3">
                               {article.title}
                             </h3>
                           </Link>
@@ -347,7 +347,7 @@ export default function RecentArticles() {
 
                           <Link
                             href={articleLink}
-                            className="mt-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent)]/90 dark:bg-blue-600 dark:hover:bg-blue-600/90 text-white text-[10px] font-bold uppercase tracking-wider transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:ring-offset-2 focus:ring-offset-[var(--background)]"
+                            className="mt-auto inline-flex items-center justify-center gap-1.5 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-[var(--background)] dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
                           >
                             <span>Read Article</span>
                             <ArrowRight className="w-4 h-4" />

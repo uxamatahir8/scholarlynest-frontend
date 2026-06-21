@@ -1,17 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import DOMPurify from 'dompurify';
-import {
-  ArrowRight,
-  BookOpenText,
-  Calendar,
-  FileText,
-  GraduationCap,
-  Library,
-  ListChecks,
-  User,
-} from 'lucide-react';
-import MonthTextCard from './MonthTextCard';
+import { ArrowRight, Calendar, FileText, Library, User } from 'lucide-react';
 
 function cleanHtml(html) {
   if (!html) return '';
@@ -34,190 +24,107 @@ function monthTime(monthKey) {
 }
 
 function formatDate(value) {
-  if (!value) return 'Date pending';
+  if (!value) return 'Publication date pending';
   return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default function YearArchiveBlock({ groupedArticles = {}, magazineSlug, onArticleClick }) {
+function authorNames(article) {
+  const authors = Array.isArray(article.article_authors) ? article.article_authors : [];
+  const names = authors
+    .slice()
+    .sort((a, b) => (a.author_order || 0) - (b.author_order || 0))
+    .map((author) => author.co_author_name)
+    .filter(Boolean);
+  if (names.length > 0) return names.join(', ');
+  return article.user?.name || 'ScholarlyNest Author';
+}
+
+export default function YearArchiveBlock({ groupedArticles = {}, onArticleClick }) {
   const archive = useMemo(() => {
-    const grouped = Object.keys(groupedArticles).reduce((acc, monthKey) => {
-      const parsed = parseMonthYear(monthKey);
-      if (!acc[parsed.year]) acc[parsed.year] = [];
-      acc[parsed.year].push(monthKey);
+    const years = Object.keys(groupedArticles).reduce((acc, monthKey) => {
+      const { year } = parseMonthYear(monthKey);
+      if (!acc[year]) acc[year] = [];
+      acc[year].push(monthKey);
       return acc;
     }, {});
 
-    return Object.keys(grouped)
+    return Object.keys(years)
       .sort((a, b) => Number(b) - Number(a))
-      .map((year) => {
-        const months = grouped[year].sort((a, b) => monthTime(b) - monthTime(a));
-        const articles = months.flatMap((month) => groupedArticles[month] || []);
-        return { year, months, articles, articleCount: articles.length };
-      });
+      .map((year) => ({
+        year,
+        months: years[year].sort((a, b) => monthTime(b) - monthTime(a)),
+      }));
   }, [groupedArticles]);
 
-  const [selectedYear, setSelectedYear] = useState(archive[0]?.year || null);
-  const selectedYearData = archive.find((item) => item.year === selectedYear) || archive[0];
-  const [selectedMonth, setSelectedMonth] = useState(selectedYearData?.months?.[0] || null);
-
-  const activeMonth = selectedYearData?.months?.includes(selectedMonth)
-    ? selectedMonth
-    : selectedYearData?.months?.[0];
-  const monthArticles = activeMonth ? (groupedArticles[activeMonth] || []) : [];
-  const totalArticles = archive.reduce((total, year) => total + year.articleCount, 0);
-  const totalIssues = archive.reduce((total, year) => total + year.months.length, 0);
+  const totalArticles = Object.values(groupedArticles).reduce((total, list) => total + list.length, 0);
 
   if (!archive.length) {
     return (
-      <div className="border border-dashed border-zinc-200/80 bg-zinc-50/20 rounded-2xl px-6 py-16 text-center dark:border-zinc-800/80 dark:bg-zinc-900/10">
-        <Library className="mx-auto mb-4 h-10 w-10 text-zinc-350 dark:text-zinc-700" />
-        <h3 className="font-serif text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Archive awaiting publication</h3>
-        <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">No approved research manuscripts have been cataloged in this issue yet.</p>
+      <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] px-6 py-16 text-center">
+        <Library className="mx-auto mb-4 h-9 w-9 text-[var(--muted)]" aria-hidden="true" />
+        <h2 className="font-serif text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">No published articles yet</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm leading-7 text-zinc-600 dark:text-zinc-350">Published articles will appear here by issue month and year once they are available.</p>
       </div>
     );
   }
 
-  const handleYearSelect = (year) => {
-    const nextYear = archive.find((item) => item.year === year);
-    setSelectedYear(year);
-    setSelectedMonth(nextYear?.months?.[0] || null);
-  };
-
   return (
-    <div className="space-y-12">
-      <header className="border-b border-zinc-100 dark:border-zinc-900/60 pb-8 space-y-4">
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/[0.03] px-3.5 py-1 text-[9px] font-sans font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-            <GraduationCap className="h-3.5 w-3.5" /> Academic registry archive
-          </div>
-          <h2 className="mt-4 font-serif text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Table of Contents</h2>
-          <p className="mt-2 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-            Browse publications through a structured chronological registry. Select a year and issue month below to access full manuscripts.
-          </p>
-        </div>
-
-        {/* Stats strip */}
-        <div className="flex items-center gap-10 text-left pt-2 font-sans">
-          <div>
-            <p className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">{totalArticles}</p>
-            <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Papers</p>
-          </div>
-          <div className="h-8 w-px bg-zinc-150 dark:bg-zinc-850" />
-          <div>
-            <p className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">{totalIssues}</p>
-            <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Issues</p>
-          </div>
-          <div className="h-8 w-px bg-zinc-150 dark:bg-zinc-850" />
-          <div>
-            <p className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">{archive.length}</p>
-            <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Years</p>
-          </div>
-        </div>
+    <div className="space-y-10">
+      <header className="border-b border-[var(--border)] pb-6">
+        <p className="text-sm font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Table of Contents</p>
+        <h2 className="mt-3 font-serif text-3xl font-bold tracking-tight text-zinc-950 dark:text-white">Published archive</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-600 dark:text-zinc-350">
+          Browse published articles by year and issue month. Each article row links to the full public record.
+        </p>
+        <p className="mt-4 text-sm font-semibold text-zinc-700 dark:text-zinc-250">{totalArticles} {totalArticles === 1 ? 'article' : 'articles'} across {archive.reduce((total, year) => total + year.months.length, 0)} issue groups.</p>
       </header>
 
-      {/* Step 1: Select year */}
-      <section className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono">01. Select Year</span>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
-          {archive.map((item) => (
-            <button
-              key={item.year}
-              type="button"
-              onClick={() => handleYearSelect(item.year)}
-              className={`min-w-[120px] rounded-xl border px-5 py-4 text-left transition-all duration-300 cursor-pointer ${
-                selectedYear === item.year
-                  ? 'border-amber-500/30 bg-amber-500/[0.04] text-amber-700 dark:text-amber-400 shadow-sm'
-                  : 'border-zinc-200/80 bg-white text-zinc-700 hover:border-amber-500/20 hover:bg-amber-500/[0.01] dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-350'
-              }`}
-            >
-              <span className="block font-serif text-3xl font-bold tracking-tight">{item.year}</span>
-              <span className="mt-1 block text-[10px] font-sans font-bold uppercase tracking-wider text-zinc-400">{item.articleCount} papers</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Step 2: Choose Month */}
-      <section className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono">02. Choose Issue</span>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {selectedYearData?.months.map((month) => (
-            <MonthTextCard
-              key={month}
-              monthYear={month}
-              articleCount={groupedArticles[month]?.length || 0}
-              active={activeMonth === month}
-              onClick={() => setSelectedMonth(month)}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* Step 3: Manuscripts list */}
-      <section className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-150/60 dark:border-zinc-850 pb-4">
-          <div>
-            <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">03. Manuscript registry</span>
-            <h3 className="mt-1 font-serif text-2xl font-bold text-zinc-900 dark:text-white">{activeMonth}</h3>
-          </div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-zinc-200 dark:border-zinc-800 rounded-lg text-[10px] font-sans font-bold uppercase tracking-wider text-zinc-500">
-            <ListChecks className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-            {monthArticles.length} {monthArticles.length === 1 ? 'manuscript' : 'manuscripts'}
-          </span>
-        </div>
-
-        <div className="divide-y divide-zinc-100 dark:divide-zinc-900">
-          {monthArticles.map((article, index) => (
-            <article key={article.id} className="group py-6 transition-colors first:pt-0 last:pb-0 text-left">
-              <div className="grid gap-5 md:grid-cols-[64px_1fr]">
-                {/* Index badge */}
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-100 bg-zinc-50/50 font-serif text-lg font-bold text-zinc-400 dark:border-zinc-850 dark:bg-zinc-900/20 select-none">
-                  {String(index + 1).padStart(2, '0')}
-                </div>
-                
-                {/* Content block */}
-                <div className="min-w-0 space-y-2.5">
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[9px] font-sans font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500">
-                    <span className="flex items-center gap-1"><BookOpenText className="h-3.5 w-3.5" />Research Article</span>
-                    <span className="flex items-center gap-1"><User className="h-3.5 w-3.5" />{article.user?.name || 'ScholarlyNest Author'}</span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3.5 w-3.5" />
-                      {article.published_month && article.published_year
-                        ? `${article.published_month} ${article.published_year}`
-                        : formatDate(article.published_at || article.created_at)}
-                    </span>
-                    {article.has_pdf && <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-450"><FileText className="h-3.5 w-3.5" />PDF available</span>}
+      {archive.map((yearGroup) => (
+        <section key={yearGroup.year} className="space-y-6" aria-labelledby={`toc-year-${yearGroup.year}`}>
+          <h3 id={`toc-year-${yearGroup.year}`} className="font-serif text-2xl font-bold text-zinc-950 dark:text-white">{yearGroup.year}</h3>
+          <div className="space-y-8">
+            {yearGroup.months.map((monthKey) => {
+              const articles = groupedArticles[monthKey] || [];
+              return (
+                <section key={monthKey} className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)]" aria-labelledby={`toc-${monthKey.replace(/\s+/g, '-').toLowerCase()}`}>
+                  <div className="flex flex-col gap-2 border-b border-[var(--border)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <h4 id={`toc-${monthKey.replace(/\s+/g, '-').toLowerCase()}`} className="text-lg font-bold text-zinc-950 dark:text-white">{monthKey}</h4>
+                    <span className="text-sm font-semibold text-zinc-500 dark:text-zinc-450">{articles.length} {articles.length === 1 ? 'article' : 'articles'}</span>
                   </div>
-                  
-                  <Link
-                    href={`/articles/${article.slug}`}
-                    onClick={() => onArticleClick && onArticleClick(article.id)}
-                    className="block font-serif text-xl sm:text-2xl font-bold leading-snug tracking-tight text-zinc-900 hover:text-amber-600 dark:text-white dark:hover:text-amber-400 transition-colors"
-                  >
-                    {article.title}
-                  </Link>
-                  
-                  <p className="max-w-4xl text-xs sm:text-sm leading-relaxed text-zinc-500 dark:text-zinc-400 line-clamp-3">
-                    {plainText(article.abstract) || 'No abstract summary provided.'}
-                  </p>
-                  
-                  <Link
-                    href={`/articles/${article.slug}`}
-                    onClick={() => onArticleClick && onArticleClick(article.id)}
-                    className="inline-flex items-center gap-1.5 text-[10px] font-sans font-bold uppercase tracking-wider text-amber-600 dark:text-amber-405 group-hover:underline"
-                  >
-                    Open manuscript <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+                  <div className="divide-y divide-[var(--border)]">
+                    {articles.map((article) => {
+                      const articleLink = `/articles/${article.slug}`;
+                      const excerpt = plainText(article.abstract);
+                      return (
+                        <article key={article.id} className="px-5 py-5">
+                          <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+                            <div className="min-w-0">
+                              <Link href={articleLink} onClick={() => onArticleClick?.(article.id)} className="font-serif text-xl font-bold leading-snug text-zinc-950 underline-offset-4 hover:text-amber-700 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-white dark:hover:text-amber-300">
+                                {article.title}
+                              </Link>
+                              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-zinc-600 dark:text-zinc-350">
+                                <span className="inline-flex items-center gap-1.5"><User className="h-4 w-4" aria-hidden="true" />{authorNames(article)}</span>
+                                <span className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4" aria-hidden="true" />{article.published_month && article.published_year ? `${article.published_month} ${article.published_year}` : formatDate(article.published_at || article.created_at)}</span>
+                                {article.has_pdf && <span className="inline-flex items-center gap-1.5"><FileText className="h-4 w-4" aria-hidden="true" />PDF available</span>}
+                              </div>
+                              {excerpt && <p className="mt-3 line-clamp-3 text-sm leading-7 text-zinc-600 dark:text-zinc-350">{excerpt}</p>}
+                            </div>
+                            <div className="md:text-right">
+                              <Link href={articleLink} onClick={() => onArticleClick?.(article.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-250 px-3 py-2 text-sm font-bold text-zinc-850 transition-colors hover:border-amber-500 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:border-zinc-750 dark:text-zinc-200 dark:hover:text-amber-300">
+                                Read Article <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                              </Link>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
