@@ -97,11 +97,17 @@ const Header = () => {
     }
   };
 
-  const getRoleLabel = (roleName) => {
-    switch (roleName?.toLowerCase().replace('_', '-')) {
-      case 'super_admin': return 'Admin';
+  const primaryRole = user?.role || user?.roles?.[0] || null;
+
+  const getRoleLabel = (role) => {
+    if (!role) return 'User';
+    if (role.display_name) return role.display_name;
+
+    switch (role.name?.toLowerCase().replaceAll('_', '-')) {
+      case 'super-admin': return 'Super Admin';
       case 'editor': return 'Editor';
-      default: return 'Author';
+      case 'author': return 'Author';
+      default: return 'User';
     }
   };
 
@@ -200,7 +206,7 @@ const Header = () => {
                     <div className="absolute right-0 mt-2 w-48 rounded-xl border border-zinc-200 bg-white/95 dark:border-zinc-800 dark:bg-zinc-900 p-1 shadow-lg z-50 text-[10px] font-sans font-bold uppercase tracking-wider animate-in fade-in duration-200 backdrop-blur-md">
                       <div className="px-3 py-2 mb-1 bg-zinc-50 dark:bg-zinc-950 rounded-lg border border-zinc-100 dark:border-zinc-850">
                         <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block mb-1">Access Level</span>
-                        <Badge variant="gold">{user.roles?.[0] ? getRoleLabel(user.roles[0].name) : 'User'}</Badge>
+                        <Badge variant="gold">{getRoleLabel(primaryRole)}</Badge>
                       </div>
 
                       <Link
