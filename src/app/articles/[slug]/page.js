@@ -147,7 +147,7 @@ export default function ArticleDetail() {
         setNextArticleTitle(response.data.next_article_title);
       } catch (err) {
         logError('Failed to load article details', err);
-        setError('The specified research manuscript could not be found or loaded.');
+        setError('The specified article could not be found or loaded.');
       } finally {
         setLoading(false);
       }
@@ -158,7 +158,7 @@ export default function ArticleDetail() {
 
   const handlePdfDownload = async () => {
     if (!article?.has_pdf) {
-      toast('No pre-compiled PDF available for this manuscript.', 'info');
+      toast('No public PDF is available for this article.', 'info');
       return;
     }
 
@@ -276,7 +276,7 @@ export default function ArticleDetail() {
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-zinc-50/50 dark:bg-zinc-950/40">
         <div className="max-w-md w-full text-center space-y-6">
           <AlertCircle className="w-12 h-12 mx-auto text-red-500" />
-          <h2 className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">Manuscript Error</h2>
+          <h2 className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">Article Error</h2>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">{error || 'Article details could not be parsed.'}</p>
           <Link href={article?.magazine?.slug ? `/magazines/${article.magazine.slug}` : '/magazines'} className="inline-flex items-center space-x-2 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-405 hover:underline">
             <ArrowLeft className="w-4 h-4" />
@@ -479,7 +479,7 @@ export default function ArticleDetail() {
           {article.full_text && (
             <div className="text-left space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800/80">
               <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-2">
-                Manuscript Text
+                Article Text
               </h3>
               <div 
                 className="font-serif text-base sm:text-lg leading-relaxed text-zinc-800 dark:text-zinc-200 prose dark:prose-invert max-w-none first-letter:text-4xl first-letter:font-serif first-letter:font-bold first-letter:text-amber-600 dark:first-letter:text-amber-400 first-letter:mr-2 first-letter:float-left first-letter:leading-none"
@@ -512,7 +512,7 @@ export default function ArticleDetail() {
           {((article.assets && article.assets.length > 0) || article.has_pdf) && (
             <div className="border-t border-zinc-100 dark:border-zinc-800/80 pt-8 text-left space-y-4">
               <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
-                Downloadable Assets
+                Public Downloads
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -637,7 +637,7 @@ export default function ArticleDetail() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800/80">
                 <div className="space-y-2">
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">Manuscript URL</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">Article URL</span>
                   <div className="flex items-center space-x-2">
                     <input 
                       type="text"

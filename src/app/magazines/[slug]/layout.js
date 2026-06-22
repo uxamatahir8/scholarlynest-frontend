@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, ChevronRight, FileText, Info } from 'lucide-react';
+import { ArrowLeft, BookOpen } from 'lucide-react';
 import api from '../../../utils/api';
 import { logWarn } from '../../../utils/safeLogger';
 import LoadingState from '../../../components/ui/LoadingState';
@@ -60,7 +60,7 @@ export default function MagazinePublicLayout({ children }) {
       <main className="min-h-screen bg-[var(--background)] px-4 pt-32 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-xl">
           <ErrorState title="Magazine not available">{error || 'Magazine could not be resolved.'}</ErrorState>
-          <Link href="/magazines" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-amber-300">
+          <Link href="/magazines" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to magazines
           </Link>
@@ -70,55 +70,78 @@ export default function MagazinePublicLayout({ children }) {
   }
 
   const navItems = [
-    { href: `/magazines/${slug}/about-and-overview`, label: 'About & Overview', icon: Info },
-    { href: `/magazines/${slug}/table-of-contents`, label: 'Table of Contents', icon: FileText },
-    ...(magazine.pages || []).map((page) => ({ href: `/magazines/${slug}/${page.slug}`, label: page.title, icon: BookOpen })),
+    { href: `/magazines/${slug}/about-and-overview`, label: 'Overview' },
+    { href: `/magazines/${slug}/table-of-contents`, label: 'Table of Contents' },
+    ...(magazine.pages || []).map((page) => ({
+      href: `/magazines/${slug}/${page.slug}`,
+      label: page.title,
+    })),
   ];
+  const coverImage = getFullImageUrl(magazine.cover_image);
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <section className="border-b border-[var(--border)] bg-[var(--surface)] px-4 pb-10 pt-32 sm:px-6 lg:px-8">
-        <div className="mx-auto grid w-full max-w-[1440px] gap-8 lg:grid-cols-[1fr_180px] lg:items-end">
-          <div className="min-w-0">
-            <Link href="/magazines" className="inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-amber-300">
+      <section className="relative isolate overflow-hidden bg-zinc-950" aria-labelledby="magazine-title">
+        {coverImage ? (
+          <img
+            src={coverImage}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover object-center"
+            aria-hidden="true"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-zinc-900" aria-hidden="true" />
+        )}
+        <div className="absolute inset-0 bg-zinc-950/55" aria-hidden="true" />
+        <div className="relative mx-auto flex min-h-[340px] w-full max-w-[1440px] items-end px-4 py-12 sm:min-h-[380px] sm:px-6 lg:px-8">
+          <div className="max-w-4xl">
+            <Link href="/magazines" className="inline-flex items-center gap-2 text-sm font-bold text-amber-200 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               All magazines
             </Link>
-            <h1 className="mt-5 max-w-4xl font-serif text-4xl font-bold leading-tight tracking-tight text-zinc-950 dark:text-white sm:text-5xl">{magazine.title}</h1>
+            <h1 id="magazine-title" className="mt-5 font-serif text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
+              {magazine.title}
+            </h1>
             {magazine.description && (
-              <p className="mt-4 max-w-3xl text-base leading-8 text-zinc-650 dark:text-zinc-300">{magazine.description}</p>
-            )}
-          </div>
-          <div className="w-32 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950 sm:w-40 lg:ml-auto">
-            {magazine.cover_image ? (
-              <img src={getFullImageUrl(magazine.cover_image)} alt={`${magazine.title} cover`} className="aspect-[3/4] w-full object-cover" />
-            ) : (
-              <div className="flex aspect-[3/4] w-full items-center justify-center bg-zinc-100 dark:bg-zinc-900">
-                <BookOpen className="h-8 w-8 text-zinc-400" aria-hidden="true" />
-              </div>
+              <p className="mt-4 max-w-3xl text-base leading-8 text-zinc-100 sm:text-lg">
+                {magazine.description}
+              </p>
             )}
           </div>
         </div>
       </section>
 
-      <div className="mx-auto grid w-full max-w-[1440px] gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[280px_1fr] lg:px-8">
-        <aside className="lg:sticky lg:top-28 lg:self-start">
-          <nav className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-2" aria-label="Magazine sections">
+      <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[300px_1fr] lg:px-8">
+        <aside className="lg:sticky lg:top-28 lg:self-start" aria-label="Publication identity and navigation">
+          <div className="hidden lg:block">
+            <div className="w-full max-w-[190px] overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900">
+              {coverImage ? (
+                <img src={coverImage} alt={`${magazine.title} cover`} className="aspect-[3/4] w-full object-cover" />
+              ) : (
+                <div className="flex aspect-[3/4] w-full items-center justify-center bg-zinc-100 dark:bg-zinc-900">
+                  <BookOpen className="h-8 w-8 text-zinc-400" aria-hidden="true" />
+                </div>
+              )}
+            </div>
+            <h2 className="mt-5 font-serif text-2xl font-bold leading-tight text-zinc-950 dark:text-white">{magazine.title}</h2>
+          </div>
+
+          <nav className="mt-6 flex gap-3 overflow-x-auto border-y border-[var(--border)] py-3 lg:block lg:space-y-1 lg:overflow-visible lg:border-y-0 lg:py-0" aria-label="Magazine sections">
             {navItems.map((item) => {
-              const Icon = item.icon;
               const active = pathname === item.href;
               return (
-                <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={`flex items-center justify-between gap-3 rounded-md px-3 py-3 text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 ${active ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300' : 'text-zinc-650 hover:bg-[var(--surface-muted)] hover:text-zinc-950 dark:text-zinc-300 dark:hover:text-white'}`}>
-                  <span className="flex min-w-0 items-center gap-2">
-                    <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                    <span className="truncate">{item.label}</span>
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
+                <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={`inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 lg:flex lg:w-full ${
+                  active
+                    ? 'bg-[var(--surface-muted)] text-zinc-950 shadow-[inset_3px_0_0_rgba(180,83,9,0.8)] dark:text-white'
+                    : 'text-zinc-600 hover:bg-[var(--surface-muted)] hover:text-zinc-950 dark:text-zinc-350 dark:hover:text-white'
+                }`}>
+                  {item.label}
                 </Link>
               );
             })}
           </nav>
         </aside>
+
         <main className="min-w-0">{children}</main>
       </div>
     </div>

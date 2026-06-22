@@ -9,108 +9,65 @@ import api from '../../utils/api';
 import { logWarn } from '../../utils/safeLogger';
 
 export default function PublicShell({ children, pathname }) {
-  const isHome = pathname === '/';
   const isUnsubscribeRoute = pathname?.startsWith('/unsubscribe');
-  const noHeaderPadding = isHome || (pathname?.startsWith('/magazines/') && pathname !== '/magazines');
-
-  const [announcement, setAnnouncement] = useState(null);
+  const [announcementItems, setAnnouncementItems] = useState([]);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Check if dismissed in sessionStorage
-    const isDismissed = sessionStorage.getItem('announcement_dismissed') === 'true';
-    if (isDismissed) {
-      setDismissed(true);
-      return;
-    }
+    let active = true;
 
-    const fetchAnnouncement = async () => {
-      try {
-        const cached = sessionStorage.getItem('active_announcement');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed) {
-            setAnnouncement(parsed);
-          }
-          return;
-        }
+    const fetchAnnouncements = async () => {
+      const [articleResult, magazineResult] = await Promise.allSettled([
+        api.get('/articles/latest', { params: { limit: 10 } }),
+        api.get('/public/magazines', { params: { per_page: 5 } }),
+      ]);
 
-        // 1. Fetch latest published article
-        const articleRes = await api.get('/articles/latest?limit=1');
-        const latestArticle = articleRes.data?.data?.[0];
+      if (articleResult.status === 'rejected') logWarn('Public article headlines unavailable', articleResult.reason?.message);
+      if (magazineResult.status === 'rejected') logWarn('Public magazine headlines unavailable', magazineResult.reason?.message);
 
-        if (latestArticle) {
-          const payload = {
-            type: 'article',
-            title: latestArticle.title,
-            slug: latestArticle.slug,
-            published_at: latestArticle.published_at
-          };
-          setAnnouncement(payload);
-          sessionStorage.setItem('active_announcement', JSON.stringify(payload));
-        } else {
-          // 2. Fallback to latest magazine
-          const magRes = await api.get('/public/magazines?per_page=1');
-          const latestMag = magRes.data?.data?.[0];
-          if (latestMag) {
-            const payload = {
-              type: 'magazine',
-              title: latestMag.title,
-              slug: latestMag.slug,
-              published_at: latestMag.published_at || latestMag.created_at
-            };
-            setAnnouncement(payload);
-            sessionStorage.setItem('active_announcement', JSON.stringify(payload));
-          } else {
-            setAnnouncement(null);
-            sessionStorage.setItem('active_announcement', 'null');
-          }
-        }
-      } catch (err) {
-        logWarn('Announcement fetch failed in PublicShell', err.message);
-        setAnnouncement(null);
-      }
+      const articleData = articleResult.status === 'fulfilled' ? articleResult.value.data : null;
+      const magazineData = magazineResult.status === 'fulfilled' ? magazineResult.value.data : null;
+      const articles = (articleData?.status === 'success' ? articleData.data : articleData?.data) || [];
+      const magazines = magazineData?.data || [];
+
+      const nextItems = [
+        ...articles.map((article) => ({
+          type: 'article',
+          title: article.title,
+          slug: article.slug,
+        })),
+        ...magazines.map((magazine) => ({
+          type: 'magazine',
+          title: magazine.title,
+          slug: magazine.slug,
+        })),
+      ].filter((item) => item.title && item.slug);
+
+      if (active) setAnnouncementItems(nextItems);
     };
 
-    fetchAnnouncement();
+    fetchAnnouncements();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const handleDismiss = () => {
-    setDismissed(true);
-    sessionStorage.setItem('announcement_dismissed', 'true');
-  };
-
-  const showRibbon = announcement && !dismissed;
-
-  useEffect(() => {
-    if (showRibbon) {
-      document.documentElement.classList.add('has-top-ribbon');
-    } else {
-      document.documentElement.classList.remove('has-top-ribbon');
-    }
-    return () => document.documentElement.classList.remove('has-top-ribbon');
-  }, [showRibbon]);
-
-  const paddingClass = noHeaderPadding
-    ? ''
-    : (showRibbon ? 'pt-36 md:pt-44' : 'pt-28 md:pt-36');
+  const showRibbon = announcementItems.length > 0 && !dismissed;
 
   return (
     <>
-      <div className="fixed top-0 left-0 w-full z-50 flex flex-col">
-        {showRibbon && (
-          <TopAnnounceRibbon
-            announcement={announcement}
-            onDismiss={handleDismiss}
-          />
-        )}
-        <Suspense fallback={<div className="h-20 border-b border-zinc-200 bg-white dark:border-zinc-900 dark:bg-zinc-950" />}>
+      <div className="sticky top-0 z-50 w-full">
+        {showRibbon && <TopAnnounceRibbon items={announcementItems} onDismiss={() => setDismissed(true)} />}
+        <Suspense fallback={<div className="h-16 bg-white dark:bg-zinc-950" />}>
           <Header />
         </Suspense>
       </div>
-      <main className={`flex-grow w-full flex flex-col ${paddingClass}`}>
+
+      <main className="flex w-full flex-grow flex-col">
         {children}
       </main>
+
       {!isUnsubscribeRoute && <NewsletterRibbon />}
       <Footer />
     </>

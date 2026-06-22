@@ -161,6 +161,13 @@
   outline-offset: 2px;
 }
 
+:where(a, button, [role="button"], input, select, textarea, summary):focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
 .container-content {
   max-width: var(--container-content);
   margin-inline: auto;
@@ -181,6 +188,26 @@ body {
   min-height: 100vh;
   transition: background-color 0.3s ease, color 0.3s ease;
   overflow-x: hidden;
+}
+
+@keyframes headline-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.headline-marquee {
+  animation: headline-marquee 60s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .headline-marquee {
+    animation: none;
+    transform: none;
+  }
 }
 
 /* Glassmorphism Utilities */
@@ -516,4 +543,3 @@ select option {
   background-color: var(--surface-muted);
   font-weight: 700;
 }
-

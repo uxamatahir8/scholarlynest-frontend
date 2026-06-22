@@ -88,7 +88,7 @@ export default function Footer() {
   };
 
   return (
-    <footer className="mt-auto border-t border-zinc-200 bg-zinc-50 text-left dark:border-zinc-850 dark:bg-zinc-950">
+    <footer className="mt-auto w-full border-t border-zinc-200 bg-zinc-50 text-left dark:border-zinc-850 dark:bg-zinc-950">
       <div className="mx-auto w-full max-w-[1440px] px-4 py-14 sm:px-6 lg:px-8 lg:py-16">
         <div className="grid gap-10 lg:grid-cols-[1.2fr_1.4fr_1fr] lg:gap-14">
           <section className="space-y-5" aria-labelledby="footer-brand-heading">
@@ -108,7 +108,7 @@ export default function Footer() {
               <ul className="mt-4 space-y-3">
                 {EXPLORE_LINKS.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-350 dark:hover:text-white">
+                    <Link href={link.href} className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-zinc-350 dark:hover:text-white">
                       {link.label}
                     </Link>
                   </li>
@@ -121,7 +121,7 @@ export default function Footer() {
               <ul className="mt-4 space-y-3">
                 {CONTRIBUTOR_LINKS.map((link) => (
                   <li key={link.href + link.label}>
-                    <Link href={link.href} className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-350 dark:hover:text-white">
+                    <Link href={link.href} className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-zinc-350 dark:hover:text-white">
                       {link.label}
                     </Link>
                   </li>
@@ -135,7 +135,7 @@ export default function Footer() {
                 <ul className="mt-4 space-y-3">
                   {category.pages.slice(0, 5).map((page) => (
                     <li key={page.id || page.slug}>
-                      <Link href={`/${page.slug}`} className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-350 dark:hover:text-white">
+                      <Link href={`/${page.slug}`} className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-zinc-350 dark:hover:text-white">
                         {page.title}
                       </Link>
                     </li>
@@ -145,7 +145,7 @@ export default function Footer() {
             ))}
           </nav>
 
-          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-850 dark:bg-zinc-900/40" aria-labelledby="newsletter-heading">
+          <section className="bg-transparent lg:border-l lg:border-zinc-200 lg:pl-8 dark:lg:border-zinc-850" aria-labelledby="newsletter-heading">
             <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
               <Mail className="h-4 w-4" aria-hidden="true" />
               <h3 id="newsletter-heading" className="text-sm font-bold text-zinc-950 dark:text-white">Newsletter</h3>
@@ -170,9 +170,9 @@ export default function Footer() {
                   aria-describedby="newsletter-help newsletter-status"
                   aria-invalid={Boolean(error)}
                   placeholder="name@university.edu"
-                  className="min-h-11 w-full rounded-lg border border-zinc-250 bg-white px-3 text-sm text-zinc-950 shadow-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-zinc-750 dark:bg-zinc-950 dark:text-white"
+                  className="min-h-11 w-full rounded-md border border-zinc-250 bg-white px-3 text-sm text-zinc-950 outline-none transition-colors placeholder:text-zinc-400 focus-visible:border-amber-500 focus-visible:ring-2 focus-visible:ring-amber-500/20 dark:border-zinc-750 dark:bg-zinc-950 dark:text-white"
                 />
-                <button type="submit" disabled={submitting} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-zinc-950 px-4 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:focus:ring-offset-zinc-900">
+                <button type="submit" disabled={submitting} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:focus-visible:ring-offset-zinc-900">
                   {subscribed ? <Check className="h-4 w-4" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
                   {submitting ? 'Sending' : 'Subscribe'}
                 </button>
@@ -188,12 +188,12 @@ export default function Footer() {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <span>© {new Date().getFullYear()} Scholarly Nest.</span>
             {legalPages.map((page) => (
-              <Link key={page.id || page.slug} href={`/${page.slug}`} className="font-medium underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:hover:text-white">
+              <Link key={page.id || page.slug} href={`/${page.slug}`} className="font-medium underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:text-white">
                 {page.title}
               </Link>
             ))}
           </div>
-          <button type="button" onClick={scrollToTop} className="inline-flex w-fit items-center gap-2 rounded-lg border border-zinc-250 px-3 py-2 font-semibold text-zinc-650 transition-colors hover:border-zinc-400 hover:text-zinc-950 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:border-zinc-750 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:text-white">
+          <button type="button" onClick={scrollToTop} className="inline-flex w-fit items-center gap-2 rounded-md px-3 py-2 font-semibold text-zinc-650 transition-colors hover:bg-zinc-100 hover:text-zinc-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white">
             <ArrowUp className="h-4 w-4" aria-hidden="true" />
             Back to top
           </button>
