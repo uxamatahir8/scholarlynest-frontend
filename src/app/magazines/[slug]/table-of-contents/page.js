@@ -2,16 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { AlertCircle, Loader2 } from 'lucide-react';
 import api from '../../../../utils/api';
-import { logError } from '../../../../utils/safeLogger';
+import { logWarn } from '../../../../utils/safeLogger';
 import SeoHead from '../../../../components/SeoHead';
 import TableOfContents from '../../../../components/magazine/TableOfContents';
-
-const MONTH_ORDER = {
-  'January': 0, 'February': 1, 'March': 2, 'April': 3, 'May': 4, 'June': 5,
-  'July': 6, 'August': 7, 'September': 8, 'October': 9, 'November': 10, 'December': 11
-};
+import LoadingState from '../../../../components/ui/LoadingState';
+import ErrorState from '../../../../components/ui/ErrorState';
 
 const normalizeMonth = (monthStr) => {
   if (!monthStr) return 'Unknown';
@@ -94,7 +90,7 @@ export default function MagazineTableOfContentsPage() {
         const response = await api.get(`/magazines/${slug}/table-of-contents`);
         setData(response.data);
       } catch (err) {
-        logError('Failed to load table of contents', err);
+        logWarn('Magazine table of contents unavailable', err.message);
         setError('The table of contents could not be loaded.');
       } finally {
         setLoading(false);
@@ -110,30 +106,20 @@ export default function MagazineTableOfContentsPage() {
     try {
       await api.post(`/articles/${articleId}/click`);
     } catch (err) {
-      logError('Failed to track click', err);
+      logWarn('Article click tracking unavailable', err.message);
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
-        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono">Loading table of contents...</span>
-      </div>
-    );
+    return <LoadingState label="Loading table of contents..." className="min-h-[320px]" />;
   }
 
   if (error || !data?.magazine) {
-    return (
-      <div className="max-w-md mx-auto flex items-center space-x-3 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl text-red-700 dark:text-red-400 text-xs">
-        <AlertCircle className="w-5 h-5 shrink-0" />
-        <span className="font-semibold">{error || 'Table of contents could not be resolved.'}</span>
-      </div>
-    );
+    return <ErrorState title="Archive could not be loaded">{error || 'Table of contents could not be resolved.'}</ErrorState>;
   }
 
   return (
-    <div className="animate-in fade-in duration-300">
+    <div>
       <SeoHead title={data.seo?.title} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/magazines/${slug}/table-of-contents`} />
       <TableOfContents archive={archive} magazineSlug={slug} onArticleClick={handleTrackClick} />
     </div>

@@ -44,18 +44,22 @@ export default function MagazinesRegistry() {
   }, [page]);
 
   return (
-    <main className="min-h-screen bg-[var(--background)] px-4 pb-16 pt-32 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-[var(--background)] px-4 pb-16 pt-16 sm:px-6 lg:px-8">
       <title>Magazines - Scholarly Nest</title>
       <div className="mx-auto w-full max-w-[1440px]">
-        <header className="max-w-3xl border-b border-[var(--border)] pb-8">
-          <p className="text-sm font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Magazine discovery</p>
-          <h1 className="mt-3 font-serif text-4xl font-bold tracking-tight text-zinc-950 dark:text-white sm:text-5xl">Explore academic magazines</h1>
-          <p className="mt-4 text-base leading-8 text-zinc-650 dark:text-zinc-300">
-            Browse public magazines and open their overview pages, latest articles, and table of contents archives.
+        <header className="grid gap-6 border-b border-[var(--border)] pb-10 lg:grid-cols-[0.58fr_0.42fr] lg:items-end">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Magazine discovery</p>
+            <h1 className="mt-3 font-serif text-4xl font-bold leading-tight text-zinc-950 dark:text-white sm:text-5xl">
+              Browse the publication catalogue.
+            </h1>
+          </div>
+          <p className="max-w-2xl text-base leading-8 text-zinc-650 dark:text-zinc-300">
+            Explore public academic magazines, review their overview pages, and open published table-of-contents archives.
           </p>
         </header>
 
-        <section className="mt-10" aria-label="Magazine results">
+        <section className="mt-12" aria-label="Magazine collection">
           {loading && <LoadingState label="Loading magazines..." className="min-h-[280px]" />}
 
           {!loading && error && (
@@ -69,7 +73,7 @@ export default function MagazinesRegistry() {
           )}
 
           {!loading && !error && magazines.length > 0 && (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-x-8 gap-y-10 lg:grid-cols-3 xl:grid-cols-4">
               {magazines.map((magazine) => <MagazineCard key={magazine.id} {...magazine} />)}
             </div>
           )}
