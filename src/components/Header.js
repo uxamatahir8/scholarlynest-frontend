@@ -14,7 +14,6 @@ import GlobalSearchInput from './home/GlobalSearchInput';
 
 const NAV_LINKS = [
   { label: 'Magazines', href: '/magazines' },
-  { label: 'Research', href: '/search' },
   { label: 'About', href: '/about' },
   { label: 'Contact', href: '/contact' },
 ];
@@ -71,7 +70,7 @@ export default function Header() {
   const isActive = (href) => pathname === href || pathname?.startsWith(`${href}/`);
 
   return (
-    <header className="border-b border-zinc-200 bg-white dark:border-zinc-850 dark:bg-zinc-950">
+    <header className="bg-white/95 dark:bg-zinc-950/95">
       <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/" aria-label="Scholarly Nest home" className="flex shrink-0 items-center rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950">
           <Image src="/logo.png" alt="Scholarly Nest" width={690} height={362} className="h-9 w-auto object-contain" priority />
@@ -111,7 +110,7 @@ export default function Header() {
             </button>
 
             {themeOpen && (
-              <div className="absolute right-0 top-11 z-50 w-36 rounded-md border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-950">
+              <div className="absolute right-0 top-11 z-50 w-36 rounded-md bg-white p-1 shadow-lg ring-1 ring-black/5 dark:bg-zinc-950 dark:ring-white/10">
                 {THEME_OPTIONS.map(({ value, label, Icon }) => (
                   <button
                     key={value}
@@ -140,15 +139,15 @@ export default function Header() {
                 aria-expanded={accountOpen}
                 className="inline-flex max-w-[180px] items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-100 dark:hover:bg-zinc-900"
               >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-250 bg-zinc-50 text-xs font-bold text-zinc-850 dark:border-zinc-750 dark:bg-zinc-900 dark:text-zinc-100">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-bold text-zinc-850 dark:bg-zinc-900 dark:text-zinc-100">
                   {(user.name || user.email || 'U').charAt(0)}
                 </span>
                 <span className="truncate">{user.name || 'Account'}</span>
               </button>
 
               {accountOpen && (
-                <div className="absolute right-0 top-12 z-50 w-72 rounded-md border border-zinc-200 bg-white p-2 shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
-                  <div className="border-b border-zinc-100 px-3 py-3 dark:border-zinc-850">
+                <div className="absolute right-0 top-12 z-50 w-72 rounded-md bg-white p-2 shadow-xl ring-1 ring-black/5 dark:bg-zinc-950 dark:ring-white/10">
+                  <div className="px-3 py-3">
                     <p className="truncate text-sm font-bold text-zinc-950 dark:text-white">{user.name || user.email}</p>
                     <div className="mt-2 flex items-center gap-2">
                       <span className="text-sm text-zinc-500">Role</span>
@@ -215,7 +214,7 @@ export default function Header() {
           </nav>
 
           {user ? (
-            <div className="space-y-3 border-t border-zinc-200 pt-5 dark:border-zinc-850">
+            <div className="space-y-3 pt-3">
               <div className="space-y-2 rounded-md bg-zinc-50 p-4 dark:bg-zinc-900">
                 <p className="text-base font-bold text-zinc-950 dark:text-white">{user.name || user.email}</p>
                 <p className="text-sm text-zinc-600 dark:text-zinc-350">Role: {roleLabel}</p>
@@ -224,14 +223,14 @@ export default function Header() {
                 <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
                 Dashboard
               </Link>
-              <button type="button" onClick={handleLogout} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-red-200 px-4 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-red-900/50 dark:hover:bg-red-950/20">
+              <button type="button" onClick={handleLogout} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 dark:hover:bg-red-950/20">
                 <LogOut className="h-4 w-4" aria-hidden="true" />
                 Log out
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 border-t border-zinc-200 pt-5 dark:border-zinc-850">
-              <Link href="/login" className="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-250 px-4 text-sm font-bold text-zinc-800 dark:border-zinc-750 dark:text-zinc-100">Sign in</Link>
+            <div className="grid grid-cols-2 gap-3 pt-3">
+              <Link href="/login" className="inline-flex min-h-11 items-center justify-center rounded-md px-4 text-sm font-bold text-zinc-800 transition-colors hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-100 dark:hover:bg-zinc-900">Sign in</Link>
               <Link href="/register" className="inline-flex min-h-11 items-center justify-center rounded-md bg-zinc-950 px-4 text-sm font-bold text-white dark:bg-white dark:text-zinc-950">Register</Link>
             </div>
           )}

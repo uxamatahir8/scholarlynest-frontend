@@ -183,6 +183,26 @@ body {
   overflow-x: hidden;
 }
 
+@keyframes headline-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.headline-marquee {
+  animation: headline-marquee 60s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .headline-marquee {
+    animation: none;
+    transform: none;
+  }
+}
+
 /* Glassmorphism Utilities */
 .glass-panel {
   background: var(--card-bg);
@@ -516,4 +536,3 @@ select option {
   background-color: var(--surface-muted);
   font-weight: 700;
 }
-
