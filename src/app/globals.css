@@ -129,6 +129,11 @@
   --warning: #f59e0b;
   --danger: #f87171;
   --info: #60a5fa;
+  --console-bg: #0b0c0e;
+  --console-sidebar-bg: #111318;
+  --console-topbar-bg: rgba(11, 12, 14, 0.92);
+  --console-sidebar-width: 280px;
+  --console-topbar-height: 68px;
 }
 
 .light, :root.light {
@@ -154,6 +159,11 @@
   --warning: #b45309;
   --danger: #dc2626;
   --info: #2563eb;
+  --console-bg: #f6f7f8;
+  --console-sidebar-bg: #ffffff;
+  --console-topbar-bg: rgba(255, 255, 255, 0.94);
+  --console-sidebar-width: 280px;
+  --console-topbar-height: 68px;
 }
 
 :focus-visible {
@@ -358,41 +368,43 @@ select option {
   transition: background-color 0.5s ease, border-color 0.5s ease;
 }
 
-/* ========================================
-   Fancy Premium Sidebar Scrollbar
-   ======================================== */
-.sidebar-scroll {
+.console-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(245, 158, 11, 0.25) transparent;
+  scrollbar-color: rgba(107, 114, 128, 0.45) transparent;
   scroll-behavior: smooth;
 }
 
-/* WebKit (Chrome, Safari, Edge) */
-.sidebar-scroll::-webkit-scrollbar {
+.console-scroll::-webkit-scrollbar {
   width: 4px;
 }
 
-.sidebar-scroll::-webkit-scrollbar-track {
+.console-scroll::-webkit-scrollbar-track {
   background: transparent;
   margin: 8px 0;
 }
 
-.sidebar-scroll::-webkit-scrollbar-thumb {
-  background: rgba(245, 158, 11, 0.0);
+.console-scroll::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.0);
   border-radius: 100px;
   transition: background 0.3s ease;
 }
 
-.sidebar-scroll:hover::-webkit-scrollbar-thumb {
-  background: rgba(245, 158, 11, 0.28);
+.console-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.38);
 }
 
-.sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 158, 11, 0.55);
+.console-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.62);
 }
 
-.sidebar-scroll::-webkit-scrollbar-thumb:active {
-  background: rgba(245, 158, 11, 0.75);
+.console-scroll::-webkit-scrollbar-thumb:active {
+  background: rgba(107, 114, 128, 0.78);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console-scroll {
+    scroll-behavior: auto;
+  }
 }
 
 /* ========================================
