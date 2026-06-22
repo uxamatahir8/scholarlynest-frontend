@@ -5,12 +5,6 @@ import Link from 'next/link';
 import { ArrowRight, BookOpen, FileText } from 'lucide-react';
 import { formatDate } from '../../utils/date';
 
-const monthIndex = (month) => {
-  if (!month) return -1;
-  const date = new Date(`${month} 1, 2000`);
-  return Number.isNaN(date.getTime()) ? -1 : date.getMonth();
-};
-
 const plainText = (html = '') => html
   .replace(/<[^>]*>/g, ' ')
   .replace(/&nbsp;/g, ' ')
@@ -49,12 +43,13 @@ export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
   const [selectedMonth, setSelectedMonth] = useState('');
 
   const years = useMemo(() => (
-    Object.keys(archive).sort((a, b) => Number(b) - Number(a))
+    Object.keys(archive || {}).sort((a, b) => Number(b) - Number(a))
   ), [archive]);
 
   const monthsForYear = useMemo(() => {
     if (!selectedYear || !archive[selectedYear]) return [];
-    return Object.keys(archive[selectedYear]).sort((a, b) => monthIndex(b) - monthIndex(a));
+    const months = archive[selectedYear]?.months || {};
+    return Object.keys(months).sort((a, b) => Number(b) - Number(a));
   }, [archive, selectedYear]);
 
   useEffect(() => {
@@ -65,21 +60,21 @@ export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
     }
 
     const nextYear = years.includes(selectedYear) ? selectedYear : years[0];
-    const months = Object.keys(archive[nextYear] || {}).sort((a, b) => monthIndex(b) - monthIndex(a));
+    const months = Object.keys(archive[nextYear]?.months || {}).sort((a, b) => Number(b) - Number(a));
     setSelectedYear(nextYear);
     setSelectedMonth((month) => (months.includes(month) ? month : months[0] || ''));
   }, [archive, selectedYear, years]);
 
   const selectedArticles = useMemo(() => {
     if (!selectedYear || !selectedMonth) return [];
-    return archive[selectedYear]?.[selectedMonth] || [];
+    return archive[selectedYear]?.months?.[selectedMonth]?.articles || [];
   }, [archive, selectedMonth, selectedYear]);
 
   const articleCountForYear = selectedYear
-    ? Object.values(archive[selectedYear] || {}).reduce((sum, articles) => sum + articles.length, 0)
+    ? Object.values(archive[selectedYear]?.months || {}).reduce((sum, month) => sum + (month.articles?.length || 0), 0)
     : 0;
 
-  const countForYear = (year) => Object.values(archive[year] || {}).reduce((sum, articles) => sum + articles.length, 0);
+  const countForYear = (year) => Object.values(archive[year]?.months || {}).reduce((sum, month) => sum + (month.articles?.length || 0), 0);
 
   if (years.length === 0) {
     return (
@@ -111,13 +106,14 @@ export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {years.map((year) => {
               const active = selectedYear === year;
+              const yearLabel = archive[year]?.year || year;
               return (
                 <button
                   key={year}
                   type="button"
                   aria-pressed={active}
                   onClick={() => {
-                    const months = Object.keys(archive[year] || {}).sort((a, b) => monthIndex(b) - monthIndex(a));
+                    const months = Object.keys(archive[year]?.months || {}).sort((a, b) => Number(b) - Number(a));
                     setSelectedYear(year);
                     setSelectedMonth(months[0] || '');
                   }}
@@ -127,7 +123,7 @@ export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
                       : 'bg-[var(--surface)] text-zinc-700 hover:bg-[var(--surface-muted)] dark:text-zinc-250'
                   }`}
                 >
-                  <span className="block font-serif text-3xl font-bold">{year}</span>
+                  <span className="block font-serif text-3xl font-bold">{yearLabel}</span>
                   <span className="mt-2 block text-sm text-zinc-500 dark:text-zinc-400">
                     {countForYear(year)} published {countForYear(year) === 1 ? 'article' : 'articles'}
                   </span>
@@ -142,6 +138,7 @@ export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
             {monthsForYear.map((month) => {
               const active = selectedMonth === month;
+              const monthGroup = archive[selectedYear]?.months?.[month];
               return (
                 <button
                   key={month}
@@ -154,7 +151,7 @@ export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
                       : 'bg-[var(--surface)] text-zinc-650 hover:bg-[var(--surface-muted)] dark:text-zinc-300'
                   }`}
                 >
-                  {month}
+                  {monthGroup?.month_name || month}
                 </button>
               );
             })}
@@ -166,7 +163,7 @@ export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
         <div className="flex flex-col gap-2 border-b border-[var(--border)] pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h3 id="archive-current-title" className="font-serif text-2xl font-bold text-zinc-950 dark:text-white">
-              {selectedMonth} {selectedYear}
+              {archive[selectedYear]?.months?.[selectedMonth]?.month_name || selectedMonth} {archive[selectedYear]?.year || selectedYear}
             </h3>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               {articleCountForYear} published {articleCountForYear === 1 ? 'article' : 'articles'} in {selectedYear}
