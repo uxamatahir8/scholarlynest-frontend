@@ -18,29 +18,6 @@ const WORKFLOW_STEPS = [
   ['Publish', 'Approved research becomes available in public magazine archives.'],
 ];
 
-const FAQS = [
-  {
-    question: 'How can I submit my research?',
-    answer: 'Authors can begin from the submission action on this homepage. If you are not signed in, the platform sends you to the sign-in flow before opening the contributor workspace.',
-  },
-  {
-    question: 'How are articles reviewed?',
-    answer: 'Submitted articles move through the secure editorial console, where editors and reviewers complete assigned publication work before approved research appears publicly.',
-  },
-  {
-    question: 'Can I browse research without an account?',
-    answer: 'Yes. Public magazine pages, article pages, the magazine archive, and search are available from the public website without signing in.',
-  },
-  {
-    question: 'How do I join as a reviewer or editor?',
-    answer: 'Reviewer and editor access is managed inside the platform by authorized administrators. Public visitors can contact the editorial team through the contact page.',
-  },
-  {
-    question: 'Where can I find journal archives and published issues?',
-    answer: 'Open the magazine discovery page, choose a publication, and use its public table of contents and latest published article pages.',
-  },
-];
-
 const getFullImageUrl = (path) => {
   if (!path) return '';
   if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
@@ -60,7 +37,7 @@ const issueLabel = (issue) => {
   return parts.join(' - ');
 };
 
-function FaqSection() {
+function FaqSection({ faqs = [], loading = false }) {
   const [openIndex, setOpenIndex] = useState(0);
 
   return (
@@ -73,17 +50,27 @@ function FaqSection() {
           </h2>
         </div>
         <div className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
-          {FAQS.map((faq, index) => {
+          {loading && (
+            <div className="py-8 text-sm text-zinc-500 dark:text-zinc-400">Loading questions...</div>
+          )}
+
+          {!loading && faqs.length === 0 && (
+            <div className="py-8 text-sm leading-7 text-zinc-600 dark:text-zinc-350">
+              No public FAQs are published right now.
+            </div>
+          )}
+
+          {!loading && faqs.map((faq, index) => {
             const isOpen = openIndex === index;
             const panelId = `homepage-faq-${index}`;
             return (
-              <div key={faq.question}>
+              <div key={faq.id || faq.question}>
                 <button
                   type="button"
                   aria-expanded={isOpen}
                   aria-controls={panelId}
                   onClick={() => setOpenIndex(isOpen ? -1 : index)}
-                  className="flex w-full items-center justify-between gap-4 py-5 text-left focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`flex w-full items-center justify-between gap-4 py-5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${isOpen ? 'bg-[var(--surface-muted)]/45 px-3 sm:px-4' : ''}`}
                 >
                   <span className="font-serif text-xl font-bold text-zinc-950 dark:text-white">{faq.question}</span>
                   <ChevronDown className={`h-5 w-5 shrink-0 text-zinc-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -105,6 +92,8 @@ export default function Home() {
   const [stats, setStats] = useState(null);
   const [latestArticles, setLatestArticles] = useState([]);
   const [latestMagazines, setLatestMagazines] = useState([]);
+  const [faqs, setFaqs] = useState([]);
+  const [faqsLoading, setFaqsLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -113,7 +102,8 @@ export default function Home() {
       api.get('/public/homepage-stats'),
       api.get('/articles/latest', { params: { limit: 10 } }),
       api.get('/public/magazines', { params: { per_page: 5 } }),
-    ]).then(([statsResult, articlesResult, magazinesResult]) => {
+      api.get('/public/faqs'),
+    ]).then(([statsResult, articlesResult, magazinesResult, faqResult]) => {
       if (!active) return;
 
       if (statsResult.status === 'fulfilled') {
@@ -137,6 +127,13 @@ export default function Home() {
       } else {
         logWarn('Homepage magazines unavailable', magazinesResult.reason?.message);
       }
+
+      if (faqResult.status === 'fulfilled') {
+        setFaqs(Array.isArray(faqResult.value.data?.data) ? faqResult.value.data.data : []);
+      } else {
+        logWarn('Homepage FAQs unavailable', faqResult.reason?.message);
+      }
+      setFaqsLoading(false);
     });
 
     return () => {
@@ -342,7 +339,7 @@ export default function Home() {
         </div>
       </section>
 
-      <FaqSection />
+      <FaqSection faqs={faqs} loading={faqsLoading} />
 
       <section className="border-t border-[var(--border)] bg-[var(--background)] py-16 lg:py-20">
         <div className="mx-auto grid w-full max-w-[1440px] gap-8 px-4 sm:px-6 lg:grid-cols-[0.7fr_0.3fr] lg:px-8">

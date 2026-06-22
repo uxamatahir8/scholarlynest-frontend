@@ -79,6 +79,8 @@ export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
     ? Object.values(archive[selectedYear] || {}).reduce((sum, articles) => sum + articles.length, 0)
     : 0;
 
+  const countForYear = (year) => Object.values(archive[year] || {}).reduce((sum, articles) => sum + articles.length, 0);
+
   if (years.length === 0) {
     return (
       <div className="border-y border-[var(--border)] px-4 py-16 text-center">
@@ -103,42 +105,60 @@ export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
         </p>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-[220px_1fr]" aria-label="Archive period controls">
+      <section className="space-y-6" aria-label="Archive period controls">
         <div>
-          <label htmlFor="archive-year-select" className="block text-sm font-bold text-zinc-950 dark:text-white">
-            Publication year
-          </label>
-          <select
-            id="archive-year-select"
-            value={selectedYear}
-            onChange={(event) => {
-              const nextYear = event.target.value;
-              const months = Object.keys(archive[nextYear] || {}).sort((a, b) => monthIndex(b) - monthIndex(a));
-              setSelectedYear(nextYear);
-              setSelectedMonth(months[0] || '');
-            }}
-            className="mt-2 min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >
-            {years.map((year) => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
+          <h3 className="text-base font-bold text-zinc-950 dark:text-white">Choose a publication year</h3>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {years.map((year) => {
+              const active = selectedYear === year;
+              return (
+                <button
+                  key={year}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => {
+                    const months = Object.keys(archive[year] || {}).sort((a, b) => monthIndex(b) - monthIndex(a));
+                    setSelectedYear(year);
+                    setSelectedMonth(months[0] || '');
+                  }}
+                  className={`min-h-24 rounded-md px-4 py-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                    active
+                      ? 'bg-[var(--surface-muted)] text-zinc-950 shadow-[inset_0_-2px_0_rgba(180,83,9,0.8)] dark:text-white'
+                      : 'bg-[var(--surface)] text-zinc-700 hover:bg-[var(--surface-muted)] dark:text-zinc-250'
+                  }`}
+                >
+                  <span className="block font-serif text-3xl font-bold">{year}</span>
+                  <span className="mt-2 block text-sm text-zinc-500 dark:text-zinc-400">
+                    {countForYear(year)} published {countForYear(year) === 1 ? 'article' : 'articles'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div>
-          <label htmlFor="archive-month-select" className="block text-sm font-bold text-zinc-950 dark:text-white">
-            Issue month
-          </label>
-          <select
-            id="archive-month-select"
-            value={selectedMonth}
-            onChange={(event) => setSelectedMonth(event.target.value)}
-            className="mt-2 min-h-11 w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-amber-500"
-          >
-            {monthsForYear.map((month) => (
-              <option key={month} value={month}>{month}</option>
-            ))}
-          </select>
+          <h3 className="text-base font-bold text-zinc-950 dark:text-white">Choose an issue month</h3>
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+            {monthsForYear.map((month) => {
+              const active = selectedMonth === month;
+              return (
+                <button
+                  key={month}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setSelectedMonth(month)}
+                  className={`min-h-10 shrink-0 rounded-md px-4 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                    active
+                      ? 'bg-zinc-950 text-white dark:bg-white dark:text-zinc-950'
+                      : 'bg-[var(--surface)] text-zinc-650 hover:bg-[var(--surface-muted)] dark:text-zinc-300'
+                  }`}
+                >
+                  {month}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
 
@@ -177,7 +197,7 @@ export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
                     <div className="min-w-0">
                       {context && <p className="text-sm text-zinc-500 dark:text-zinc-400">{context}</p>}
                       <h4 className="mt-2 font-serif text-2xl font-bold leading-snug text-zinc-950 dark:text-white">
-                        <Link href={articleLink} onClick={() => onArticleClick?.(article.id)} className="underline-offset-4 hover:text-amber-700 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:hover:text-amber-300">
+                        <Link href={articleLink} onClick={() => onArticleClick?.(article.id)} className="underline-offset-4 hover:text-amber-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:text-amber-300">
                           {article.title}
                         </Link>
                       </h4>
@@ -196,7 +216,7 @@ export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
                       )}
                     </div>
                     <div className="flex items-start lg:items-center">
-                      <Link href={articleLink} onClick={() => onArticleClick?.(article.id)} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">
+                      <Link href={articleLink} onClick={() => onArticleClick?.(article.id)} className="inline-flex min-h-10 items-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">
                         Read Article <ArrowRight className="h-4 w-4" aria-hidden="true" />
                       </Link>
                     </div>

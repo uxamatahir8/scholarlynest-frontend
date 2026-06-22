@@ -2,61 +2,26 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { FileQuestion, Home } from 'lucide-react';
 import SeoHead from '../components/SeoHead';
 
 export default function NotFound() {
   return (
-    <div className="min-h-[80vh] flex items-center justify-center bg-zinc-50/20 dark:bg-zinc-950/10 px-6 relative overflow-hidden font-sans">
+    <main className="flex min-h-[80vh] items-center justify-center bg-[var(--background)] px-4 py-20 sm:px-6">
       <SeoHead
-        title="Page Not Found — ScholarlyNest"
-        description="The requested page could not be located in the ScholarlyNest catalog."
+        title="Page Not Found - Scholarly Nest"
+        description="The requested page could not be located."
         ogUrl="/404"
       />
-
-      {/* Ambient glowing circles */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-zinc-500/5 rounded-full blur-[100px] pointer-events-none" />
-
-      <div className="max-w-xl w-full text-center relative z-10 space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
-        
-        {/* Glowing Central Graphic */}
-        <div className="flex justify-center">
-          <div className="relative p-6 bg-white/50 dark:bg-zinc-900/40 backdrop-blur-md border border-zinc-200/60 dark:border-zinc-800/80 rounded-3xl shadow-sm hover-glow group transition-premium">
-            <FileQuestion className="w-16 h-16 text-amber-600 transition-transform duration-500 group-hover:rotate-12" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-550 rounded-full animate-ping" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full" />
-          </div>
-        </div>
-
-        {/* Academic branding copy */}
-        <div className="space-y-3">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400 font-mono">
-            Error Code: 404 INDEX_MISSING
-          </span>
-          <h1 className="text-3xl sm:text-4xl font-serif font-bold text-zinc-900 dark:text-white leading-tight">
-            Citation Archive Missing
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-505 dark:text-zinc-400 leading-relaxed max-w-md mx-auto font-medium">
-            The scholarly citation, research record, or dynamic guidelines page you are trying to query could not be resolved inside our catalog indexes.
-          </p>
-        </div>
-
-        {/* Divider bar */}
-        <div className="h-px bg-gradient-to-r from-transparent via-zinc-200 dark:via-zinc-800 to-transparent w-2/3 mx-auto" />
-
-        {/* Clear premium action button groups */}
-        <div className="flex justify-center">
-          <Link
-            href="/"
-            className="inline-flex items-center space-x-2 px-8 py-3.5 rounded-xl text-[10px] font-bold uppercase tracking-wider text-white bg-zinc-955 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 transition-colors shadow-md cursor-pointer"
-          >
-            <Home className="w-4 h-4 text-amber-500" />
-            <span>Return to Homepage</span>
-          </Link>
-        </div>
-
+      <div className="max-w-xl text-center">
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Page not found</p>
+        <h1 className="mt-3 font-serif text-4xl font-bold text-zinc-950 dark:text-white">We could not find that page.</h1>
+        <p className="mt-4 text-base leading-8 text-zinc-600 dark:text-zinc-350">
+          The link may have changed, or the content may no longer be published.
+        </p>
+        <Link href="/" className="mt-8 inline-flex min-h-11 items-center justify-center rounded-md bg-zinc-950 px-5 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">
+          Return Home
+        </Link>
       </div>
-    </div>
+    </main>
   );
 }

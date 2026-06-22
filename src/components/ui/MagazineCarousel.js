@@ -2,19 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BookOpen, Loader2 } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import api from '../../utils/api';
 import { logError } from '../../utils/safeLogger';
-
-const getFullImageUrl = (path) => {
-  if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
-  if (path.startsWith('/images/') || path.startsWith('images/')) return path.startsWith('/') ? path : `/${path}`;
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-  const domain = apiBase.replace(/\/api$/, '');
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `${domain}${cleanPath}`;
-};
+import MagazineCard from '../magazine/MagazineCard';
 
 export default function MagazineCarousel() {
   const [magazines, setMagazines] = useState([]);
@@ -79,28 +70,7 @@ export default function MagazineCarousel() {
 
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {featured.map((magazine) => (
-            <article key={magazine.id} className="min-w-0 border-t border-[var(--border)] pt-5">
-              <Link href={`/magazines/${magazine.slug}/about-and-overview`} className="group block focus:outline-none focus:ring-2 focus:ring-amber-500">
-                <div className="aspect-[4/3] overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900">
-                  {magazine.cover_image ? (
-                    <img src={getFullImageUrl(magazine.cover_image)} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" loading="lazy" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <BookOpen className="h-8 w-8 text-zinc-400" aria-hidden="true" />
-                    </div>
-                  )}
-                </div>
-                <h3 className="mt-4 font-serif text-xl font-bold leading-snug text-zinc-950 group-hover:text-amber-700 dark:text-white dark:group-hover:text-amber-300">
-                  {magazine.title}
-                </h3>
-              </Link>
-              <p className="mt-2 line-clamp-3 text-sm leading-6 text-zinc-600 dark:text-zinc-350">
-                {magazine.description || 'Public overview and published research archive.'}
-              </p>
-              <Link href={`/magazines/${magazine.slug}/about-and-overview`} className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-amber-300">
-                View Magazine <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </article>
+            <MagazineCard key={magazine.id} {...magazine} />
           ))}
         </div>
       </div>

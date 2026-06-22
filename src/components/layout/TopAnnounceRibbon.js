@@ -26,7 +26,7 @@ export default function TopAnnounceRibbon({ items = [], onDismiss }) {
                 <Link
                   key={`${item.type}-${item.slug}-${index}`}
                   href={buildItemHref(item)}
-                  className="inline-flex max-w-[78vw] shrink-0 items-center gap-2 whitespace-nowrap text-zinc-100 underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-zinc-950 sm:max-w-md"
+                  className="inline-flex max-w-[78vw] shrink-0 items-center gap-2 whitespace-nowrap text-zinc-100 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 sm:max-w-md"
                 >
                   <span className="font-semibold text-amber-300">
                     {item.type === 'article' ? 'New article:' : 'Now available:'}
@@ -61,7 +61,7 @@ export default function TopAnnounceRibbon({ items = [], onDismiss }) {
             type="button"
             onClick={onDismiss}
             aria-label="Dismiss announcement"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 focus:ring-offset-zinc-950"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>

@@ -71,14 +71,19 @@ export default function MagazinePublicLayout({ children }) {
 
   const navItems = [
     { href: `/magazines/${slug}/about-and-overview`, label: 'Overview' },
-    { href: `/magazines/${slug}/table-of-contents`, label: 'Latest Issue / Table of Contents' },
+    { href: `/magazines/${slug}/table-of-contents`, label: 'Table of Contents / Archive' },
+    ...(magazine.pages || []).map((page) => ({
+      href: `/magazines/${slug}/${page.slug}`,
+      label: page.title,
+    })),
   ];
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <section className="border-b border-[var(--border)] bg-[var(--surface)] px-4 pb-8 pt-16 sm:px-6 lg:px-8">
-        <div className="mx-auto grid w-full max-w-[1440px] gap-8 lg:grid-cols-[190px_1fr] lg:items-end">
-          <div className="w-36 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900 sm:w-44 lg:w-full">
+      <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[300px_1fr] lg:px-8">
+        <aside className="lg:sticky lg:top-28 lg:self-start" aria-label="Publication identity and navigation">
+          <div className="grid gap-5 sm:grid-cols-[120px_1fr] lg:block">
+            <div className="w-32 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900 sm:w-full lg:max-w-[220px]">
             {magazine.cover_image ? (
               <img src={getFullImageUrl(magazine.cover_image)} alt={`${magazine.title} cover`} className="aspect-[3/4] w-full object-cover" />
             ) : (
@@ -86,40 +91,36 @@ export default function MagazinePublicLayout({ children }) {
                 <BookOpen className="h-8 w-8 text-zinc-400" aria-hidden="true" />
               </div>
             )}
-          </div>
-          <div className="min-w-0">
+            </div>
+
+            <div className="min-w-0 lg:mt-6">
             <Link href="/magazines" className="inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-amber-300">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               All magazines
             </Link>
-            <h1 className="mt-5 max-w-4xl font-serif text-4xl font-bold leading-tight text-zinc-950 dark:text-white sm:text-5xl">{magazine.title}</h1>
+              <h1 className="mt-4 font-serif text-3xl font-bold leading-tight text-zinc-950 dark:text-white">{magazine.title}</h1>
             {magazine.description && (
-              <p className="mt-4 max-w-3xl text-base leading-8 text-zinc-650 dark:text-zinc-300">{magazine.description}</p>
+                <p className="mt-3 line-clamp-5 text-sm leading-7 text-zinc-650 dark:text-zinc-300">{magazine.description}</p>
             )}
+            </div>
           </div>
-        </div>
-      </section>
 
-      <div className="border-b border-[var(--border)] bg-[var(--background)] px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-[1440px] overflow-x-auto">
-          <nav className="flex min-w-max gap-6" aria-label="Magazine sections">
+          <nav className="mt-6 flex gap-3 overflow-x-auto border-y border-[var(--border)] py-3 lg:block lg:space-y-1 lg:overflow-visible lg:border-y-0 lg:py-0" aria-label="Magazine sections">
             {navItems.map((item) => {
               const active = pathname === item.href;
               return (
-                <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={`inline-flex min-h-12 items-center border-b-2 px-1 text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={`inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-sm font-bold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 lg:flex lg:w-full ${
                   active
-                    ? 'border-amber-600 text-zinc-950 dark:border-amber-300 dark:text-white'
-                    : 'border-transparent text-zinc-600 hover:text-zinc-950 dark:text-zinc-350 dark:hover:text-white'
+                    ? 'bg-[var(--surface-muted)] text-zinc-950 underline decoration-amber-600 decoration-2 underline-offset-8 dark:text-white'
+                    : 'text-zinc-600 hover:bg-[var(--surface-muted)] hover:text-zinc-950 dark:text-zinc-350 dark:hover:text-white'
                 }`}>
                   {item.label}
                 </Link>
               );
             })}
           </nav>
-        </div>
-      </div>
+        </aside>
 
-      <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8">
         <main className="min-w-0">{children}</main>
       </div>
     </div>

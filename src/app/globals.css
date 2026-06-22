@@ -161,6 +161,13 @@
   outline-offset: 2px;
 }
 
+:where(a, button, [role="button"], input, select, textarea, summary):focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
 .container-content {
   max-width: var(--container-content);
   margin-inline: auto;

@@ -164,7 +164,7 @@ function SearchResultsContent() {
                 href={item.target_url} 
                 className="inline-flex items-center space-x-1 text-[10px] font-sans font-bold uppercase tracking-wider text-amber-600 hover:text-amber-700 transition-colors"
               >
-                <span>Read Manuscript</span>
+              <span>Read Article</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -232,9 +232,7 @@ function SearchResultsContent() {
         ogUrl="/search"
       />
       
-      {/* 1. Centered Header & Search Box Input */}
       <div className="relative pt-32 pb-16 border-b border-zinc-100 dark:border-zinc-900/60 bg-white/60 dark:bg-zinc-900/20">
-        <div className="absolute inset-0 bg-mesh opacity-20 pointer-events-none" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-30 space-y-6 text-center">
           
           <div className="flex justify-center">
@@ -252,7 +250,7 @@ function SearchResultsContent() {
               Search Scholarly Nest
             </h1>
             <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-medium max-w-xl mx-auto">
-              Query the complete digital index of published research manuscripts, academic magazines, and platform guidelines.
+              Search published articles, academic magazines, and public pages.
             </p>
           </div>
 
@@ -284,8 +282,8 @@ function SearchResultsContent() {
                 {[
                   { id: 'all', label: 'All Results' },
                   { id: 'magazine', label: 'Magazines' },
-                  { id: 'article', label: 'Manuscripts' },
-                  { id: 'page', label: 'Guidelines' }
+                  { id: 'article', label: 'Articles' },
+                  { id: 'page', label: 'Pages' }
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -352,7 +350,7 @@ function SearchResultsContent() {
             <SearchIcon className="w-12 h-12 mx-auto text-zinc-300 dark:text-zinc-700 mb-3" />
             <h3 className="font-serif text-lg font-bold text-zinc-900 dark:text-zinc-200">Start Your Search Query</h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto mt-2 leading-relaxed">
-              Enter any terms above to run a search across issues, authors, manuscripts, policies, or guide files.
+              Enter any terms above to search public articles, magazines, authors, and pages.
             </p>
           </div>
         )}
