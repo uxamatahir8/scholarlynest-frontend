@@ -47,20 +47,21 @@ export default function CmsPageWorkspace({ slug }) {
       try {
         setLoading(true);
         setError('');
-        const response = await api.get(`/cms/${slug}`);
+        const response = await api.get(`/admin/cms/${slug}`);
+        const page = response.data?.page || {};
         setForm({
-          title: response.data?.title || pageInfo.name,
-          content_html: response.data?.content_html || '',
-          is_active: true,
-          seo_title: response.data?.seo_title || '',
-          seo_description: response.data?.seo_description || '',
-          seo_keywords: response.data?.seo_keywords || '',
-          updated_at: response.data?.updated_at || null,
+          title: page.title || pageInfo.name,
+          content_html: page.content_html || '',
+          is_active: page.is_active ?? false,
+          seo_title: page.seo_title || '',
+          seo_description: page.seo_description || '',
+          seo_keywords: page.seo_keywords || '',
+          updated_at: page.updated_at || null,
         });
       } catch (err) {
         logError('Failed to load CMS page:', err);
         setForm((prev) => ({ ...prev, title: pageInfo.name, is_active: false }));
-        setError('This public page is not currently active or has not been created yet. Saving content can create or reactivate it if your role is authorized.');
+        setError('This CMS page has not been created yet, or your role cannot access it.');
       } finally {
         setLoading(false);
       }
