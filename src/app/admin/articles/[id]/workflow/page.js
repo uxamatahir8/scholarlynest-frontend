@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import api from '../../../../../utils/api';
 import { safeApiMessage } from '../../../../../utils/safeErrors';
 import { logError } from '../../../../../utils/safeLogger';
@@ -9,6 +9,7 @@ import { useAuth } from '../../../../../context/AuthContext';
 import { useToast } from '../../../../../context/ToastContext';
 import LoadingState from '../../../../../components/ui/LoadingState';
 import ErrorState from '../../../../../components/ui/ErrorState';
+import Alert from '../../../../../components/ui/Alert';
 import WorkflowActionPanel from '../../../../../components/admin/WorkflowActionPanel';
 import PublishArticleModal from '../../../../../components/admin/PublishArticleModal';
 import { PUBLISHABLE_STATUSES } from '../../../../../components/admin/articleWorkflow';
@@ -23,6 +24,7 @@ import { canViewReviewerIdentity } from '../../../../../components/admin/workflo
 
 export default function ArticleWorkflowPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const articleId = params?.id;
   const { user, hasRole, hasPermission, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -30,6 +32,7 @@ export default function ArticleWorkflowPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [publishOpen, setPublishOpen] = useState(false);
+  const observerReadonly = searchParams.get('observer_readonly') === '1';
 
   const loadWorkflow = async () => {
     if (!articleId || authLoading || !user) return;
@@ -94,20 +97,26 @@ export default function ArticleWorkflowPage() {
         article={article}
         user={user}
         hasRole={hasRole}
-        canPublish={canPublish}
+        canPublish={canPublish && !observerReadonly}
         onPublish={() => setPublishOpen(true)}
       />
 
-      <WorkflowActionPanel
-        article={article}
-        workflowContext={article}
-        user={user}
-        hasRole={hasRole}
-        hasPermission={hasPermission}
-        onWorkflowChanged={loadWorkflow}
-        onOpenPublish={() => setPublishOpen(true)}
-        toast={toast}
-      />
+      {observerReadonly ? (
+        <Alert tone="info" title="Super Admin Review Mode">
+          This manuscript record was opened from an observer queue. Workflow actions are disabled in this view.
+        </Alert>
+      ) : (
+        <WorkflowActionPanel
+          article={article}
+          workflowContext={article}
+          user={user}
+          hasRole={hasRole}
+          hasPermission={hasPermission}
+          onWorkflowChanged={loadWorkflow}
+          onOpenPublish={() => setPublishOpen(true)}
+          toast={toast}
+        />
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
         <div className="space-y-6">
@@ -123,13 +132,15 @@ export default function ArticleWorkflowPage() {
 
       <WorkflowTimeline article={article} />
 
-      <PublishArticleModal
-        isOpen={publishOpen}
-        onClose={() => setPublishOpen(false)}
-        articleTitle={article.title}
-        magazineId={article.magazine_id}
-        onSubmit={handlePublishSubmit}
-      />
+      {!observerReadonly && (
+        <PublishArticleModal
+          isOpen={publishOpen}
+          onClose={() => setPublishOpen(false)}
+          articleTitle={article.title}
+          magazineId={article.magazine_id}
+          onSubmit={handlePublishSubmit}
+        />
+      )}
     </main>
   );
 }

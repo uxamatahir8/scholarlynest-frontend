@@ -14,6 +14,8 @@ import DashboardSection from './DashboardSection';
 import DashboardQuickLinks from './DashboardQuickLinks';
 import { assignmentQueueItem, completedAssignmentStatuses } from './dashboardUtils';
 
+const EMPTY_OBSERVER_PARAMS = {};
+
 export default function AssignmentDashboardWorkspace({
   title,
   description,
@@ -27,6 +29,9 @@ export default function AssignmentDashboardWorkspace({
   emptyActive,
   emptyCompleted,
   quickLinks = [],
+  observerMode = false,
+  observerUser = null,
+  observerParams = EMPTY_OBSERVER_PARAMS,
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -39,7 +44,7 @@ export default function AssignmentDashboardWorkspace({
         setLoading(true);
         setError('');
         const sep = endpoint.includes('?') ? '&' : '?';
-        const response = await api.get(`${endpoint}${sep}page=1&per_page=10`);
+        const response = await api.get(`${endpoint}${sep}page=1&per_page=10`, { params: observerParams });
         if (active) setAssignments(response.data?.data || []);
       } catch (err) {
         logError('Failed to load assignment workspace:', err);
@@ -53,7 +58,7 @@ export default function AssignmentDashboardWorkspace({
     return () => {
       active = false;
     };
-  }, [endpoint]);
+  }, [endpoint, observerParams]);
 
   const activeAssignments = useMemo(
     () => assignments.filter((assignment) => !completedAssignmentStatuses.has(assignment.status)),
@@ -71,7 +76,7 @@ export default function AssignmentDashboardWorkspace({
     <DashboardWorkspace
       title={title}
       description={description}
-      action={{
+      action={observerMode ? null : {
         eyebrow: 'Next step',
         title: primaryLabel,
         description: activeItems.length > 0 ? 'Open your full desk to continue the next assigned task.' : 'Your desk is ready when new assignments arrive.',
@@ -99,26 +104,28 @@ export default function AssignmentDashboardWorkspace({
                 description={activeDescription}
                 items={activeItems}
                 emptyTitle="No active assignments"
-                emptyDescription={emptyActive}
-                actionHref={primaryHref}
-                actionLabel="Open Full Desk"
+                emptyDescription={observerMode && observerUser ? `No active assignments are visible for ${observerUser.name}.` : emptyActive}
+                actionHref={observerMode ? null : primaryHref}
+                actionLabel={observerMode ? null : 'Open Full Desk'}
               />
               <DashboardQueue
                 title={completedTitle}
                 description={completedDescription}
                 items={completedItems}
                 emptyTitle="No completed work yet"
-                emptyDescription={emptyCompleted}
-                actionHref={primaryHref}
-                actionLabel="Open Full Desk"
+                emptyDescription={observerMode && observerUser ? `No completed assignments are visible for ${observerUser.name}.` : emptyCompleted}
+                actionHref={observerMode ? null : primaryHref}
+                actionLabel={observerMode ? null : 'Open Full Desk'}
               />
             </div>
+            {!observerMode && (
             <DashboardSection title="Desk Links" description="Continue in the full task workspace when needed.">
               <DashboardQuickLinks links={[
                 { label: 'Open Full Desk', href: primaryHref, icon: ClipboardCheck, description: 'View all assignments and workflow actions.' },
                 ...quickLinks,
               ]} />
             </DashboardSection>
+            )}
           </div>
         </div>
       )}

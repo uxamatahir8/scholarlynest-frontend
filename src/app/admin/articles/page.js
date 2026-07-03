@@ -15,6 +15,7 @@ import { Button } from '../../../components/ui/Button';
 import { useAuth } from '../../../context/AuthContext';
 import Pagination from '../../../components/ui/Pagination';
 import PublishArticleModal from '../../../components/admin/PublishArticleModal';
+import DeskObserverContext from '../../../components/admin/desk-observer/DeskObserverContext';
 import {
   PUBLISHABLE_STATUSES,
   STATUS_META,
@@ -42,7 +43,7 @@ const getFullImageUrl = (path) => {
   return `${domain}${cleanPath}`;
 };
 
-export default function AdminArticlesBoard() {
+function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }) {
   const { toast } = useToast();
   const { user, hasPermission, hasRole, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -177,6 +178,7 @@ export default function AdminArticlesBoard() {
       const params = {
         page: currentPage,
         per_page: itemsPerPage,
+        ...observerParams,
       };
 
       if (selectedMagazineId !== 'all') {
@@ -212,7 +214,7 @@ export default function AdminArticlesBoard() {
     if (!authLoading && user) {
       fetchArticles();
     }
-  }, [currentPage, queueId, selectedMagazineId, debouncedSearchQuery, user, authLoading]);
+  }, [currentPage, queueId, selectedMagazineId, debouncedSearchQuery, user, authLoading, observerParams]);
 
   const getStatusBadge = (status) => {
     const [label, tone = 'zinc'] = STATUS_META[status] || [(status || 'Unknown').replaceAll('_', ' '), 'zinc'];
@@ -268,7 +270,7 @@ export default function AdminArticlesBoard() {
               : "Manage drafts, track editorial review cycles, and publish new academic work.")}
           </p>
         </div>
-        {hasPermission('articles.create') && (
+        {hasPermission('articles.create') && !observerMode && (
           <Link href="/admin/articles/new" className="self-start sm:self-auto">
             <Button
               variant="primary"
@@ -439,7 +441,7 @@ export default function AdminArticlesBoard() {
                     )}
                     <td className="px-6 py-4">{getStatusBadge(art.status)}</td>
                     <td className="px-6 py-4 text-right space-x-3.5">
-                      {hasPermission('articles.edit-own') && !isEditor && (
+                      {hasPermission('articles.edit-own') && !isEditor && !observerMode && (
                         <Link
                           href={`/admin/articles/${art.id}/edit`}
                           className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-blue-605 hover:underline cursor-pointer"
@@ -449,7 +451,7 @@ export default function AdminArticlesBoard() {
                         </Link>
                       )}
 
-                      {isAdminOrEditor && !isEditor && PUBLISHABLE_STATUSES.has(art.status) && (
+                      {isAdminOrEditor && !isEditor && !observerMode && PUBLISHABLE_STATUSES.has(art.status) && (
                         <button
                           onClick={() => openPublishModal(art)}
                           className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-purple-650 hover:underline cursor-pointer"
@@ -460,11 +462,11 @@ export default function AdminArticlesBoard() {
                       )}
 
                       <Link
-                        href={`/admin/articles/${art.id}/workflow`}
+                        href={observerMode ? `/admin/articles/${art.id}/workflow?observer_readonly=1` : `/admin/articles/${art.id}/workflow`}
                         className="inline-flex items-center space-x-1.5 text-[10px] font-bold uppercase text-amber-600 hover:underline cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
-                        <span>{isAdminOrEditor ? "Manage Workflow" : "View Workflow"}</span>
+                        <span>{observerMode ? "View Record" : isAdminOrEditor ? "Manage Workflow" : "View Workflow"}</span>
                       </Link>
 
                       {art.has_pdf && (
@@ -522,5 +524,18 @@ export default function AdminArticlesBoard() {
       />
 
     </div>
+  );
+}
+
+export default function AdminArticlesBoard() {
+  return (
+    <DeskObserverContext roles={['editor', 'magazine_editor']}>
+      {({ observerMode, observerParams }) => (
+        <AdminArticlesBoardContent
+          observerMode={observerMode}
+          observerParams={observerParams}
+        />
+      )}
+    </DeskObserverContext>
   );
 }
