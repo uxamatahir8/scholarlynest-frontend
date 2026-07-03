@@ -819,8 +819,8 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
           )}
         </form>
 
-        <aside className="lg:sticky lg:top-6 lg:self-start">
-          <div className="space-y-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
+        <aside className="lg:block">
+          <div className="space-y-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm lg:fixed lg:top-[calc(var(--console-topbar-height)+1.5rem)] lg:bottom-6 lg:right-8 lg:w-[360px] lg:overflow-y-auto xl:w-[390px] 2xl:w-[420px]">
             <div>
               <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Review and Submit</p>
               <h2 className="mt-1 text-xl font-bold text-[var(--foreground)]">Submission Readiness</h2>
