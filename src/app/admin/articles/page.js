@@ -3,10 +3,11 @@
 import { logError } from '../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { 
   FileText, Loader2, Eye, Calendar, User, AlertCircle,
   BookOpen, Download, ShieldAlert, Plus, Edit,
-  Search, ChevronDown
+  Search, ChevronDown, X
 } from 'lucide-react';
 import api from '../../../utils/api';
 import { useToast } from '../../../context/ToastContext';
@@ -16,10 +17,16 @@ import Pagination from '../../../components/ui/Pagination';
 import PublishArticleModal from '../../../components/admin/PublishArticleModal';
 import {
   PUBLISHABLE_STATUSES,
-  STATUS_FILTERS,
   STATUS_META,
   STATUS_TONE_CLASSES,
 } from '../../../components/admin/articleWorkflow';
+import {
+  ARTICLE_QUEUE_PARAM,
+  ARTICLE_QUEUE_TABS,
+  DEFAULT_ARTICLE_QUEUE_ID,
+  getArticleQueue,
+  isValidArticleQueue,
+} from '../../../utils/articleQueues';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -38,6 +45,9 @@ const getFullImageUrl = (path) => {
 export default function AdminArticlesBoard() {
   const { toast } = useToast();
   const { user, hasPermission, hasRole, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
 
   const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || hasPermission('articles.auto-approve') || isEditor) : false;
@@ -46,8 +56,9 @@ export default function AdminArticlesBoard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Status filter state: 'all' | pipeline statuses
-  const [statusFilter, setStatusFilter] = useState('all');
+  const rawQueueParam = searchParams.get(ARTICLE_QUEUE_PARAM);
+  const queueId = rawQueueParam && isValidArticleQueue(rawQueueParam) ? rawQueueParam : DEFAULT_ARTICLE_QUEUE_ID;
+  const selectedQueue = getArticleQueue(queueId);
 
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [articleToPublish, setArticleToPublish] = useState(null);
@@ -82,8 +93,8 @@ export default function AdminArticlesBoard() {
   };
 
   // Live search and magazine filter state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedMagazineId, setSelectedMagazineId] = useState('all');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+  const [selectedMagazineId, setSelectedMagazineId] = useState(searchParams.get('magazine_id') || 'all');
   const [magazines, setMagazines] = useState([]);
   const [loadingMagazines, setLoadingMagazines] = useState(false);
 
@@ -94,13 +105,45 @@ export default function AdminArticlesBoard() {
   const [totalPages, setTotalPages] = useState(1);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
+  const updateQuery = (updates) => {
+    const next = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value || value === 'all' || (key === ARTICLE_QUEUE_PARAM && value === DEFAULT_ARTICLE_QUEUE_ID)) {
+        next.delete(key);
+      } else {
+        next.set(key, String(value));
+      }
+    });
+    if (updates[ARTICLE_QUEUE_PARAM]) next.delete('status');
+    next.delete('page');
+    const queryString = next.toString();
+    const nextUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    const currentUrl = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
+    if (nextUrl !== currentUrl) router.push(nextUrl, { scroll: false });
+  };
+
+  const handleQueueChange = (nextQueueId) => {
+    updateQuery({ [ARTICLE_QUEUE_PARAM]: isValidArticleQueue(nextQueueId) ? nextQueueId : DEFAULT_ARTICLE_QUEUE_ID });
+  };
+
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
+      if ((searchParams.get('search') || '') !== searchQuery.trim()) {
+        updateQuery({ search: searchQuery.trim() });
+      }
     }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  useEffect(() => {
+    const nextSearch = searchParams.get('search') || '';
+    const nextMagazineId = searchParams.get('magazine_id') || 'all';
+    setSearchQuery(nextSearch);
+    setDebouncedSearchQuery(nextSearch);
+    setSelectedMagazineId(nextMagazineId);
+  }, [searchParams]);
 
   // Fetch magazines for the filter dropdown
   useEffect(() => {
@@ -122,7 +165,7 @@ export default function AdminArticlesBoard() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, selectedMagazineId, statusFilter]);
+  }, [debouncedSearchQuery, selectedMagazineId, queueId]);
 
   // Fetch articles based on filter
   const fetchArticles = async () => {
@@ -136,9 +179,6 @@ export default function AdminArticlesBoard() {
         per_page: itemsPerPage,
       };
 
-      if (statusFilter !== 'all') {
-        params.status = statusFilter;
-      }
       if (selectedMagazineId !== 'all') {
         params.magazine_id = selectedMagazineId;
       }
@@ -146,17 +186,20 @@ export default function AdminArticlesBoard() {
         params.search = debouncedSearchQuery.trim();
       }
 
-      const response = await api.get('/admin/articles', { params });
+      const statuses = selectedQueue.statuses.length ? selectedQueue.statuses : [null];
+      const perStatusPage = Math.max(1, Math.ceil(itemsPerPage / statuses.length));
+      const responses = await Promise.all(statuses.map((status) => {
+        const nextParams = { ...params, per_page: perStatusPage };
+        if (status) nextParams.status = status;
+        return api.get('/admin/articles', { params: nextParams });
+      }));
+      const combined = responses.flatMap((response) => response.data?.data || []).slice(0, itemsPerPage);
+      const total = responses.reduce((sum, response) => sum + (response.data?.total || response.data?.data?.length || 0), 0);
+      const pages = Math.max(...responses.map((response) => response.data?.last_page || 1));
       
-      if (response.data && response.data.data) {
-        setArticles(response.data.data);
-        setTotalArticles(response.data.total || 0);
-        setTotalPages(response.data.last_page || 1);
-      } else {
-        setArticles(Array.isArray(response.data) ? response.data : []);
-        setTotalArticles(Array.isArray(response.data) ? response.data.length : 0);
-        setTotalPages(1);
-      }
+      setArticles(combined);
+      setTotalArticles(total);
+      setTotalPages(pages);
     } catch (err) {
       logError(err);
       setError('Could not download the articles registry database.');
@@ -169,7 +212,7 @@ export default function AdminArticlesBoard() {
     if (!authLoading && user) {
       fetchArticles();
     }
-  }, [currentPage, statusFilter, selectedMagazineId, debouncedSearchQuery, user, authLoading]);
+  }, [currentPage, queueId, selectedMagazineId, debouncedSearchQuery, user, authLoading]);
 
   const getStatusBadge = (status) => {
     const [label, tone = 'zinc'] = STATUS_META[status] || [(status || 'Unknown').replaceAll('_', ' '), 'zinc'];
@@ -217,12 +260,12 @@ export default function AdminArticlesBoard() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-900 pb-6">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white leading-none">
-            {isAdminOrEditor ? "Manuscripts Editorial Board" : "My Research Articles"}
+            {selectedQueue.heading || (isAdminOrEditor ? "Manuscripts Editorial Board" : "My Research Articles")}
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-            {isAdminOrEditor 
+            {selectedQueue.description || (isAdminOrEditor
               ? "Oversee platform submissions, review papers, and download manuscript files." 
-              : "Manage drafts, track editorial review cycles, and publish new academic work."}
+              : "Manage drafts, track editorial review cycles, and publish new academic work.")}
           </p>
         </div>
         {hasPermission('articles.create') && (
@@ -242,13 +285,22 @@ export default function AdminArticlesBoard() {
       {/* Filter Tabs & Search row */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 font-sans">
         {/* Status selection */}
-        <div className="flex flex-wrap gap-1 rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/40 w-full lg:max-w-5xl">
-          {STATUS_FILTERS.map((tab) => (
+        <div
+          role="tablist"
+          aria-label="Article queues"
+          className="flex flex-wrap gap-1 rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/40 w-full lg:max-w-5xl"
+        >
+          {ARTICLE_QUEUE_TABS.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setStatusFilter(tab.id)}
-              className={`px-3 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                statusFilter === tab.id
+              type="button"
+              role="tab"
+              id={`article-queue-tab-${tab.id}`}
+              aria-controls="article-queue-panel"
+              aria-selected={queueId === tab.id}
+              onClick={() => handleQueueChange(tab.id)}
+              className={`px-3 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-100 dark:focus-visible:ring-offset-zinc-900 ${
+                queueId === tab.id
                   ? 'bg-white shadow text-amber-600 dark:bg-zinc-950 dark:text-amber-400'
                   : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
               }`}
@@ -285,7 +337,10 @@ export default function AdminArticlesBoard() {
           <div className="relative w-full sm:w-56">
             <select
               value={selectedMagazineId}
-              onChange={(e) => setSelectedMagazineId(e.target.value)}
+              onChange={(e) => {
+                setSelectedMagazineId(e.target.value);
+                updateQuery({ magazine_id: e.target.value });
+              }}
               className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100 cursor-pointer appearance-none"
             >
               <option value="all">All Magazines</option>
@@ -300,30 +355,35 @@ export default function AdminArticlesBoard() {
         </div>
       </div>
 
-      {/* Main Table View */}
-      {loading && (
-        <div className="flex flex-col items-center justify-center py-24 space-y-4 border border-zinc-200/80 rounded-2xl bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/20 backdrop-blur-md">
-          <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
-          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Loading Publications Ledger...</span>
-        </div>
-      )}
+      <div
+        id="article-queue-panel"
+        role="tabpanel"
+        aria-labelledby={`article-queue-tab-${queueId}`}
+      >
+        {/* Main Table View */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-24 space-y-4 border border-zinc-200/80 rounded-2xl bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/20 backdrop-blur-md">
+            <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Loading Publications Ledger...</span>
+          </div>
+        )}
 
-      {error && (
-        <div className="flex items-center space-x-3 p-4 bg-red-500/[0.04] border border-red-500/10 rounded-xl text-red-650 text-xs">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span className="font-semibold text-xs leading-none">{error}</span>
-        </div>
-      )}
+        {error && (
+          <div className="flex items-center space-x-3 p-4 bg-red-500/[0.04] border border-red-500/10 rounded-xl text-red-650 text-xs">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span className="font-semibold text-xs leading-none">{error}</span>
+          </div>
+        )}
 
-      {!loading && !error && articles.length === 0 && (
-        <div className="text-center py-20 border border-zinc-200/80 rounded-2xl bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/20 backdrop-blur-md">
-          <FileText className="w-10 h-10 mx-auto text-zinc-350 mb-3 opacity-60" />
-          <p className="text-xs font-semibold text-zinc-450">No manuscripts match the selected search or filter criteria.</p>
-        </div>
-      )}
+        {!loading && !error && articles.length === 0 && (
+          <div className="text-center py-20 border border-zinc-200/80 rounded-2xl bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/20 backdrop-blur-md">
+            <FileText className="w-10 h-10 mx-auto text-zinc-350 mb-3 opacity-60" />
+            <p className="text-xs font-semibold text-zinc-450">No manuscripts match the selected search or filter criteria.</p>
+          </div>
+        )}
 
-      {!loading && !error && articles.length > 0 && (
-        <div className="border border-zinc-200/80 dark:border-zinc-850 bg-white/70 dark:bg-zinc-900/20 backdrop-blur-md rounded-2xl shadow-sm overflow-hidden animate-in fade-in duration-300">
+        {!loading && !error && articles.length > 0 && (
+          <div className="border border-zinc-200/80 dark:border-zinc-850 bg-white/70 dark:bg-zinc-900/20 backdrop-blur-md rounded-2xl shadow-sm overflow-hidden animate-in fade-in duration-300">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[700px] font-sans">
               <thead>
@@ -449,8 +509,9 @@ export default function AdminArticlesBoard() {
               onPageChange={setCurrentPage}
             />
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       <PublishArticleModal
         isOpen={isPublishModalOpen}
