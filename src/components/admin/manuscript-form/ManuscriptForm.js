@@ -517,7 +517,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
         {isEdit && article?.status && <StatusBadge status={article.status} />}
       </div>
 
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_390px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_390px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
         <form className="min-w-0 space-y-8" onSubmit={(event) => event.preventDefault()}>
           <Section
             id="manuscript-basics"
@@ -819,8 +819,8 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
           )}
         </form>
 
-        <aside className="xl:sticky xl:top-28 xl:self-start">
-          <div className="space-y-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
+        <aside className="lg:sticky lg:top-6 lg:self-start">
+          <div className="space-y-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
             <div>
               <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Review and Submit</p>
               <h2 className="mt-1 text-xl font-bold text-[var(--foreground)]">Submission Readiness</h2>
