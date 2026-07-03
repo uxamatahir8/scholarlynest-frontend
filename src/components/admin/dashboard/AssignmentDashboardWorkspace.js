@@ -1,0 +1,127 @@
+'use client';
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, ClipboardCheck, Inbox } from 'lucide-react';
+import api from '../../../utils/api';
+import { safeApiMessage } from '../../../utils/safeErrors';
+import { logError } from '../../../utils/safeLogger';
+import LoadingState from '../../ui/LoadingState';
+import ErrorState from '../../ui/ErrorState';
+import DashboardWorkspace from './DashboardWorkspace';
+import DashboardSummary from './DashboardSummary';
+import DashboardQueue from './DashboardQueue';
+import DashboardSection from './DashboardSection';
+import DashboardQuickLinks from './DashboardQuickLinks';
+import { assignmentQueueItem, completedAssignmentStatuses } from './dashboardUtils';
+
+export default function AssignmentDashboardWorkspace({
+  title,
+  description,
+  endpoint,
+  primaryHref,
+  primaryLabel,
+  activeTitle,
+  activeDescription,
+  completedTitle = 'Completed Work',
+  completedDescription = 'Recently completed assignments from this queue.',
+  emptyActive,
+  emptyCompleted,
+  quickLinks = [],
+}) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [assignments, setAssignments] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError('');
+        const sep = endpoint.includes('?') ? '&' : '?';
+        const response = await api.get(`${endpoint}${sep}page=1&per_page=10`);
+        if (active) setAssignments(response.data?.data || []);
+      } catch (err) {
+        logError('Failed to load assignment workspace:', err);
+        if (active) setError(safeApiMessage(err, 'Unable to load your assigned work.'));
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [endpoint]);
+
+  const activeAssignments = useMemo(
+    () => assignments.filter((assignment) => !completedAssignmentStatuses.has(assignment.status)),
+    [assignments],
+  );
+  const completedAssignments = useMemo(
+    () => assignments.filter((assignment) => completedAssignmentStatuses.has(assignment.status)),
+    [assignments],
+  );
+
+  const activeItems = activeAssignments.map((assignment) => assignmentQueueItem(assignment, 'Open Workflow'));
+  const completedItems = completedAssignments.map((assignment) => assignmentQueueItem(assignment, 'Review Record'));
+
+  return (
+    <DashboardWorkspace
+      title={title}
+      description={description}
+      action={{
+        eyebrow: 'Next step',
+        title: primaryLabel,
+        description: activeItems.length > 0 ? 'Open your full desk to continue the next assigned task.' : 'Your desk is ready when new assignments arrive.',
+        href: primaryHref,
+        label: primaryLabel,
+      }}
+    >
+      {loading ? (
+        <LoadingState label="Loading assigned work..." className="min-h-[320px]" />
+      ) : error ? (
+        <ErrorState title="Assigned work could not be loaded">{error}</ErrorState>
+      ) : (
+        <div className="space-y-8">
+          <DashboardSummary
+            items={[
+              { label: 'Active', value: activeAssignments.length, icon: Inbox },
+              { label: 'Completed', value: completedAssignments.length, icon: CheckCircle2 },
+              { label: 'Total Assigned', value: assignments.length, icon: ClipboardCheck },
+            ]}
+          />
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.6fr)]">
+            <div className="space-y-8">
+              <DashboardQueue
+                title={activeTitle}
+                description={activeDescription}
+                items={activeItems}
+                emptyTitle="No active assignments"
+                emptyDescription={emptyActive}
+                actionHref={primaryHref}
+                actionLabel="Open Full Desk"
+              />
+              <DashboardQueue
+                title={completedTitle}
+                description={completedDescription}
+                items={completedItems}
+                emptyTitle="No completed work yet"
+                emptyDescription={emptyCompleted}
+                actionHref={primaryHref}
+                actionLabel="Open Full Desk"
+              />
+            </div>
+            <DashboardSection title="Desk Links" description="Continue in the full task workspace when needed.">
+              <DashboardQuickLinks links={[
+                { label: 'Open Full Desk', href: primaryHref, icon: ClipboardCheck, description: 'View all assignments and workflow actions.' },
+                ...quickLinks,
+              ]} />
+            </DashboardSection>
+          </div>
+        </div>
+      )}
+    </DashboardWorkspace>
+  );
+}
