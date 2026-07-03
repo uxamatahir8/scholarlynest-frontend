@@ -12,7 +12,7 @@ import { Button } from '../../../../../components/ui/Button';
 import ErrorState from '../../../../../components/ui/ErrorState';
 import LoadingState from '../../../../../components/ui/LoadingState';
 import UserForm from '../../../../../components/admin/users/UserForm';
-import { isSubEditorRole } from '../../../../../utils/userManagement';
+import { isMagazineAssignmentRole, isSubEditorRole } from '../../../../../utils/userManagement';
 
 const initialValues = {
   name: '',
@@ -23,6 +23,7 @@ const initialValues = {
   password: '',
   password_confirmation: '',
   editor_ids: [],
+  magazine_ids: [],
 };
 
 export default function EditUserPage() {
@@ -36,6 +37,7 @@ export default function EditUserPage() {
   const [originalRoleId, setOriginalRoleId] = useState('');
   const [roles, setRoles] = useState([]);
   const [editors, setEditors] = useState([]);
+  const [magazines, setMagazines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -52,9 +54,10 @@ export default function EditUserPage() {
       setLoading(true);
       setGeneralError('');
       try {
-        const [rolesResponse, editorsResponse, userResponse] = await Promise.all([
+        const [rolesResponse, editorsResponse, magazineResponse, userResponse] = await Promise.all([
           api.get('/admin/rbac/roles'),
           api.get('/admin/users', { params: { role: 'editor' } }),
+          api.get('/admin/users/magazine-assignment-options'),
           api.get(`/admin/users/${userId}`),
         ]);
         const nextRoles = rolesResponse.data || [];
@@ -62,6 +65,7 @@ export default function EditUserPage() {
         const roleId = user.roles?.[0]?.id ? String(user.roles[0].id) : '';
         setRoles(nextRoles);
         setEditors(editorsResponse.data || []);
+        setMagazines(magazineResponse.data?.magazines || []);
         setOriginalRoleId(roleId);
         setValues({
           name: user.name || '',
@@ -72,6 +76,7 @@ export default function EditUserPage() {
           password: '',
           password_confirmation: '',
           editor_ids: (user.assigned_editors || []).map((editor) => editor.id),
+          magazine_ids: (user.assigned_magazines || []).map((magazine) => magazine.id),
         });
       } catch (error) {
         setGeneralError(safeApiMessage(error, 'User details could not be loaded.'));
@@ -95,6 +100,9 @@ export default function EditUserPage() {
     if (isSubEditorRole(selectedRole) && values.editor_ids.length === 0) {
       errors.editor_ids = 'At least one Editor must be assigned to a Sub Editor.';
     }
+    if (isMagazineAssignmentRole(selectedRole) && values.magazine_ids.length === 0) {
+      errors.magazine_ids = 'Select at least one journal for this role.';
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -116,6 +124,7 @@ export default function EditUserPage() {
       payload.password_confirmation = values.password_confirmation;
     }
     if (isSubEditorRole(selectedRole)) payload.editor_ids = values.editor_ids;
+    if (isMagazineAssignmentRole(selectedRole)) payload.magazine_ids = values.magazine_ids;
 
     setSubmitting(true);
     setGeneralError('');
@@ -135,6 +144,7 @@ export default function EditUserPage() {
         status: apiErrors.status?.[0],
         university_name: apiErrors.university_name?.[0],
         editor_ids: apiErrors.editor_ids?.[0],
+        magazine_ids: apiErrors.magazine_ids?.[0],
       });
       setGeneralError(safeApiMessage(error, 'User account could not be updated.'));
       toast('User account could not be updated.', 'error');
@@ -181,6 +191,7 @@ export default function EditUserPage() {
       {roleChanged && (
         <Alert tone="warning" title="Role change pending">
           Saving this form will change this user&apos;s access role. If the user is no longer a Sub Editor, existing Editor links will be detached by backend rules.
+          If the selected role uses journal access, submitted journal assignments become the backend authorization scope for that role.
         </Alert>
       )}
 
@@ -189,6 +200,8 @@ export default function EditUserPage() {
         values={values}
         roles={roles}
         editors={editors}
+        magazines={magazines}
+        selectedUserId={Number(userId)}
         errors={fieldErrors}
         generalError={generalError}
         submitting={submitting}

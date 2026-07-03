@@ -80,6 +80,10 @@ export function isSubEditorRole(role) {
   return normalizeRoleName(role) === 'sub_editor';
 }
 
+export function isMagazineAssignmentRole(role) {
+  return ['editor', 'magazine_editor', 'publisher', 'proofreader'].includes(normalizeRoleName(role));
+}
+
 export function canOfferImpersonation({ authUser, targetUser, impersonationStatus }) {
   if (!authUser || !targetUser || impersonationStatus?.active) return false;
   if (authUser.id === targetUser.id) return false;

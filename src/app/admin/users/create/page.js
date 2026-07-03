@@ -11,7 +11,7 @@ import { Button } from '../../../../components/ui/Button';
 import ErrorState from '../../../../components/ui/ErrorState';
 import LoadingState from '../../../../components/ui/LoadingState';
 import UserForm from '../../../../components/admin/users/UserForm';
-import { isSubEditorRole } from '../../../../utils/userManagement';
+import { isMagazineAssignmentRole, isSubEditorRole } from '../../../../utils/userManagement';
 
 const initialValues = {
   name: '',
@@ -22,6 +22,7 @@ const initialValues = {
   password: '',
   password_confirmation: '',
   editor_ids: [],
+  magazine_ids: [],
 };
 
 export default function CreateUserPage() {
@@ -33,6 +34,7 @@ export default function CreateUserPage() {
   const [values, setValues] = useState(initialValues);
   const [roles, setRoles] = useState([]);
   const [editors, setEditors] = useState([]);
+  const [magazines, setMagazines] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -48,12 +50,14 @@ export default function CreateUserPage() {
     const loadOptions = async () => {
       setLoadingOptions(true);
       try {
-        const [rolesResponse, editorsResponse] = await Promise.all([
+        const [rolesResponse, editorsResponse, magazineResponse] = await Promise.all([
           api.get('/admin/rbac/roles'),
           api.get('/admin/users', { params: { role: 'editor' } }),
+          api.get('/admin/users/magazine-assignment-options'),
         ]);
         setRoles(rolesResponse.data || []);
         setEditors(editorsResponse.data || []);
+        setMagazines(magazineResponse.data?.magazines || []);
       } catch (error) {
         setGeneralError(safeApiMessage(error, 'Role and Editor options could not be loaded.'));
       } finally {
@@ -75,6 +79,9 @@ export default function CreateUserPage() {
     if (isSubEditorRole(selectedRole) && values.editor_ids.length === 0) {
       errors.editor_ids = 'At least one Editor must be assigned to a Sub Editor.';
     }
+    if (isMagazineAssignmentRole(selectedRole) && values.magazine_ids.length === 0) {
+      errors.magazine_ids = 'Select at least one journal for this role.';
+    }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -94,6 +101,7 @@ export default function CreateUserPage() {
       password_confirmation: values.password_confirmation,
     };
     if (isSubEditorRole(selectedRole)) payload.editor_ids = values.editor_ids;
+    if (isMagazineAssignmentRole(selectedRole)) payload.magazine_ids = values.magazine_ids;
 
     setSubmitting(true);
     setGeneralError('');
@@ -112,6 +120,7 @@ export default function CreateUserPage() {
         role_id: apiErrors.role_id?.[0],
         university_name: apiErrors.university_name?.[0],
         editor_ids: apiErrors.editor_ids?.[0],
+        magazine_ids: apiErrors.magazine_ids?.[0],
       });
       setGeneralError(safeApiMessage(error, 'User account could not be created.'));
       toast('User account could not be created.', 'error');
@@ -149,6 +158,7 @@ export default function CreateUserPage() {
         values={values}
         roles={roles}
         editors={editors}
+        magazines={magazines}
         errors={fieldErrors}
         generalError={generalError}
         submitting={submitting}
