@@ -61,6 +61,11 @@ const REVISION_STATUSES = new Set([
 
 const cleanRichText = (value) => String(value || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
 
+const fieldClass = 'mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-base font-semibold text-[var(--foreground)] outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20';
+const selectClass = 'mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-base font-semibold text-[var(--foreground)] outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20';
+const labelClass = 'text-base font-bold text-[var(--foreground)]';
+const helpClass = 'mt-1 text-sm leading-relaxed text-[var(--muted)]';
+
 const normalizeListResponse = (payload) => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
@@ -94,12 +99,13 @@ function FieldError({ id, children }) {
   );
 }
 
-function Section({ id, eyebrow, title, children }) {
+function Section({ id, eyebrow, title, description, children }) {
   return (
-    <section id={id} aria-labelledby={`${id}-heading`} className="scroll-mt-24 border-t border-[var(--border)] pt-8">
-      <div className="mb-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">{eyebrow}</p>
-        <h2 id={`${id}-heading`} className="mt-1 text-lg font-bold text-[var(--foreground)]">{title}</h2>
+    <section id={id} aria-labelledby={`${id}-heading`} className="scroll-mt-28 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-8">
+      <div className="mb-7 border-b border-[var(--border)] pb-5">
+        <p className="text-sm font-bold text-amber-700 dark:text-amber-400">{eyebrow}</p>
+        <h2 id={`${id}-heading`} className="mt-1 text-xl font-bold tracking-tight text-[var(--foreground)]">{title}</h2>
+        {description && <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--muted)]">{description}</p>}
       </div>
       {children}
     </section>
@@ -108,21 +114,21 @@ function Section({ id, eyebrow, title, children }) {
 
 function FilePicker({ id, label, accept, fileName, existingLabel, onChange, onClear, help, error }) {
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <label htmlFor={id} className="text-sm font-bold text-[var(--foreground)]">{label}</label>
-          {help && <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">{help}</p>}
+          <label htmlFor={id} className={labelClass}>{label}</label>
+          {help && <p className={helpClass}>{help}</p>}
         </div>
-        <label className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--secondary)] px-4 py-2 text-xs font-bold text-[var(--secondary-foreground)] transition hover:bg-[var(--surface-muted)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]">
+        <label className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--secondary)] px-4 py-2 text-sm font-bold text-[var(--secondary-foreground)] transition hover:bg-[var(--surface-muted)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]">
           <Upload className="h-4 w-4" aria-hidden="true" />
           Choose File
           <input id={id} type="file" accept={accept} className="sr-only" onChange={onChange} />
         </label>
       </div>
       {(fileName || existingLabel) && (
-        <div className="mt-4 flex flex-col gap-2 rounded-lg bg-[var(--surface-muted)] p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+        <div className="mt-4 flex flex-col gap-2 rounded-lg bg-[var(--surface)] p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-2 text-base font-semibold text-[var(--foreground)]">
             <FileText className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
             <span className="truncate">{fileName || existingLabel}</span>
           </div>
@@ -210,6 +216,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (isRevision && !revisionResponse.trim()) missing.push({ key: 'revisionResponse', label: 'Add a response to the revision request', target: '#revision-response' });
     return missing;
   }, [abstract, correspondingAuthors.length, fullText, isRevision, magazineId, owner, revisionResponse, title, visibleAuthors.length]);
+  const totalReadinessItems = isRevision ? 8 : 7;
+  const completeReadinessItems = Math.max(0, totalReadinessItems - readiness.length);
+  const readinessPercent = Math.round((completeReadinessItems / totalReadinessItems) * 100);
 
   useEffect(() => {
     if (authLoading) return;
@@ -490,62 +499,73 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-8 text-left">
+    <div className="mx-auto w-full max-w-[1400px] space-y-8 text-left">
       <div className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <Link href="/admin/articles" className="mb-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--foreground)]">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Back to My Manuscripts
           </Link>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Author Submission</p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight text-[var(--foreground)]">
+          <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Author Submission</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-[var(--foreground)]">
             {isEdit ? 'Edit Manuscript Draft' : 'New Manuscript Submission'}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--muted)]">
+          <p className="mt-3 max-w-3xl text-base leading-relaxed text-[var(--muted)]">
             Build the manuscript record, save it as a draft, and submit it when the required scholarly details are ready.
           </p>
         </div>
         {isEdit && article?.status && <StatusBadge status={article.status} />}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <form className="min-w-0 space-y-10" onSubmit={(event) => event.preventDefault()}>
-          <Section id="manuscript-basics" eyebrow="Step 1" title="Manuscript Basics">
-            <div className="space-y-5">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_390px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
+        <form className="min-w-0 space-y-8" onSubmit={(event) => event.preventDefault()}>
+          <Section
+            id="manuscript-basics"
+            eyebrow="Step 1"
+            title="Manuscript Basics"
+            description="Start with the core scholarly record. The title, abstract, and manuscript text are required before submission."
+          >
+            <div className="space-y-7">
               <div>
-                <label htmlFor="manuscript-title" className="text-sm font-bold text-[var(--foreground)]">Article title</label>
+                <label htmlFor="manuscript-title" className={labelClass}>Article title <span className="text-amber-700">*</span></label>
+                <p className={helpClass}>Use the final or working academic title for this manuscript.</p>
                 <input
                   id="manuscript-title"
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                   aria-invalid={!!validationErrors.title}
                   aria-describedby={validationErrors.title ? 'manuscript-title-error' : undefined}
-                  className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm font-semibold text-[var(--foreground)] outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                  className={`${fieldClass} text-lg`}
                   placeholder="Enter the full manuscript title"
                 />
                 <FieldError id="manuscript-title-error">{validationErrors.title}</FieldError>
               </div>
 
               <div>
-                <label className="text-sm font-bold text-[var(--foreground)]">Abstract</label>
-                <p className="mb-2 mt-1 text-xs text-[var(--muted)]">Summarize the research question, method, and main contribution.</p>
-                <RichEditor value={abstract} onChange={setAbstract} placeholder="Write the manuscript abstract..." />
+                <label className={labelClass}>Abstract <span className="text-amber-700">*</span></label>
+                <p className="mb-3 mt-1 text-sm leading-relaxed text-[var(--muted)]">Summarize the research question, method, and main contribution.</p>
+                <RichEditor value={abstract} onChange={setAbstract} placeholder="Write the manuscript abstract..." minHeight="220px" />
                 <FieldError id="manuscript-abstract-error">{validationErrors.abstract}</FieldError>
               </div>
 
               <div>
-                <label className="text-sm font-bold text-[var(--foreground)]">Manuscript text</label>
-                <p className="mb-2 mt-1 text-xs text-[var(--muted)]">Use the structured editor for the submission text. A PDF may also be attached below.</p>
-                <RichEditor value={fullText} onChange={setFullText} placeholder="Write or paste the manuscript text..." />
+                <label className={labelClass}>Manuscript text <span className="text-amber-700">*</span></label>
+                <p className="mb-3 mt-1 text-sm leading-relaxed text-[var(--muted)]">Use the structured editor for the submission text. A PDF may also be attached in the files section.</p>
+                <RichEditor value={fullText} onChange={setFullText} placeholder="Write or paste the manuscript text..." minHeight="360px" />
                 <FieldError id="manuscript-text-error">{validationErrors.fullText}</FieldError>
               </div>
             </div>
           </Section>
 
-          <Section id="journal-selection" eyebrow="Step 2" title="Journal Selection">
-            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <Section
+            id="journal-selection"
+            eyebrow="Step 2"
+            title="Journal Selection"
+            description="Choose the journal where this manuscript should enter editorial review."
+          >
+            <div className="grid gap-5 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
               <div>
-                <label htmlFor="journal-select" className="text-sm font-bold text-[var(--foreground)]">Journal</label>
+                <label htmlFor="journal-select" className={labelClass}>Journal <span className="text-amber-700">*</span></label>
                 <select
                   id="journal-select"
                   value={magazineId}
@@ -555,7 +575,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                   }}
                   aria-invalid={!!validationErrors.magazineId}
                   aria-describedby={validationErrors.magazineId ? 'journal-select-error' : undefined}
-                  className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm font-semibold text-[var(--foreground)] outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                  className={selectClass}
                 >
                   <option value="">Choose a journal</option>
                   {magazines.map((magazine) => (
@@ -564,12 +584,15 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                 </select>
                 <FieldError id="journal-select-error">{validationErrors.magazineId}</FieldError>
               </div>
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
                 <div className="flex items-start gap-3">
-                  <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-amber-700 shadow-sm ring-1 ring-amber-500/20 dark:bg-zinc-950 dark:text-amber-300">
+                    <BookOpen className="h-5 w-5" aria-hidden="true" />
+                  </div>
                   <div>
-                    <h3 className="text-sm font-bold text-[var(--foreground)]">{selectedMagazine?.title || 'No journal selected'}</h3>
-                    <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-[var(--muted)]">
+                    <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Selected journal</p>
+                    <h3 className="mt-1 text-lg font-bold text-[var(--foreground)]">{selectedMagazine?.title || 'No journal selected'}</h3>
+                    <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-[var(--muted)]">
                       {selectedMagazine?.description || 'Choose the journal where this manuscript should enter editorial review.'}
                     </p>
                   </div>
@@ -578,14 +601,19 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
             </div>
           </Section>
 
-          <Section id="authors-affiliations" eyebrow="Step 3" title="Authors and Affiliations">
+          <Section
+            id="authors-affiliations"
+            eyebrow="Step 3"
+            title="Authors and Affiliations"
+            description="List contributors, affiliations, corresponding authors, and editor access where supported."
+          >
             {!isSuperAdmin && (
-              <div className="mb-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+              <div className="mb-6 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5">
                 <div className="flex items-start gap-3">
                   <MailCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
                   <div>
-                    <h3 className="text-sm font-bold text-[var(--foreground)]">You are the submitting author and article owner</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">
+                    <h3 className="text-base font-bold text-[var(--foreground)]">You are the submitting author and article owner</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
                       Add collaborators below. You may mark additional corresponding authors, but manuscript ownership remains with your account.
                     </p>
                   </div>
@@ -602,7 +630,12 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
             <FieldError id="authors-error">{validationErrors.coAuthors}</FieldError>
           </Section>
 
-          <Section id="academic-classification" eyebrow="Step 4" title="Classification and Declarations">
+          <Section
+            id="academic-classification"
+            eyebrow="Step 4"
+            title="Classification and Declarations"
+            description="Classify the manuscript and add optional statements when they apply to the submission."
+          >
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 ['articleType', 'Article type', articleTypes],
@@ -611,11 +644,11 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                 ['language', 'Language', languages],
               ].map(([field, label, options]) => (
                 <div key={field}>
-                  <label className="text-sm font-bold text-[var(--foreground)]">{label}</label>
+                  <label className={labelClass}>{label}</label>
                   <select
                     value={academicMetadata[field]}
                     onChange={(event) => updateAcademicMetadata(field, event.target.value)}
-                    className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm font-semibold text-[var(--foreground)] outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    className={selectClass}
                   >
                     <option value="">Select</option>
                     {options.map((option) => <option key={option.id || option.name} value={option.name}>{option.name}</option>)}
@@ -627,39 +660,49 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               ))}
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {[
-                ['ethicalApprovalStatement', 'Ethical approval statement'],
-                ['conflictOfInterestStatement', 'Conflict of interest statement'],
-                ['fundingStatement', 'Funding statement'],
-                ['dataAvailabilityStatement', 'Data availability statement'],
-                ['authorContributionStatement', 'Author contribution statement'],
-              ].map(([field, label]) => (
-                <div key={field} className="sm:last:col-span-2">
-                  <label className="text-sm font-bold text-[var(--foreground)]">{label}</label>
-                  <textarea
-                    value={academicMetadata[field]}
-                    onChange={(event) => updateAcademicMetadata(field, event.target.value)}
-                    rows={3}
-                    className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm font-semibold text-[var(--foreground)] outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                  />
-                </div>
-              ))}
-            </div>
+            <details className="mt-7 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-5">
+              <summary className="cursor-pointer text-base font-bold text-[var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                Optional declaration statements
+              </summary>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">Add these statements only when they apply. The backend does not require them for draft save or submission.</p>
+              <div className="mt-5 grid gap-5 md:grid-cols-2">
+                {[
+                  ['ethicalApprovalStatement', 'Ethics statement'],
+                  ['conflictOfInterestStatement', 'Conflict of interest'],
+                  ['fundingStatement', 'Funding statement'],
+                  ['dataAvailabilityStatement', 'Data availability'],
+                  ['authorContributionStatement', 'Author contributions'],
+                ].map(([field, label]) => (
+                  <div key={field} className="md:last:col-span-2">
+                    <label className={labelClass}>{label} <span className="font-medium text-[var(--muted)]">(optional)</span></label>
+                    <textarea
+                      value={academicMetadata[field]}
+                      onChange={(event) => updateAcademicMetadata(field, event.target.value)}
+                      rows={4}
+                      className={fieldClass}
+                    />
+                  </div>
+                ))}
+              </div>
+            </details>
           </Section>
 
-          <Section id="keywords-files" eyebrow="Step 5" title="Keywords and Files">
-            <div className="space-y-6">
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-                <label className="text-sm font-bold text-[var(--foreground)]">Keywords</label>
-                <p className="mt-1 text-xs text-[var(--muted)]">Select existing journal tags or add manuscript keywords.</p>
+          <Section
+            id="keywords"
+            eyebrow="Step 5"
+            title="Keywords"
+            description="Select journal tags or add keywords that help editors and readers understand the manuscript topic."
+          >
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-5">
+                <label className={labelClass}>Keyword terms</label>
+                <p className={helpClass}>Select existing journal tags or add manuscript keywords.</p>
                 {loadingTags ? (
-                  <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-[var(--muted)]">
+                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                     Loading keywords...
                   </div>
                 ) : (
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-4 flex flex-wrap gap-2.5">
                     {tags.map((tag) => {
                       const selected = selectedTags.includes(tag.id);
                       return (
@@ -667,7 +710,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                           key={tag.id}
                           type="button"
                           onClick={() => setSelectedTags((prev) => selected ? prev.filter((item) => item !== tag.id) : [...prev, tag.id])}
-                          className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${selected ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'border-[var(--border)] bg-[var(--surface-muted)] text-[var(--muted)] hover:text-[var(--foreground)]'}`}
+                          className={`rounded-lg border px-3.5 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${selected ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--foreground)]'}`}
                         >
                           {tag.name}
                         </button>
@@ -675,7 +718,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                     })}
                   </div>
                 )}
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                   <input
                     value={keywordInput}
                     onChange={(event) => setKeywordInput(event.target.value)}
@@ -686,14 +729,14 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                       }
                     }}
                     placeholder="Add a keyword"
-                    className="min-h-10 flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    className="min-h-11 flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-base font-semibold text-[var(--foreground)] outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
                   />
-                  <Button type="button" variant="secondary" icon={Plus} onClick={addKeyword}>Add Keyword</Button>
+                  <Button type="button" variant="secondary" size="lg" icon={Plus} onClick={addKeyword}>Add Keyword</Button>
                 </div>
                 {selectedTags.some((item) => typeof item === 'string') && (
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-4 flex flex-wrap gap-2.5">
                     {selectedTags.filter((item) => typeof item === 'string').map((keyword) => (
-                      <span key={keyword} className="inline-flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-1.5 text-xs font-bold text-amber-700 dark:text-amber-300">
+                      <span key={keyword} className="inline-flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3.5 py-2 text-sm font-bold text-amber-700 dark:text-amber-300">
                         {keyword}
                         <button type="button" onClick={() => setSelectedTags((prev) => prev.filter((item) => item !== keyword))} aria-label={`Remove keyword ${keyword}`}>
                           <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -703,8 +746,16 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                   </div>
                 )}
               </div>
+          </Section>
 
-              <div className="grid gap-4 md:grid-cols-2">
+          <Section
+            id="manuscript-files"
+            eyebrow="Step 6"
+            title="Manuscript Files"
+            description="Attach the optional PDF manuscript and supporting materials using the existing secure upload endpoints."
+          >
+            <div className="space-y-6">
+              <div className="grid gap-5 md:grid-cols-2">
                 <FilePicker
                   id="main-manuscript-file"
                   label="Main manuscript PDF"
@@ -768,54 +819,71 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
           )}
         </form>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="space-y-5 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm">
+        <aside className="xl:sticky xl:top-28 xl:self-start">
+          <div className="space-y-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Review</p>
-              <h2 className="mt-1 text-lg font-bold text-[var(--foreground)]">Submission Readiness</h2>
+              <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Review and Submit</p>
+              <h2 className="mt-1 text-xl font-bold text-[var(--foreground)]">Submission Readiness</h2>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+                Use this guide to finish required information before sending the manuscript for editorial review.
+              </p>
             </div>
 
-            <div className="space-y-3 text-sm">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-bold text-[var(--foreground)]">{completeReadinessItems} of {totalReadinessItems} required items complete</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">{readiness.length === 0 ? 'Ready for final confirmation.' : `${readiness.length} item${readiness.length === 1 ? '' : 's'} still need attention.`}</p>
+                </div>
+                <span className="text-2xl font-bold text-[var(--foreground)]">{readinessPercent}%</span>
+              </div>
+              <div className="mt-4 h-2 rounded-full bg-zinc-200 dark:bg-zinc-800">
+                <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${readinessPercent}%` }} />
+              </div>
+            </div>
+
+            <div className="space-y-4 text-sm">
               <div>
-                <span className="block text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Title</span>
-                <p className="mt-1 line-clamp-2 font-semibold text-[var(--foreground)]">{title || 'Not added yet'}</p>
+                <span className="block text-sm font-bold text-[var(--muted)]">Title</span>
+                <p className="mt-1 line-clamp-2 text-base font-semibold text-[var(--foreground)]">{title || 'Not added yet'}</p>
               </div>
               <div>
-                <span className="block text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Journal</span>
-                <p className="mt-1 font-semibold text-[var(--foreground)]">{selectedMagazine?.title || 'Not selected'}</p>
+                <span className="block text-sm font-bold text-[var(--muted)]">Journal</span>
+                <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{selectedMagazine?.title || 'Not selected'}</p>
               </div>
               <div>
-                <span className="block text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Authors</span>
-                <p className="mt-1 font-semibold text-[var(--foreground)]">{visibleAuthors.length || 0} listed</p>
-                {owner && <p className="mt-1 text-xs text-[var(--muted)]">Owner: {owner.name || owner.email}</p>}
+                <span className="block text-sm font-bold text-[var(--muted)]">Authors</span>
+                <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{visibleAuthors.length || 0} listed</p>
+                {owner && <p className="mt-1 text-sm text-[var(--muted)]">Owner: {owner.name || owner.email}</p>}
                 {correspondingAuthors.length > 0 && (
-                  <p className="mt-1 text-xs text-[var(--muted)]">Corresponding: {correspondingAuthors.map((author) => author.name || author.email).join(', ')}</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">Corresponding: {correspondingAuthors.map((author) => author.name || author.email).join(', ')}</p>
                 )}
               </div>
               <div>
-                <span className="block text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Files</span>
-                <p className="mt-1 font-semibold text-[var(--foreground)]">{pdfFile || hasExistingPdf ? 'Main PDF attached' : 'Text manuscript only'}</p>
-                <p className="mt-1 text-xs text-[var(--muted)]">{isEdit ? `${assets.length} supplementary file${assets.length === 1 ? '' : 's'}` : `${supplementaryFiles.length} supplementary file${supplementaryFiles.length === 1 ? '' : 's'} queued`}</p>
+                <span className="block text-sm font-bold text-[var(--muted)]">Files</span>
+                <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{pdfFile || hasExistingPdf ? 'Main PDF attached' : 'Text manuscript only'}</p>
+                <p className="mt-1 text-sm text-[var(--muted)]">{isEdit ? `${assets.length} supplementary file${assets.length === 1 ? '' : 's'}` : `${supplementaryFiles.length} supplementary file${supplementaryFiles.length === 1 ? '' : 's'} queued`}</p>
               </div>
             </div>
 
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+            <div className={`rounded-xl border p-4 ${readiness.length === 0 ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-amber-500/20 bg-amber-500/[0.04]'}`}>
               {readiness.length === 0 ? (
                 <div className="flex items-start gap-3">
                   <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
                   <div>
-                    <h3 className="text-sm font-bold text-[var(--foreground)]">Ready to submit</h3>
-                    <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">Server validation will make the final decision when you submit.</p>
+                    <h3 className="text-base font-bold text-[var(--foreground)]">Ready to submit</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">Server validation will make the final decision when you submit.</p>
                   </div>
                 </div>
               ) : (
                 <div>
-                  <h3 className="text-sm font-bold text-[var(--foreground)]">Missing information</h3>
-                  <ul className="mt-3 space-y-2">
+                  <h3 className="text-base font-bold text-[var(--foreground)]">Missing requirements</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">Complete these items before final submission. Draft saving remains available.</p>
+                  <ul className="mt-4 space-y-2.5">
                     {readiness.map((item) => (
                       <li key={item.key}>
-                        <a href={item.target} className="inline-flex items-center gap-2 text-xs font-bold text-amber-700 hover:underline dark:text-amber-400">
-                          <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                        <a href={item.target} className="inline-flex min-h-9 items-center gap-2 rounded-lg px-2 text-sm font-bold text-amber-800 hover:bg-amber-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] dark:text-amber-300">
+                          <ChevronRight className="h-4 w-4" aria-hidden="true" />
                           {item.label}
                         </a>
                       </li>
@@ -829,6 +897,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               <Button
                 type="button"
                 variant="secondary"
+                size="lg"
                 icon={Save}
                 onClick={() => persistManuscript('draft')}
                 disabled={saving || isRevision}
@@ -839,6 +908,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               <Button
                 type="button"
                 variant="primary"
+                size="lg"
                 icon={Send}
                 onClick={() => {
                   if (!validateForm() || readiness.length > 0) {
@@ -852,6 +922,11 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               >
                 {isRevision ? 'Submit Revision' : 'Submit Manuscript'}
               </Button>
+              {readiness.length > 0 && (
+                <p className="text-sm leading-relaxed text-[var(--muted)]">
+                  Submit remains available for validation, but final confirmation requires the missing items above.
+                </p>
+              )}
               {savingMessage && <p className="text-center text-xs font-semibold text-[var(--muted)]">{savingMessage}</p>}
             </div>
           </div>
