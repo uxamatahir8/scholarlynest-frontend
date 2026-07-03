@@ -1,76 +1,46 @@
 import React from 'react';
 import Link from 'next/link';
-import { BookOpen, FileText, ArrowRight } from 'lucide-react';
+import { ArrowRight, BookOpen } from 'lucide-react';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
-    return path;
-  }
-  if (path.startsWith('/images/') || path.startsWith('images/')) {
-    return path.startsWith('/') ? path : '/' + path;
-  }
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
+  if (path.startsWith('/images/') || path.startsWith('images/')) return path.startsWith('/') ? path : `/${path}`;
   const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
   const domain = apiBase.replace(/\/api$/, '');
-  const cleanPath = path.startsWith('/') ? path : '/' + path;
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return `${domain}${cleanPath}`;
 };
 
-export default function MagazineCard({ id, title, slug, cover_image, description, articles_count }) {
+export default function MagazineCard({ title, slug, cover_image, description, articles_count }) {
+  const articleCount = Number(articles_count || 0);
+
   return (
-    <div className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-900/40 backdrop-blur-md shadow-sm hover:shadow-[0_12px_30px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1.5 w-full">
-      {/* Visual Cover Top Banner */}
-      <Link 
-        href={`/magazines/${slug}`}
-        className="block relative h-48 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 cursor-pointer"
-      >
+    <article className="group grid min-w-0 gap-5 border-t border-[var(--border)] pt-5 sm:grid-cols-[150px_1fr] lg:block">
+      <Link href={`/magazines/${slug}/about-and-overview`} className="relative block aspect-[4/3] w-full max-w-[220px] overflow-hidden rounded-md bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-zinc-900 sm:max-w-none" aria-label={`View ${title}`}>
         {cover_image ? (
-          <img 
-            src={getFullImageUrl(cover_image)} 
-            alt={title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
+          <img src={getFullImageUrl(cover_image)} alt={`${title} cover`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" loading="lazy" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-150 to-zinc-250 dark:from-zinc-800 dark:to-zinc-900">
-            <BookOpen className="w-10 h-10 text-zinc-400" />
+          <div className="flex h-full w-full items-center justify-center bg-zinc-100 dark:bg-zinc-900">
+            <BookOpen className="h-9 w-9 text-zinc-350 dark:text-zinc-650" aria-hidden="true" />
           </div>
         )}
-        {/* Absolute Badge: Published Articles Count */}
-        <div className="absolute top-4 right-4 flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-white/95 dark:bg-zinc-900/95 backdrop-blur shadow-sm border border-zinc-100/50 dark:border-zinc-800/50 z-10">
-          <FileText className="w-3.5 h-3.5 text-[var(--accent-gold)]" />
-          <span className="text-[10px] font-bold text-zinc-800 dark:text-zinc-200">
-            {articles_count} {articles_count === 1 ? 'Paper' : 'Papers'}
-          </span>
-        </div>
       </Link>
 
-      {/* Body Content */}
-      <div className="p-6 flex-grow flex flex-col justify-between space-y-4">
-        <div className="space-y-2">
-          <Link href={`/magazines/${slug}`} className="block group-hover:text-[var(--accent)] transition-colors hover:underline">
-            <h3 className="font-serif text-xl font-bold text-zinc-900 dark:text-white leading-snug line-clamp-1 cursor-pointer">
-              {title}
-            </h3>
-          </Link>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium leading-relaxed line-clamp-3">
-            {description || 'No summary overview provided for this scientific magazine.'}
-          </p>
-        </div>
-
-        <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800/40 flex items-center justify-between">
-          <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--accent-gold)]">
-            ISSN ARCHIVE
-          </span>
-          <Link
-            href={`/magazines/${slug}`}
-            className="inline-flex items-center space-x-1 text-xs font-bold uppercase tracking-wider text-[var(--accent)] hover:text-[var(--accent-gold)] transition-colors cursor-pointer"
-          >
-            <span>Enter</span>
-            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-          </Link>
-        </div>
+      <div className="flex min-w-0 flex-col lg:mt-5">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">{articleCount} published {articleCount === 1 ? 'article' : 'articles'}</p>
+        <Link href={`/magazines/${slug}/about-and-overview`} className="mt-2 block focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
+          <h3 className="font-serif text-xl font-bold leading-snug text-zinc-950 transition-colors group-hover:text-amber-700 dark:text-white dark:group-hover:text-amber-300">
+            {title}
+          </h3>
+        </Link>
+        <p className="mt-3 line-clamp-4 text-sm leading-7 text-zinc-600 dark:text-zinc-350">
+          {description || 'No public overview has been added for this magazine yet.'}
+        </p>
+        <Link href={`/magazines/${slug}/about-and-overview`} className="mt-5 inline-flex w-fit items-center gap-1.5 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300">
+          View Magazine <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
       </div>
-    </div>
+    </article>
   );
 }

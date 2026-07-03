@@ -1,14 +1,27 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useId } from 'react';
 import { Textarea } from './Textarea';
 
-const baseInputStyles = 'w-full rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-xs font-semibold text-zinc-950 shadow-sm transition-all duration-300 placeholder:text-zinc-400 focus:outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/40 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-650';
+export const baseControlStyles = 'w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 placeholder:text-zinc-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-60 read-only:bg-[var(--surface-muted)] dark:placeholder:text-zinc-650';
 
-export const Input = forwardRef(({ className = '', error, ...props }, ref) => {
-  const errorStyles = error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/40 dark:border-red-500' : '';
+export const Input = forwardRef(({ className = '', error, helperText, id, 'aria-describedby': describedBy, ...props }, ref) => {
+  const generatedId = useId();
+  const inputId = id || generatedId;
+  const errorId = error ? `${inputId}-error` : undefined;
+  const helperId = helperText ? `${inputId}-helper` : undefined;
+  const description = [describedBy, helperId, errorId].filter(Boolean).join(' ') || undefined;
+
   return (
     <div className="w-full">
-      <input className={`${baseInputStyles} ${errorStyles} ${className}`} ref={ref} {...props} />
-      {error && <span className="mt-1.5 block text-[11px] font-semibold text-red-650 dark:text-red-400">{error}</span>}
+      <input
+        id={inputId}
+        className={`${baseControlStyles} ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30' : ''} ${className}`}
+        ref={ref}
+        aria-invalid={error ? 'true' : undefined}
+        aria-describedby={description}
+        {...props}
+      />
+      {helperText && <span id={helperId} className="mt-1.5 block text-xs text-[var(--muted)]">{helperText}</span>}
+      {error && <span id={errorId} className="mt-1.5 block text-xs font-semibold text-red-600 dark:text-red-400">{error}</span>}
     </div>
   );
 });
@@ -16,23 +29,36 @@ Input.displayName = 'Input';
 
 export { Textarea };
 
-export const Select = forwardRef(({ className = '', error, children, ...props }, ref) => {
-  const errorStyles = error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/40 dark:border-red-500' : '';
+export const Select = forwardRef(({ className = '', error, helperText, children, id, 'aria-describedby': describedBy, ...props }, ref) => {
+  const generatedId = useId();
+  const selectId = id || generatedId;
+  const errorId = error ? `${selectId}-error` : undefined;
+  const helperId = helperText ? `${selectId}-helper` : undefined;
+  const description = [describedBy, helperId, errorId].filter(Boolean).join(' ') || undefined;
+
   return (
     <div className="w-full relative">
-      <select className={`${baseInputStyles} ${errorStyles} pr-8 appearance-none cursor-pointer ${className}`} ref={ref} {...props}>
+      <select
+        id={selectId}
+        className={`${baseControlStyles} ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30' : ''} pr-8 cursor-pointer ${className}`}
+        ref={ref}
+        aria-invalid={error ? 'true' : undefined}
+        aria-describedby={description}
+        {...props}
+      >
         {children}
       </select>
-      {error && <span className="mt-1.5 block text-[11px] font-semibold text-red-655 dark:text-red-400">{error}</span>}
+      {helperText && <span id={helperId} className="mt-1.5 block text-xs text-[var(--muted)]">{helperText}</span>}
+      {error && <span id={errorId} className="mt-1.5 block text-xs font-semibold text-red-600 dark:text-red-400">{error}</span>}
     </div>
   );
 });
 Select.displayName = 'Select';
 
-export function Label({ children, className = '', ...props }) {
+export function Label({ children, className = '', required = false, ...props }) {
   return (
-    <label className={`mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-450 ${className}`} {...props}>
-      {children}
+    <label className={`mb-1.5 block text-xs font-bold text-zinc-700 dark:text-zinc-300 ${className}`} {...props}>
+      {children}{required && <span className="ml-1 text-red-600" aria-hidden="true">*</span>}
     </label>
   );
 }

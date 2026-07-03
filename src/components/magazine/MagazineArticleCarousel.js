@@ -132,7 +132,7 @@ export default function MagazineArticleCarousel({ articles = [], coverImage = ''
               onClick={handlePrev}
               disabled={!canGoPrev}
               aria-label="Previous magazine articles slide"
-              className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white/80 dark:bg-zinc-900/40 border border-zinc-200/70 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-zinc-50 dark:focus:ring-offset-zinc-950 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white/80 dark:bg-zinc-900/40 border border-zinc-200/70 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-50 dark:focus-visible:ring-offset-zinc-950 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -141,7 +141,7 @@ export default function MagazineArticleCarousel({ articles = [], coverImage = ''
               onClick={handleNext}
               disabled={!canGoNext}
               aria-label="Next magazine articles slide"
-              className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white/80 dark:bg-zinc-900/40 border border-zinc-200/70 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-zinc-50 dark:focus:ring-offset-zinc-950 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-white/80 dark:bg-zinc-900/40 border border-zinc-200/70 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-50 dark:focus-visible:ring-offset-zinc-950 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -195,7 +195,7 @@ export default function MagazineArticleCarousel({ articles = [], coverImage = ''
                           {issueLabel && <p>{issueLabel}</p>}
                           {article.doi && (
                             <p className="normal-case break-all">
-                              DOI: <a className="text-amber-700 dark:text-amber-400 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 rounded-sm" href={`https://doi.org/${article.doi.replace(/^https?:\/\/doi\.org\//, '')}`} target="_blank" rel="noreferrer">{article.doi}</a>
+                              DOI: <a className="text-amber-700 dark:text-amber-400 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded-sm" href={`https://doi.org/${article.doi.replace(/^https?:\/\/doi\.org\//, '')}`} target="_blank" rel="noreferrer">{article.doi}</a>
                             </p>
                           )}
                         </div>
@@ -205,7 +205,7 @@ export default function MagazineArticleCarousel({ articles = [], coverImage = ''
                         <Link
                           href={articleLink}
                           onClick={() => onArticleClick?.(article.id)}
-                          className="mt-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold uppercase tracking-wider transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950"
+                          className="mt-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold uppercase tracking-wider transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-950"
                         >
                           <span>Read Article</span>
                           <ArrowRight className="w-4 h-4" />
@@ -230,7 +230,7 @@ export default function MagazineArticleCarousel({ articles = [], coverImage = ''
                 onClick={() => goToSlide(index)}
                 aria-label={`Go to magazine articles slide ${index + 1}`}
                 aria-current={currentSlide === index ? 'true' : undefined}
-                className={`h-2 rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-zinc-50 dark:focus:ring-offset-zinc-950 ${
+                className={`h-2 rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-50 dark:focus-visible:ring-offset-zinc-950 ${
                   currentSlide === index ? 'w-6 bg-amber-600' : 'w-2 bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-600'
                 }`}
               />

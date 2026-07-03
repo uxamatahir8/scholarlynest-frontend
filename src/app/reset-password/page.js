@@ -1,11 +1,11 @@
 'use client';
 
 import { safeApiMessage } from '../../utils/safeErrors';
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from '../../context/ToastContext';
-import { Lock, Mail, ShieldAlert, Loader2, AlertCircle, Check, X, Eye, EyeOff } from 'lucide-react';
+import { Lock, ShieldAlert, Loader2, AlertCircle, Check, X, Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
 
 function ResetPasswordForm() {
@@ -14,16 +14,16 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const emailParam = searchParams.get('email') || '';
   const codeParam = searchParams.get('code') || '';
+  const errorRef = useRef(null);
 
-  const [email, setEmail] = useState(emailParam);
-  const [code, setCode] = useState(codeParam);
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [verifying, setVerifying] = useState(false);
+  const [verifying, setVerifying] = useState(true);
   const [codeVerified, setCodeVerified] = useState(false);
+  const [verificationFailed, setVerificationFailed] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -37,58 +37,28 @@ function ResetPasswordForm() {
   const isPasswordStrong = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSymbol;
 
   useEffect(() => {
-    if (emailParam) {
-      setEmail(emailParam);
-    }
-    if (codeParam) {
-      setCode(codeParam);
-    }
-    if (emailParam && codeParam) {
-      const autoVerify = async () => {
-        setVerifying(true);
-        setError('');
-        try {
-          await api.post('/password/verify-reset-code', { email: emailParam, code: codeParam });
-          setCodeVerified(true);
-          toast('Account verified successfully. Please create your password.', 'success');
-        } catch (err) {
-          const msg = safeApiMessage(err, 'Invalid or expired verification code.');
-          setError(msg);
-        } finally {
-          setVerifying(false);
-        }
-      };
-      autoVerify();
-    }
-  }, [emailParam, codeParam]);
-
-  const handleVerifyCode = async () => {
-    setError('');
-    setFieldErrors({});
-
-    if (!email) {
-      setFieldErrors({ email: 'Email address is required.' });
-      return;
-    }
-
-    if (!code || code.length !== 6) {
-      setFieldErrors({ code: 'Please enter the 6-digit verification code.' });
-      return;
-    }
-
-    setVerifying(true);
-    try {
-      await api.post('/password/verify-reset-code', { email, code });
-      setCodeVerified(true);
-      toast('Verification code verified. Please set your new password.', 'success');
-    } catch (err) {
-      const msg = safeApiMessage(err, 'Invalid or expired verification code.');
-      setError(msg);
-      toast(msg, 'error');
-    } finally {
+    if (!emailParam || !codeParam) {
       setVerifying(false);
+      setVerificationFailed(true);
+      return;
     }
-  };
+
+    const autoVerify = async () => {
+      setVerifying(true);
+      setError('');
+      try {
+        await api.post('/password/verify-reset-code', { email: emailParam, code: codeParam });
+        setCodeVerified(true);
+      } catch (err) {
+        setVerificationFailed(true);
+        const msg = safeApiMessage(err, 'Your password reset link is invalid or has expired.');
+        setError(msg);
+      } finally {
+        setVerifying(false);
+      }
+    };
+    autoVerify();
+  }, [emailParam, codeParam]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -96,7 +66,6 @@ function ResetPasswordForm() {
     setFieldErrors({});
 
     if (!codeVerified) {
-      toast('Please verify your code first.', 'error');
       return;
     }
 
@@ -120,8 +89,8 @@ function ResetPasswordForm() {
 
     try {
       await api.post('/reset-password', {
-        email,
-        code,
+        email: emailParam,
+        code: codeParam,
         password,
         password_confirmation: passwordConfirmation,
       });
@@ -131,192 +100,182 @@ function ResetPasswordForm() {
       const msg = safeApiMessage(err, 'Failed to reset password.');
       setError(msg);
       toast(msg, 'error');
+      setTimeout(() => errorRef.current?.focus(), 100);
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="bg-white dark:bg-[#1c1c1b] border border-zinc-200/80 dark:border-zinc-800/60 rounded-lg p-8 shadow-sm space-y-6">
-      <div className="text-center space-y-2">
-        <div className="mx-auto w-12 h-12 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-800 dark:text-zinc-200">
+  if (verifying) {
+    return (
+      <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md flex flex-col items-center justify-center min-h-[250px]">
+        <Loader2 className="w-8 h-8 text-amber-600 dark:text-accent-gold animate-spin" />
+        <p className="text-xs text-muted mt-4 font-semibold">Verifying reset credentials...</p>
+      </div>
+    );
+  }
+
+  if (verificationFailed) {
+    return (
+      <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md space-y-6 text-center animate-in fade-in duration-200">
+        <div className="mx-auto w-12 h-12 bg-danger/10 border border-danger/25 rounded-full flex items-center justify-center text-danger">
           <ShieldAlert className="w-6 h-6" />
         </div>
-        <h2 className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">
-          Reset Password
-        </h2>
-        <p className="text-xs text-zinc-400 dark:text-zinc-500 max-w-sm mx-auto">
-          Verify the 6-digit confirmation code sent to your academic email to unlock and reset your credentials.
-        </p>
+        <div className="space-y-2">
+          <h2 className="font-serif text-2xl font-black text-foreground text-center">
+            Link Invalid or Expired
+          </h2>
+          <p className="text-xs text-muted leading-relaxed max-w-sm mx-auto font-medium">
+            Your password reset link is invalid or has expired. Please request a new link.
+          </p>
+        </div>
+        <div className="pt-2">
+          <Link
+            href="/forgot-password"
+            className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-950 py-2.5 rounded-xl transition-all shadow-sm"
+          >
+            Request New Reset Link
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md space-y-6 animate-in fade-in duration-200">
+
+      {/* Title */}
+      <div className="text-center space-y-3">
+        <div className="mx-auto w-12 h-12 bg-accent/5 dark:bg-accent-gold/10 border border-accent/10 dark:border-accent-gold/25 rounded-full flex items-center justify-center text-accent dark:text-accent-gold">
+          <Lock className="w-6 h-6" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="font-serif text-2xl font-black text-foreground">
+            Establish New Password
+          </h2>
+          <p className="text-xs text-muted max-w-xs mx-auto leading-relaxed">
+            Please enter your new secure password credentials to authorize and update your scholar account.
+          </p>
+        </div>
       </div>
 
+      {/* Error notification summary */}
       {error && (
-        <div className="flex items-center space-x-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-md text-red-600 dark:text-red-400 text-xs">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>{error}</span>
+        <div
+          ref={errorRef}
+          tabIndex="-1"
+          aria-live="assertive"
+          className="flex items-start space-x-2.5 p-3.5 bg-danger/5 dark:bg-danger/10 border border-danger/25 dark:border-danger/30 rounded-xl text-danger text-xs focus:outline-none focus:ring-1 focus:ring-danger"
+        >
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <span className="font-medium">{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        
-        {/* Scholar Email */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-            Scholar Email
-          </label>
-          <div className="relative flex items-center">
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@university.edu"
-              disabled={!!emailParam || codeVerified}
-              className="w-full text-xs font-medium pl-8 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-400 transition-all disabled:opacity-60"
-            />
-            <Mail className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
-          </div>
-          {fieldErrors.email && (
-            <span className="text-[10px] text-red-555 mt-1 block">{fieldErrors.email}</span>
-          )}
-        </div>
-
-        {/* Verification Code */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-            Verification Code
-          </label>
-          <div className="flex space-x-3">
-            <input
-              type="text"
-              maxLength={6}
-              value={code}
-              disabled={codeVerified}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="123456"
-              className="w-full text-center tracking-[0.5em] font-mono text-base font-bold py-2 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-300 disabled:opacity-60"
-            />
-            {!codeVerified && (
-              <button
-                type="button"
-                onClick={handleVerifyCode}
-                disabled={verifying || code.length !== 6}
-                className="px-6 bg-zinc-800 hover:bg-zinc-900 text-white dark:bg-zinc-200 dark:hover:bg-white dark:text-zinc-950 text-xs font-bold uppercase tracking-wider rounded-md transition-colors disabled:opacity-50"
-              >
-                {verifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Verify'}
-              </button>
-            )}
-          </div>
-          {fieldErrors.code && (
-            <span className="text-[10px] text-red-550 dark:text-red-400 block font-semibold">{fieldErrors.code}</span>
-          )}
-          {codeVerified && (
-            <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center">
-              <Check className="w-3.5 h-3.5 mr-1" /> Code verified. You may now input and save your new credentials below.
-            </p>
-          )}
-        </div>
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
 
         {/* New Password */}
         <div className="space-y-1.5">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+          <label htmlFor="reset-password" className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono">
             New Password
           </label>
           <div className="relative flex items-center">
             <input
               type={showPassword ? "text" : "password"}
+              id="reset-password"
               value={password}
-              disabled={!codeVerified}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={codeVerified ? '••••••••' : 'Verify code first'}
-              className="w-full text-xs font-medium pl-8 pr-10 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-450 transition-all disabled:opacity-50"
+              placeholder="••••••••"
+              aria-invalid={!!fieldErrors.password}
+              className="w-full text-xs font-semibold pl-9 pr-10 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-655 transition-all"
             />
-            <Lock className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
-            {codeVerified && (
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2.5 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300 transition-colors p-0.5 focus:outline-none"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            )}
+            <Lock className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-3 text-zinc-400 dark:text-zinc-600 hover:text-foreground transition-colors p-0.5 focus:outline-none focus:ring-1 focus:ring-accent-gold rounded"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
           {fieldErrors.password && (
-            <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block">{fieldErrors.password}</span>
+            <span className="text-[10px] text-danger font-semibold mt-1 block">{fieldErrors.password}</span>
           )}
         </div>
 
         {/* Confirm Password */}
         <div className="space-y-1.5">
-          <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+          <label htmlFor="reset-confirm" className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono">
             Confirm Password
           </label>
           <div className="relative flex items-center">
             <input
               type={showConfirmPassword ? "text" : "password"}
+              id="reset-confirm"
               value={passwordConfirmation}
-              disabled={!codeVerified}
               onChange={(e) => setPasswordConfirmation(e.target.value)}
-              placeholder={codeVerified ? '••••••••' : 'Verify code first'}
-              className="w-full text-xs font-medium pl-8 pr-10 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/80 rounded-md focus:outline-none placeholder-zinc-450 transition-all disabled:opacity-50"
+              placeholder="••••••••"
+              aria-invalid={!!fieldErrors.passwordConfirmation}
+              className="w-full text-xs font-semibold pl-9 pr-10 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/80 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-655 transition-all"
             />
-            <Lock className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
-            {codeVerified && (
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-2.5 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300 transition-colors p-0.5 focus:outline-none"
-              >
-                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            )}
+            <Lock className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              aria-label={showConfirmPassword ? "Hide password confirmation" : "Show password confirmation"}
+              className="absolute right-3 text-zinc-400 dark:text-zinc-600 hover:text-foreground transition-colors p-0.5 focus:outline-none focus:ring-1 focus:ring-accent-gold rounded"
+            >
+              {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
           {fieldErrors.passwordConfirmation && (
-            <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block">{fieldErrors.passwordConfirmation}</span>
+            <span className="text-[10px] text-danger font-semibold mt-1 block">{fieldErrors.passwordConfirmation}</span>
           )}
         </div>
 
-        {/* Password Strength Validation Helper Checklist */}
-        {codeVerified && password && (
-          <div className="p-4 bg-zinc-50 dark:bg-zinc-900/30 border border-zinc-150 dark:border-zinc-800/60 rounded-lg space-y-2 animate-in fade-in duration-300">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Password Complexity Checklist</h4>
-            <div className="grid grid-cols-2 gap-2 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-              <div className="flex items-center space-x-2">
-                {hasMinLength ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                <span>At least 8 characters</span>
+        {/* Password Strength Validation Checklist */}
+        {password && (
+          <div className="p-4 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/60 rounded-xl space-y-2 animate-in fade-in duration-300 text-left">
+            <h4 className="text-[9px] font-bold uppercase tracking-widest text-muted">Password Security Guidance</h4>
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold text-zinc-550 dark:text-zinc-400">
+              <div className="flex items-center space-x-1.5">
+                {hasMinLength ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <X className="w-3.5 h-3.5 text-danger shrink-0" />}
+                <span>8+ Characters</span>
               </div>
-              <div className="flex items-center space-x-2">
-                {hasUppercase ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                <span>One uppercase letter</span>
+              <div className="flex items-center space-x-1.5">
+                {hasUppercase ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <X className="w-3.5 h-3.5 text-danger shrink-0" />}
+                <span>Uppercase letter</span>
               </div>
-              <div className="flex items-center space-x-2">
-                {hasLowercase ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                <span>One lowercase letter</span>
+              <div className="flex items-center space-x-1.5">
+                {hasLowercase ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <X className="w-3.5 h-3.5 text-danger shrink-0" />}
+                <span>Lowercase letter</span>
               </div>
-              <div className="flex items-center space-x-2">
-                {hasNumber ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                <span>One number</span>
+              <div className="flex items-center space-x-1.5">
+                {hasNumber ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <X className="w-3.5 h-3.5 text-danger shrink-0" />}
+                <span>Number digit</span>
               </div>
-              <div className="flex items-center space-x-2">
-                {hasSymbol ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                <span>One symbol (@$!%*?&)</span>
+              <div className="flex items-center space-x-1.5">
+                {hasSymbol ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <X className="w-3.5 h-3.5 text-danger shrink-0" />}
+                <span>Special Symbol</span>
               </div>
-              <div className="flex items-center space-x-2 col-span-2">
-                {passwordsMatch ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-red-500 shrink-0" />}
+              <div className="flex items-center space-x-1.5 col-span-2">
+                {passwordsMatch ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <X className="w-3.5 h-3.5 text-danger shrink-0" />}
                 <span>Passwords match</span>
               </div>
             </div>
           </div>
         )}
 
+        {/* Submit button */}
         <button
           type="submit"
-          disabled={loading || !codeVerified}
-          className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-zinc-800 hover:bg-zinc-950 text-white dark:bg-zinc-200 dark:hover:bg-white dark:text-zinc-955 py-2.5 rounded-md transition-premium disabled:opacity-50"
+          disabled={loading || !isPasswordStrong || !passwordsMatch}
+          className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-955 py-2.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-sm"
         >
           {loading ? (
             <>
-              <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Resetting Password...
             </>
           ) : (
@@ -325,12 +284,13 @@ function ResetPasswordForm() {
         </button>
       </form>
 
-      <div className="text-center pt-2 border-t border-zinc-100 dark:border-zinc-800/40">
-        <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+      {/* Redirect back to Login */}
+      <div className="text-center pt-4 border-t border-border dark:border-zinc-850">
+        <p className="text-[11px] font-semibold text-muted">
           Remembered your credentials?{' '}
-          <Link 
-            href="/login" 
-            className="text-zinc-700 dark:text-zinc-300 hover:underline"
+          <Link
+            href="/login"
+            className="text-accent dark:text-accent-gold hover:underline"
           >
             Sign In here
           </Link>
@@ -343,11 +303,10 @@ function ResetPasswordForm() {
 export default function ResetPassword() {
   return (
     <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
-      <title>Reset Password - ScholarlyNest</title>
       <Suspense fallback={
-        <div className="bg-white dark:bg-[#1c1c1b] border border-zinc-200/80 dark:border-zinc-800/60 rounded-lg p-8 shadow-sm flex flex-col items-center justify-center min-h-[300px]">
-          <Loader2 className="w-8 h-8 text-zinc-400 animate-spin" />
-          <p className="text-xs text-zinc-400 mt-4">Loading reset portal...</p>
+        <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md flex flex-col items-center justify-center min-h-[300px]">
+          <Loader2 className="w-8 h-8 text-zinc-400 dark:text-zinc-650 animate-spin" />
+          <p className="text-xs text-muted mt-4 font-semibold">Loading reset portal...</p>
         </div>
       }>
         <ResetPasswordForm />

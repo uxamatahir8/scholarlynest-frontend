@@ -1,142 +1,72 @@
 'use client';
 
-import { logError } from '../../utils/safeLogger';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import api from '../../utils/api';
+import { X } from 'lucide-react';
 
-export default function TopAnnounceRibbon() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+const buildItemHref = (item) => (
+  item.type === 'article'
+    ? `/articles/${item.slug}`
+    : `/magazines/${item.slug}/about-and-overview`
+);
 
-  useEffect(() => {
-    const fetchRibbonData = async () => {
-      try {
-        setLoading(true);
-        // Parallel streams ingestion from public endpoints
-        const [magRes, newsRes] = await Promise.all([
-          api.get('/public/magazines?per_page=3'),
-          api.get('/public/newsletters?per_page=3')
-        ]);
-
-        const magazines = magRes.data?.data || [];
-        const newsletters = newsRes.data?.data || [];
-
-        // Polymorphic normalization
-        const normalizedMags = magazines.map(m => ({
-          id: `mag-${m.id}`,
-          label: 'Latest Issue',
-          title: m.title,
-          url: `/magazines/${m.slug}`,
-          isMagazine: true,
-          createdAt: m.created_at || m.updated_at
-        }));
-
-        const normalizedNews = newsletters.map(n => ({
-          id: `news-${n.id}`,
-          label: 'Newsletter',
-          title: n.subject,
-          url: '#',
-          isMagazine: false,
-          createdAt: n.created_at || n.sent_at
-        }));
-
-        // Combine and sort by date
-        const combined = [...normalizedMags, ...normalizedNews].sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-
-        setItems(combined);
-      } catch (err) {
-        logError('Failed to fetch announcement ribbon data:', err);
-        setItems([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRibbonData();
-  }, []);
-
-  useEffect(() => {
-    if (items.length > 0) {
-      document.documentElement.classList.add('has-top-ribbon');
-    } else {
-      document.documentElement.classList.remove('has-top-ribbon');
-    }
-    return () => {
-      document.documentElement.classList.remove('has-top-ribbon');
-    };
-  }, [items]);
-
-  // Gracefully fallback to null if loading, empty, or failed
-  if (loading || items.length === 0) {
-    return null;
-  }
-
-  // Programmatically duplicate 3 times per block to guarantee continuous flow
-  const duplicatedItems = [...items, ...items, ...items];
+export default function TopAnnounceRibbon({ items = [], onDismiss }) {
+  const validItems = items.filter((item) => item?.title && item?.slug);
+  if (validItems.length === 0) return null;
 
   return (
-    <div className="relative w-full h-9 bg-zinc-950 border-b border-zinc-900 flex items-center overflow-hidden z-40 select-none">
-      {/* Pinned static Updates badge */}
-      <div className="absolute left-0 top-0 h-full bg-zinc-950 pl-4 pr-3 flex items-center space-x-2 border-r border-zinc-900 z-50">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse-slow" />
-        <span className="text-[10px] uppercase font-sans font-bold tracking-wider text-zinc-400">
-          Updates
-        </span>
-      </div>
+    <section className="bg-zinc-950 text-white" aria-label="Latest publication headlines">
+      <div className="mx-auto flex min-h-10 w-full max-w-[1440px] items-center gap-3 px-4 py-2 text-sm sm:px-6 lg:px-8">
+        <p className="hidden shrink-0 text-xs font-bold text-amber-300 sm:block">Latest</p>
 
-      {/* Marquee Track Container */}
-      <div className="w-full flex items-center overflow-hidden pl-24">
-        <div className="animate-marquee flex items-center whitespace-nowrap py-1">
-          {/* Block 1 */}
-          <div className="flex items-center space-x-12 pr-12">
-            {duplicatedItems.map((item, index) => (
-              <div key={`b1-${item.id}-${index}`} className="flex items-center space-x-3 text-zinc-300">
-                <span
-                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold font-mono uppercase tracking-wider ${
-                    item.isMagazine
-                      ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                      : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                  }`}
-                >
-                  {item.label}
-                </span>
+        <div className="group min-w-0 flex-1 overflow-hidden focus-within:overflow-x-auto motion-reduce:overflow-x-auto">
+          <div className="headline-marquee flex w-max items-center gap-8 pr-8 group-hover:[animation-play-state:paused] group-focus-within:[animation-play-state:paused] motion-reduce:w-full motion-reduce:animate-none motion-reduce:overflow-x-auto">
+            <div className="flex items-center gap-8">
+              {validItems.map((item, index) => (
                 <Link
-                  href={item.url}
-                  className="font-serif text-xs tracking-wide hover:text-white transition-colors cursor-pointer"
+                  key={`${item.type}-${item.slug}-${index}`}
+                  href={buildItemHref(item)}
+                  className="inline-flex max-w-[78vw] shrink-0 items-center gap-2 whitespace-nowrap text-zinc-100 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 sm:max-w-md"
                 >
-                  {item.title}
+                  <span className="font-semibold text-amber-300">
+                    {item.type === 'article' ? 'New article:' : 'Now available:'}
+                  </span>
+                  <span className="truncate">{item.title}</span>
                 </Link>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          {/* Block 2 (Duplicate for seamless loop) */}
-          <div className="flex items-center space-x-12 pr-12">
-            {duplicatedItems.map((item, index) => (
-              <div key={`b2-${item.id}-${index}`} className="flex items-center space-x-3 text-zinc-300">
-                <span
-                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold font-mono uppercase tracking-wider ${
-                    item.isMagazine
-                      ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                      : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                  }`}
-                >
-                  {item.label}
-                </span>
-                <Link
-                  href={item.url}
-                  className="font-serif text-xs tracking-wide hover:text-white transition-colors cursor-pointer"
-                >
-                  {item.title}
-                </Link>
+            {validItems.length > 1 && (
+              <div className="flex items-center gap-8 motion-reduce:hidden" aria-hidden="true">
+                {validItems.map((item, index) => (
+                  <Link
+                    key={`duplicate-${item.type}-${item.slug}-${index}`}
+                    href={buildItemHref(item)}
+                    tabIndex={-1}
+                    className="inline-flex max-w-[78vw] shrink-0 items-center gap-2 whitespace-nowrap text-zinc-100 sm:max-w-md"
+                  >
+                    <span className="font-semibold text-amber-300">
+                      {item.type === 'article' ? 'New article:' : 'Now available:'}
+                    </span>
+                    <span className="truncate">{item.title}</span>
+                  </Link>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         </div>
+
+        {onDismiss && (
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label="Dismiss announcement"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
       </div>
-    </div>
+    </section>
   );
 }

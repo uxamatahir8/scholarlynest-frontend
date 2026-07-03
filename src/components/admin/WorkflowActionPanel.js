@@ -1,15 +1,21 @@
 'use client';
 
+import React, { useEffect, useMemo, useState } from 'react';
+import { Check, CheckCircle2, ClipboardCheck, FileCheck2, Loader2, Send, Upload, UserPlus } from 'lucide-react';
+import api from '../../utils/api';
 import { safeApiMessage } from '../../utils/safeErrors';
 import { logError } from '../../utils/safeLogger';
-import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Check, CheckCircle2, ClipboardCheck, Download, FileCheck2, History, Loader2, Send, Upload, UserPlus } from 'lucide-react';
-import api from '../../utils/api';
+import Alert from '../ui/Alert';
+import { Button } from '../ui/Button';
+import { ConfirmationModal } from '../ui/ConfirmationModal';
+import Field from '../ui/Field';
+import { Input, Select } from '../ui/Input';
+import { Textarea } from '../ui/Textarea';
+import EmptyState from '../ui/EmptyState';
+import WorkflowSection from './workflow/WorkflowSection';
 import {
   PUBLISHABLE_STATUSES,
-  REJECTED_STATUSES,
   REVIEWABLE_STATUSES,
-  REVISION_STATUSES,
 } from './articleWorkflow';
 
 const recommendationOptions = [
@@ -41,30 +47,18 @@ const postPublicationActions = [
   { value: 'unpublish', label: 'Unpublish' },
 ];
 
-function FieldLabel({ children }) {
-  return <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">{children}</label>;
-}
+const productionStatuses = new Set(['accepted', 'ready_for_publication']);
 
-function PanelButton({ children, icon: Icon = Send, loading, ...props }) {
+function ActionBlock({ title, description, children }) {
   return (
-    <button
-      type="button"
-      disabled={loading || props.disabled}
-      className="inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
-      {...props}
-    >
-      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
-      <span>{children}</span>
-    </button>
+    <section className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+      <div className="mb-4">
+        <h3 className="text-sm font-bold text-[var(--foreground)]">{title}</h3>
+        {description && <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">{description}</p>}
+      </div>
+      <div className="space-y-4">{children}</div>
+    </section>
   );
-}
-
-function fileDownloadUrl(path) {
-  if (!path) return '#';
-  if (path.startsWith('http')) return path;
-  const apiBase = (api.defaults.baseURL || '').replace(/\/$/, '');
-  const suffix = path.startsWith('/api/') ? path.replace(/^\/api/, '') : path;
-  return `${apiBase}${suffix}`;
 }
 
 export default function WorkflowActionPanel({
@@ -72,15 +66,14 @@ export default function WorkflowActionPanel({
   workflowContext,
   user,
   hasRole,
-  hasPermission,
   onWorkflowChanged,
   onOpenPublish,
   toast,
 }) {
   const [busyAction, setBusyAction] = useState('');
+  const [confirmAction, setConfirmAction] = useState(null);
   const [assignees, setAssignees] = useState({});
-  const [issues, setIssues] = useState([]);
-  const [screenForm, setScreenForm] = useState({ decision: 'send_to_review', plagiarism_status: '', plagiarism_score: '', plagiarism_report_path: '', comments: '' });
+  const [screenForm, setScreenForm] = useState({ decision: 'send_to_review', plagiarism_status: '', plagiarism_score: '', comments: '' });
   const [subEditorId, setSubEditorId] = useState('');
   const [reviewerId, setReviewerId] = useState('');
   const [productionForm, setProductionForm] = useState({ user_id: '', role: 'copy_editor', due_date: '' });
@@ -102,7 +95,6 @@ export default function WorkflowActionPanel({
   const isPublisher = hasRole('publisher');
   const isCopyEditor = hasRole('copy_editor');
   const isProofreader = hasRole('proofreader');
-
   const canEditorial = isAdmin || isEditor;
   const canAssignReviewer = isAdmin || isEditor || isSubEditor;
   const canPublish = isAdmin || isPublisher;
@@ -116,34 +108,24 @@ export default function WorkflowActionPanel({
     (workflowContext?.reviewer_assignments || []).find((item) => Number(item.reviewer_id) === Number(user?.id))
   ), [workflowContext, user]);
 
-  const myProductionAssignment = useMemo(() => {
-    const current = workflowContext?.current_assignment;
-    if (current?.role && ['copy_editor', 'proofreader'].includes(current.role) && ['pending', 'in_progress'].includes(current.status)) {
-      if (isAdmin || Number(current.user_id) === Number(user?.id)) return current;
-    }
-
-    return (workflowContext?.production_assignments || []).find((item) => {
+  const myProductionAssignment = useMemo(() => (
+    (workflowContext?.production_assignments || []).find((item) => {
       const roleMatches = isCopyEditor ? item.role === 'copy_editor' : isProofreader ? item.role === 'proofreader' : true;
       const userMatches = isAdmin || Number(item.user_id) === Number(user?.id);
-      return userMatches && roleMatches && ['pending', 'in_progress'].includes(item.status);
-    });
-  }, [workflowContext, user, isAdmin, isCopyEditor, isProofreader]);
+      return userMatches && roleMatches && ['pending', 'in_progress', 'assigned'].includes(item.status);
+    })
+  ), [workflowContext, user, isAdmin, isCopyEditor, isProofreader]);
 
-  const completedProductionAssignment = useMemo(() => {
-    const current = workflowContext?.current_assignment;
-    if (current?.role && ['copy_editor', 'proofreader'].includes(current.role) && current.status === 'completed') {
-      if (isAdmin || Number(current.user_id) === Number(user?.id)) return current;
-    }
-
-    return (workflowContext?.production_assignments || []).find((item) => {
+  const completedProductionAssignment = useMemo(() => (
+    (workflowContext?.production_assignments || []).find((item) => {
       const roleMatches = isCopyEditor ? item.role === 'copy_editor' : isProofreader ? item.role === 'proofreader' : true;
       const userMatches = isAdmin || Number(item.user_id) === Number(user?.id);
       return userMatches && roleMatches && item.status === 'completed';
-    });
-  }, [workflowContext, user, isAdmin, isCopyEditor, isProofreader]);
+    })
+  ), [workflowContext, user, isAdmin, isCopyEditor, isProofreader]);
 
   const loadAssignees = async (role) => {
-    if (assignees[role]) return;
+    if (assignees[role] || !article?.magazine_id) return;
     try {
       const res = await api.get('/admin/workflow/assignees', {
         params: { role, magazine_id: article.magazine_id },
@@ -156,30 +138,13 @@ export default function WorkflowActionPanel({
 
   useEffect(() => {
     if (!article?.id) return;
-    if (canEditorial) {
-      loadAssignees('sub_editor');
-    }
-    if (canAssignReviewer) {
-      loadAssignees('reviewer');
-    }
+    if (canEditorial) loadAssignees('sub_editor');
+    if (canAssignReviewer) loadAssignees('reviewer');
     if (canAssignProduction) {
       loadAssignees('copy_editor');
       loadAssignees('proofreader');
     }
   }, [article?.id, canEditorial, canAssignReviewer, canAssignProduction]);
-
-  useEffect(() => {
-    if (!canPublish || !article?.magazine_id) return;
-    const loadIssues = async () => {
-      try {
-        const res = await api.get('/admin/issues', { params: { magazine_id: article.magazine_id, per_page: 100 } });
-        setIssues(res.data?.data || []);
-      } catch (err) {
-        logError('Failed to load issues', err);
-      }
-    };
-    loadIssues();
-  }, [canPublish, article?.magazine_id]);
 
   const runAction = async (key, request, successMessage) => {
     setBusyAction(key);
@@ -192,15 +157,17 @@ export default function WorkflowActionPanel({
       toast(safeApiMessage(err, 'Workflow action failed.'), 'error');
     } finally {
       setBusyAction('');
+      setConfirmAction(null);
     }
   };
+
+  const askConfirmation = (action) => setConfirmAction(action);
 
   const buildFormData = (payload, fileMap = {}) => {
     const formData = new FormData();
     Object.entries(payload).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        formData.append(key, typeof value === 'object' && !(value instanceof File) ? JSON.stringify(value) : value);
-      }
+      if (value === undefined || value === null) return;
+      formData.append(key, typeof value === 'object' && !(value instanceof File) ? JSON.stringify(value) : value);
     });
     Object.entries(fileMap).forEach(([key, file]) => {
       if (file) formData.append(key, file);
@@ -209,343 +176,415 @@ export default function WorkflowActionPanel({
   };
 
   const fileInput = (key, label) => (
-    <div className="space-y-1">
-      <FieldLabel>{label}</FieldLabel>
-      <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-[10px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 cursor-pointer">
-        <Upload className="w-3.5 h-3.5" />
+    <Field label={label}>
+      <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-bold text-[var(--foreground)] hover:bg-[var(--surface-muted)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]">
+        <Upload className="h-4 w-4" aria-hidden="true" />
         <span>{files[key]?.name || 'Choose file'}</span>
-        <input type="file" className="hidden" onChange={(e) => setFiles((prev) => ({ ...prev, [key]: e.target.files?.[0] || null }))} />
+        <input type="file" className="sr-only" onChange={(event) => setFiles((prev) => ({ ...prev, [key]: event.target.files?.[0] || null }))} />
       </label>
-    </div>
+    </Field>
   );
 
-  const hasScreeningFields = screenForm.decision === 'reject' ? screenForm.comments.trim() : true;
-  const canScreen = canEditorial && ['submitted', 'pending'].includes(article.status);
-  const canFinalDecision = canEditorial && REVIEWABLE_STATUSES.has(article.status);
-  const canShowPublish = canPublish && PUBLISHABLE_STATUSES.has(article.status);
-  const canPostPublication = canPublish && article.status === 'published';
+  const status = article.status;
+  const canScreen = canEditorial && ['submitted', 'pending'].includes(status);
+  const canAssignSubEditor = canEditorial && ['under_review', 'resubmitted'].includes(status);
+  const canShowReviewerAssignment = canAssignReviewer && ['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted'].includes(status);
+  const canFinalDecision = canEditorial && REVIEWABLE_STATUSES.has(status);
+  const canShowPublish = canPublish && PUBLISHABLE_STATUSES.has(status);
+  const canPostPublication = canPublish && status === 'published';
+  const canShowProductionAssignment = canAssignProduction && productionStatuses.has(status);
   const canCompleteProduction = (isAdmin || isCopyEditor || isProofreader) && myProductionAssignment;
 
+  const hasAnyAction = canScreen || canAssignSubEditor || canShowReviewerAssignment || (isSubEditor && mySubEditorAssignment)
+    || (isReviewer && myReviewerAssignment) || canFinalDecision || canShowProductionAssignment || canCompleteProduction
+    || completedProductionAssignment || canShowPublish || canPostPublication;
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white">Workflow Actions</h3>
-          <p className="text-[10px] text-zinc-450 font-medium">Only actions available to your role are shown.</p>
-        </div>
-      </div>
+    <WorkflowSection
+      title="Next Action"
+      description="Only actions currently available to your role and manuscript state are shown. Backend authorization remains authoritative."
+      icon={ClipboardCheck}
+    >
+      <div className="space-y-4">
+        {!hasAnyAction && (
+          <EmptyState title="No action available">Your role has no workflow action for this manuscript right now.</EmptyState>
+        )}
 
-      {!canEditorial && !canAssignReviewer && !isSubEditor && !isReviewer && !canPublish && !canCompleteProduction && !completedProductionAssignment && (
-        <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 text-xs text-zinc-500">
-          No workflow actions are available for your current role on this manuscript.
-        </div>
-      )}
-
-      {canScreen && (
-        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-          <div className="flex items-center gap-2">
-            <ClipboardCheck className="w-4 h-4 text-amber-600" />
-            <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Editorial Screening</h4>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <FieldLabel>Decision</FieldLabel>
-              <select value={screenForm.decision} onChange={(e) => setScreenForm({ ...screenForm, decision: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-                <option value="send_to_review">Send to Review</option>
-                <option value="reject">Reject at Screening</option>
-              </select>
+        {canScreen && (
+          <ActionBlock title="Editorial Screening" description="Decide whether this manuscript moves into review or is rejected during screening.">
+            <div className="grid gap-3 md:grid-cols-3">
+              <Field label="Decision" required>
+                <Select value={screenForm.decision} onChange={(event) => setScreenForm({ ...screenForm, decision: event.target.value })}>
+                  <option value="send_to_review">Send to Review</option>
+                  <option value="reject">Reject at Screening</option>
+                </Select>
+              </Field>
+              <Field label="Similarity Status">
+                <Input value={screenForm.plagiarism_status} onChange={(event) => setScreenForm({ ...screenForm, plagiarism_status: event.target.value })} />
+              </Field>
+              <Field label="Similarity Score">
+                <Input type="number" min="0" max="100" value={screenForm.plagiarism_score} onChange={(event) => setScreenForm({ ...screenForm, plagiarism_score: event.target.value })} />
+              </Field>
             </div>
-            <div className="space-y-1">
-              <FieldLabel>Similarity Status</FieldLabel>
-              <input value={screenForm.plagiarism_status} onChange={(e) => setScreenForm({ ...screenForm, plagiarism_status: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-            </div>
-            <div className="space-y-1">
-              <FieldLabel>Score</FieldLabel>
-              <input type="number" min="0" max="100" value={screenForm.plagiarism_score} onChange={(e) => setScreenForm({ ...screenForm, plagiarism_score: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-            </div>
-            <div className="space-y-1">
-              <FieldLabel>Report Path</FieldLabel>
-              <input value={screenForm.plagiarism_report_path} onChange={(e) => setScreenForm({ ...screenForm, plagiarism_report_path: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-            </div>
-          </div>
-          <textarea value={screenForm.comments} onChange={(e) => setScreenForm({ ...screenForm, comments: e.target.value })} placeholder="Screening notes or rejection reason..." rows={2} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-          {fileInput('plagiarism_report', 'Plagiarism Report')}
-          <PanelButton
-            icon={ClipboardCheck}
-            loading={busyAction === 'screen'}
-            disabled={!hasScreeningFields}
-            onClick={() => runAction('screen', () => api.post(`/admin/articles/${article.id}/screen`, buildFormData({
-              ...screenForm,
-              plagiarism_score: screenForm.plagiarism_score === '' ? null : Number(screenForm.plagiarism_score),
-            }, { plagiarism_report: files.plagiarism_report }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Screening result saved.')}
-          >
-            Save Screening
-          </PanelButton>
-        </section>
-      )}
-
-      {(canEditorial || canAssignReviewer) && (
-        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-          <div className="flex items-center gap-2">
-            <UserPlus className="w-4 h-4 text-amber-600" />
-            <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Assignments</h4>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {canEditorial && (
-              <div className="space-y-2">
-                <FieldLabel>Sub Editor</FieldLabel>
-                <select value={subEditorId} onChange={(e) => setSubEditorId(e.target.value)} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-                  <option value="">Select sub editor</option>
-                  {(assignees.sub_editor || []).map((item) => <option key={item.id} value={item.id}>{item.name} ({item.email})</option>)}
-                </select>
-                <PanelButton
-                  icon={UserPlus}
-                  loading={busyAction === 'assign-sub-editor'}
-                  disabled={!subEditorId}
-                  onClick={() => runAction('assign-sub-editor', () => api.post(`/admin/articles/${article.id}/assign-sub-editor`, { sub_editor_id: Number(subEditorId) }), 'Sub editor assigned.')}
-                >
-                  Assign Sub Editor
-                </PanelButton>
-              </div>
-            )}
-            <div className="space-y-2">
-              <FieldLabel>Reviewer</FieldLabel>
-              <select value={reviewerId} onChange={(e) => setReviewerId(e.target.value)} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-                <option value="">Select reviewer</option>
-                {(assignees.reviewer || []).map((item) => <option key={item.id} value={item.id}>{item.name} ({item.email})</option>)}
-              </select>
-              <PanelButton
-                icon={UserPlus}
-                loading={busyAction === 'assign-reviewer'}
-                disabled={!reviewerId}
-                onClick={() => runAction('assign-reviewer', () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { reviewer_id: Number(reviewerId) }), 'Reviewer assigned.')}
-              >
-                Assign Reviewer
-              </PanelButton>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {isSubEditor && mySubEditorAssignment && mySubEditorAssignment.status !== 'completed' && (
-        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Sub Editor Recommendation</h4>
-          <select value={subEditorForm.recommendation} onChange={(e) => setSubEditorForm({ ...subEditorForm, recommendation: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-            {recommendationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-          <textarea value={subEditorForm.comments} onChange={(e) => setSubEditorForm({ ...subEditorForm, comments: e.target.value })} rows={2} placeholder="Comments for author..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-          <textarea value={subEditorForm.internal_notes} onChange={(e) => setSubEditorForm({ ...subEditorForm, internal_notes: e.target.value })} rows={2} placeholder="Internal notes for editor..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-          {fileInput('annotated_manuscript', 'Annotated Manuscript')}
-          <PanelButton loading={busyAction === 'sub-editor-recommendation'} onClick={() => runAction('sub-editor-recommendation', () => api.post(`/admin/sub-editor-assignments/${mySubEditorAssignment.id}/submit-recommendation`, buildFormData(subEditorForm, { annotated_manuscript: files.annotated_manuscript }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Recommendation submitted.')}>Submit Recommendation</PanelButton>
-        </section>
-      )}
-
-      {isSubEditor && mySubEditorAssignment && mySubEditorAssignment.status === 'completed' && (
-        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Sub Editor Recommendation</h4>
-          <p className="text-xs text-zinc-500">This recommendation has already been submitted. It can be edited only if the Editor reopens the assignment.</p>
-        </section>
-      )}
-
-      {isReviewer && myReviewerAssignment && myReviewerAssignment.status === 'completed' && (
-        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Reviewer Scorecard</h4>
-          <p className="text-xs text-zinc-500">This review has already been submitted. It can be edited only if the Editor reopens the assignment.</p>
-        </section>
-      )}
-
-      {isReviewer && myReviewerAssignment && myReviewerAssignment.status !== 'completed' && (
-        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Reviewer Scorecard</h4>
-          {myReviewerAssignment.status === 'pending' && (
-            <PanelButton icon={CheckCircle2} loading={busyAction === 'accept-review'} onClick={() => runAction('accept-review', () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/accept`), 'Review assignment accepted.')}>Accept Review</PanelButton>
-          )}
-          {myReviewerAssignment.status === 'pending' ? (
-            <p className="text-xs text-zinc-500">Accept the invitation before submitting the review.</p>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <select value={reviewForm.recommendation} onChange={(e) => setReviewForm({ ...reviewForm, recommendation: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-                  {recommendationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                </select>
-                {['originality', 'methodology', 'citation_accuracy'].map((key) => (
-                  <input key={key} type="number" min="1" max="5" value={reviewForm[key]} onChange={(e) => setReviewForm({ ...reviewForm, [key]: Number(e.target.value) })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" placeholder={key.replaceAll('_', ' ')} />
-                ))}
-              </div>
-              <textarea value={reviewForm.comments_for_author} onChange={(e) => setReviewForm({ ...reviewForm, comments_for_author: e.target.value })} rows={2} placeholder="Comments for author..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-              <textarea value={reviewForm.confidential_comments} onChange={(e) => setReviewForm({ ...reviewForm, confidential_comments: e.target.value })} rows={2} placeholder="Confidential comments for editor..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-              {fileInput('reviewed_manuscript', 'Reviewed Manuscript')}
-              <PanelButton loading={busyAction === 'submit-review'} onClick={() => runAction('submit-review', () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/submit-review`, buildFormData({
-                recommendation: reviewForm.recommendation,
-                comments_for_author: reviewForm.comments_for_author,
-                confidential_comments: reviewForm.confidential_comments,
-                scorecard: {
-                  originality: reviewForm.originality,
-                  methodology: reviewForm.methodology,
-                  citation_accuracy: reviewForm.citation_accuracy,
-                },
-              }, { reviewed_manuscript: files.reviewed_manuscript }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Review submitted.')}>Submit Review</PanelButton>
-            </>
-          )}
-        </section>
-      )}
-
-      {canFinalDecision && (
-        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Final Editorial Decision</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <select value={decisionForm.decision} onChange={(e) => setDecisionForm({ ...decisionForm, decision: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-              {decisionOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-            <select value={decisionForm.decision_source} onChange={(e) => setDecisionForm({ ...decisionForm, decision_source: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-              {decisionSourceOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </div>
-          <textarea value={decisionForm.comments_for_author} onChange={(e) => setDecisionForm({ ...decisionForm, comments_for_author: e.target.value })} rows={2} placeholder="Comments for author..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-          <textarea value={decisionForm.internal_notes} onChange={(e) => setDecisionForm({ ...decisionForm, internal_notes: e.target.value })} rows={2} placeholder="Internal notes..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-          <PanelButton icon={FileCheck2} loading={busyAction === 'final-decision'} onClick={() => runAction('final-decision', () => api.post(`/admin/articles/${article.id}/final-decision`, decisionForm), 'Final decision recorded.')}>Record Decision</PanelButton>
-        </section>
-      )}
-
-      {canAssignProduction && (
-        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Production Assignment</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <select
-              value={productionForm.role}
-              onChange={(e) => {
-                setProductionForm({ ...productionForm, role: e.target.value, user_id: '' });
-                loadAssignees(e.target.value);
-              }}
-              className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950"
+            <Field label={screenForm.decision === 'reject' ? 'Reason for Author' : 'Screening Notes'} required={screenForm.decision === 'reject'}>
+              <Textarea value={screenForm.comments} onChange={(event) => setScreenForm({ ...screenForm, comments: event.target.value })} rows={3} />
+            </Field>
+            {fileInput('plagiarism_report', 'Similarity Report')}
+            <Button
+              type="button"
+              icon={ClipboardCheck}
+              isLoading={busyAction === 'screen'}
+              disabled={screenForm.decision === 'reject' && !screenForm.comments.trim()}
+              onClick={() => askConfirmation({
+                key: 'screen',
+                title: screenForm.decision === 'reject' ? 'Reject during screening?' : 'Send manuscript to review?',
+                message: screenForm.decision === 'reject'
+                  ? 'This will reject the manuscript during screening and notify the author-facing workflow with your reason.'
+                  : 'This will move the manuscript into editorial review.',
+                confirmText: screenForm.decision === 'reject' ? 'Reject Manuscript' : 'Send to Review',
+                variant: screenForm.decision === 'reject' ? 'danger' : 'primary',
+                run: () => runAction('screen', () => api.post(`/admin/articles/${article.id}/screen`, buildFormData({
+                  ...screenForm,
+                  plagiarism_score: screenForm.plagiarism_score === '' ? null : Number(screenForm.plagiarism_score),
+                }, { plagiarism_report: files.plagiarism_report }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Screening result saved.'),
+              })}
             >
-              <option value="copy_editor">Copy Editor</option>
-              <option value="proofreader">Proofreader</option>
-            </select>
-            <select value={productionForm.user_id} onChange={(e) => setProductionForm({ ...productionForm, user_id: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-              <option value="">Select assignee</option>
-              {(assignees[productionForm.role] || []).map((item) => <option key={item.id} value={item.id}>{item.name} ({item.email})</option>)}
-            </select>
-            <input type="date" value={productionForm.due_date} onChange={(e) => setProductionForm({ ...productionForm, due_date: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-          </div>
-          <PanelButton icon={UserPlus} loading={busyAction === 'assign-production'} disabled={!productionForm.user_id} onClick={() => runAction('assign-production', () => api.post(`/admin/articles/${article.id}/production-assignments`, {
-            user_id: Number(productionForm.user_id),
-            role: productionForm.role,
-            due_date: productionForm.due_date || null,
-          }), 'Production assignment created.')}>Assign Production</PanelButton>
-        </section>
-      )}
+              Save Screening
+            </Button>
+          </ActionBlock>
+        )}
 
-      {canCompleteProduction && (
-        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">My Production Task</h4>
-          <p className="text-xs text-zinc-500">Current task: {myProductionAssignment.role?.replaceAll('_', ' ')} ({myProductionAssignment.status})</p>
-          {fileInput('production_file', myProductionAssignment.role === 'proofreader' ? 'Proof File' : 'Copy-Edited File')}
-          <PanelButton icon={Check} loading={busyAction === 'complete-production'} onClick={() => runAction('complete-production', () => api.post(`/admin/production-assignments/${myProductionAssignment.id}/complete`, buildFormData({}, { production_file: files.production_file }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Production task completed.')}>Complete Task</PanelButton>
-        </section>
-      )}
-
-      {!canCompleteProduction && completedProductionAssignment && (
-        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Production Task</h4>
-          <p className="text-xs text-zinc-500">This {completedProductionAssignment.role?.replaceAll('_', ' ')} task is completed and is now read-only.</p>
-        </section>
-      )}
-
-      {canShowPublish && (
-        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Publication</h4>
-          <p className="text-xs text-zinc-500">{issues.length > 0 ? `${issues.length} issue(s) available for this magazine.` : 'No issue selection is required yet. Publication metadata can be entered in the publish dialog.'}</p>
-          <PanelButton icon={FileCheck2} onClick={onOpenPublish}>Publish Article</PanelButton>
-        </section>
-      )}
-
-      {canPostPublication && (
-        <section className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Post-Publication Action</h4>
-          <select value={postForm.action_type} onChange={(e) => setPostForm({ ...postForm, action_type: e.target.value })} className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
-            {postPublicationActions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-          <textarea value={postForm.reason} onChange={(e) => setPostForm({ ...postForm, reason: e.target.value })} rows={2} placeholder="Reason..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-          <textarea value={postForm.notice_text} onChange={(e) => setPostForm({ ...postForm, notice_text: e.target.value })} rows={2} placeholder="Public notice text..." className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950" />
-          <PanelButton icon={AlertCircle} loading={busyAction === 'post-publication'} disabled={!postForm.reason.trim() || !postForm.notice_text.trim()} onClick={() => runAction('post-publication', () => api.post(`/admin/articles/${article.id}/post-publication-actions`, postForm), 'Post-publication action recorded.')}>Record Action</PanelButton>
-        </section>
-      )}
-
-      <div className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-        <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Article Files</h4>
-        {(article.files || []).length === 0 ? (
-          <p className="text-xs text-zinc-500">No files are visible for your role.</p>
-        ) : (
-          <div className="space-y-2">
-            {(article.files || []).map((item) => (
-              <div key={item.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-850">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">{item.original_name}</p>
-                  <p className="text-[10px] text-zinc-450 font-mono">
-                    {item.file_type?.replaceAll('_', ' ')} · {item.uploader?.name || 'Unknown'} · {item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}
-                  </p>
+        {(canAssignSubEditor || canShowReviewerAssignment) && (
+          <ActionBlock title="Assignments" description="Assign the next person responsible for editorial review work.">
+            <div className="grid gap-4 md:grid-cols-2">
+              {canAssignSubEditor && (
+                <div className="space-y-2">
+                  <Field label="Sub Editor">
+                    <Select value={subEditorId} onChange={(event) => setSubEditorId(event.target.value)}>
+                      <option value="">Select Sub Editor</option>
+                      {(assignees.sub_editor || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </Select>
+                  </Field>
+                  <Button
+                    type="button"
+                    icon={UserPlus}
+                    isLoading={busyAction === 'assign-sub-editor'}
+                    disabled={!subEditorId}
+                    onClick={() => askConfirmation({
+                      key: 'assign-sub-editor',
+                      title: 'Assign Sub Editor?',
+                      message: 'This will assign the selected Sub Editor and move the manuscript into Sub Editor review.',
+                      confirmText: 'Assign Sub Editor',
+                      variant: 'primary',
+                      run: () => runAction('assign-sub-editor', () => api.post(`/admin/articles/${article.id}/assign-sub-editor`, { sub_editor_id: Number(subEditorId) }), 'Sub Editor assigned.'),
+                    })}
+                  >
+                    Assign Sub Editor
+                  </Button>
                 </div>
-                <a href={fileDownloadUrl(item.download_url)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 hover:underline">
-                  <Download className="w-3.5 h-3.5" />
-                  Open
-                </a>
-              </div>
-            ))}
-          </div>
+              )}
+              {canShowReviewerAssignment && (
+                <div className="space-y-2">
+                  <Field label="Reviewer">
+                    <Select value={reviewerId} onChange={(event) => setReviewerId(event.target.value)}>
+                      <option value="">Select Reviewer</option>
+                      {(assignees.reviewer || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </Select>
+                  </Field>
+                  <Button
+                    type="button"
+                    icon={UserPlus}
+                    isLoading={busyAction === 'assign-reviewer'}
+                    disabled={!reviewerId}
+                    onClick={() => askConfirmation({
+                      key: 'assign-reviewer',
+                      title: 'Assign Reviewer?',
+                      message: 'This will request review from the selected reviewer and move the manuscript into the review stage.',
+                      confirmText: 'Assign Reviewer',
+                      variant: 'primary',
+                      run: () => runAction('assign-reviewer', () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { reviewer_id: Number(reviewerId) }), 'Reviewer assigned.'),
+                    })}
+                  >
+                    Assign Reviewer
+                  </Button>
+                </div>
+              )}
+            </div>
+          </ActionBlock>
+        )}
+
+        {isSubEditor && mySubEditorAssignment && mySubEditorAssignment.status !== 'completed' && (
+          <ActionBlock title="Sub Editor Recommendation" description="Submit your recommendation back to the Editor.">
+            <Field label="Recommendation" required>
+              <Select value={subEditorForm.recommendation} onChange={(event) => setSubEditorForm({ ...subEditorForm, recommendation: event.target.value })}>
+                {recommendationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </Select>
+            </Field>
+            <Field label="Comments for Author">
+              <Textarea value={subEditorForm.comments} onChange={(event) => setSubEditorForm({ ...subEditorForm, comments: event.target.value })} rows={3} />
+            </Field>
+            <Field label="Internal Notes">
+              <Textarea value={subEditorForm.internal_notes} onChange={(event) => setSubEditorForm({ ...subEditorForm, internal_notes: event.target.value })} rows={3} />
+            </Field>
+            {fileInput('annotated_manuscript', 'Annotated Manuscript')}
+            <Button
+              type="button"
+              icon={Send}
+              isLoading={busyAction === 'sub-editor-recommendation'}
+              onClick={() => askConfirmation({
+                key: 'sub-editor-recommendation',
+                title: 'Submit recommendation?',
+                message: 'This will record your recommendation and return the manuscript to editorial review.',
+                confirmText: 'Submit Recommendation',
+                variant: 'primary',
+                run: () => runAction('sub-editor-recommendation', () => api.post(`/admin/sub-editor-assignments/${mySubEditorAssignment.id}/submit-recommendation`, buildFormData(subEditorForm, { annotated_manuscript: files.annotated_manuscript }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Recommendation submitted.'),
+              })}
+            >
+              Submit Recommendation
+            </Button>
+          </ActionBlock>
+        )}
+
+        {isReviewer && myReviewerAssignment && myReviewerAssignment.status !== 'completed' && (
+          <ActionBlock title="Reviewer Work" description="Accept your invitation, then submit your scorecard and recommendation.">
+            {myReviewerAssignment.status === 'pending' ? (
+              <>
+                <Alert tone="info" title="Review invitation pending">Accept the invitation before submitting a review.</Alert>
+                <Button
+                  type="button"
+                  icon={CheckCircle2}
+                  isLoading={busyAction === 'accept-review'}
+                  onClick={() => askConfirmation({
+                    key: 'accept-review',
+                    title: 'Accept review invitation?',
+                    message: 'This will mark the review as accepted and move the manuscript into active review.',
+                    confirmText: 'Accept Review',
+                    variant: 'primary',
+                    run: () => runAction('accept-review', () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/accept`), 'Review assignment accepted.'),
+                  })}
+                >
+                  Accept Review
+                </Button>
+              </>
+            ) : (
+              <>
+                <Field label="Recommendation" required>
+                  <Select value={reviewForm.recommendation} onChange={(event) => setReviewForm({ ...reviewForm, recommendation: event.target.value })}>
+                    {recommendationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </Select>
+                </Field>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {['originality', 'methodology', 'citation_accuracy'].map((key) => (
+                    <Field key={key} label={key.replaceAll('_', ' ')}>
+                      <Input type="number" min="1" max="5" value={reviewForm[key]} onChange={(event) => setReviewForm({ ...reviewForm, [key]: Number(event.target.value) })} />
+                    </Field>
+                  ))}
+                </div>
+                <Field label="Comments for Author">
+                  <Textarea value={reviewForm.comments_for_author} onChange={(event) => setReviewForm({ ...reviewForm, comments_for_author: event.target.value })} rows={3} />
+                </Field>
+                <Field label="Confidential Comments for Editor">
+                  <Textarea value={reviewForm.confidential_comments} onChange={(event) => setReviewForm({ ...reviewForm, confidential_comments: event.target.value })} rows={3} />
+                </Field>
+                {fileInput('reviewed_manuscript', 'Reviewed Manuscript')}
+                <Button
+                  type="button"
+                  icon={Send}
+                  isLoading={busyAction === 'submit-review'}
+                  onClick={() => askConfirmation({
+                    key: 'submit-review',
+                    title: 'Submit review?',
+                    message: 'This will mark your review as completed and return the manuscript to editorial review.',
+                    confirmText: 'Submit Review',
+                    variant: 'primary',
+                    run: () => runAction('submit-review', () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/submit-review`, buildFormData({
+                      recommendation: reviewForm.recommendation,
+                      comments_for_author: reviewForm.comments_for_author,
+                      confidential_comments: reviewForm.confidential_comments,
+                      scorecard: {
+                        originality: reviewForm.originality,
+                        methodology: reviewForm.methodology,
+                        citation_accuracy: reviewForm.citation_accuracy,
+                      },
+                    }, { reviewed_manuscript: files.reviewed_manuscript }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Review submitted.'),
+                  })}
+                >
+                  Submit Review
+                </Button>
+              </>
+            )}
+          </ActionBlock>
+        )}
+
+        {canFinalDecision && (
+          <ActionBlock title="Editorial Decision" description="Record the next editorial outcome for the manuscript.">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Decision" required>
+                <Select value={decisionForm.decision} onChange={(event) => setDecisionForm({ ...decisionForm, decision: event.target.value })}>
+                  {decisionOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </Select>
+              </Field>
+              <Field label="Decision Source" required>
+                <Select value={decisionForm.decision_source} onChange={(event) => setDecisionForm({ ...decisionForm, decision_source: event.target.value })}>
+                  {decisionSourceOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </Select>
+              </Field>
+            </div>
+            <Field label="Comments for Author">
+              <Textarea value={decisionForm.comments_for_author} onChange={(event) => setDecisionForm({ ...decisionForm, comments_for_author: event.target.value })} rows={3} />
+            </Field>
+            <Field label="Internal Notes">
+              <Textarea value={decisionForm.internal_notes} onChange={(event) => setDecisionForm({ ...decisionForm, internal_notes: event.target.value })} rows={3} />
+            </Field>
+            <Button
+              type="button"
+              icon={FileCheck2}
+              isLoading={busyAction === 'final-decision'}
+              onClick={() => askConfirmation({
+                key: 'final-decision',
+                title: 'Record editorial decision?',
+                message: decisionForm.decision === 'accepted'
+                  ? 'This will mark the manuscript as accepted and make it available for production or publication handling.'
+                  : decisionForm.decision === 'rejected'
+                    ? 'This will reject the manuscript and close the editorial workflow for the author.'
+                    : 'This will request a revision from the author and move the manuscript into the revision stage.',
+                confirmText: 'Record Decision',
+                variant: decisionForm.decision === 'rejected' ? 'danger' : 'primary',
+                run: () => runAction('final-decision', () => api.post(`/admin/articles/${article.id}/final-decision`, decisionForm), 'Final decision recorded.'),
+              })}
+            >
+              Record Decision
+            </Button>
+          </ActionBlock>
+        )}
+
+        {canShowProductionAssignment && (
+          <ActionBlock title="Production Assignment" description="Assign copyediting or proofing work for the accepted manuscript.">
+            <div className="grid gap-3 md:grid-cols-3">
+              <Field label="Production Role">
+                <Select
+                  value={productionForm.role}
+                  onChange={(event) => {
+                    setProductionForm({ ...productionForm, role: event.target.value, user_id: '' });
+                    loadAssignees(event.target.value);
+                  }}
+                >
+                  <option value="copy_editor">Copy Editor</option>
+                  <option value="proofreader">Proofreader</option>
+                </Select>
+              </Field>
+              <Field label="Assignee">
+                <Select value={productionForm.user_id} onChange={(event) => setProductionForm({ ...productionForm, user_id: event.target.value })}>
+                  <option value="">Select assignee</option>
+                  {(assignees[productionForm.role] || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </Select>
+              </Field>
+              <Field label="Due Date">
+                <Input type="date" value={productionForm.due_date} onChange={(event) => setProductionForm({ ...productionForm, due_date: event.target.value })} />
+              </Field>
+            </div>
+            <Button
+              type="button"
+              icon={UserPlus}
+              isLoading={busyAction === 'assign-production'}
+              disabled={!productionForm.user_id}
+              onClick={() => askConfirmation({
+                key: 'assign-production',
+                title: productionForm.role === 'proofreader' ? 'Send to proofreading?' : 'Send to copyediting?',
+                message: productionForm.role === 'proofreader'
+                  ? 'This will assign proofing work and move the manuscript into proofreading.'
+                  : 'This will assign copyediting work and move the manuscript into copyediting.',
+                confirmText: 'Assign Production',
+                variant: 'primary',
+                run: () => runAction('assign-production', () => api.post(`/admin/articles/${article.id}/production-assignments`, {
+                  user_id: Number(productionForm.user_id),
+                  role: productionForm.role,
+                  due_date: productionForm.due_date || null,
+                }), 'Production assignment created.'),
+              })}
+            >
+              Assign Production
+            </Button>
+          </ActionBlock>
+        )}
+
+        {canCompleteProduction && (
+          <ActionBlock title="My Production Task" description="Complete your assigned production work when the manuscript file is ready.">
+            <p className="text-sm text-[var(--muted)]">Current task: {myProductionAssignment.role?.replaceAll('_', ' ')}.</p>
+            {fileInput('production_file', myProductionAssignment.role === 'proofreader' ? 'Proof File' : 'Copyedited Manuscript')}
+            <Button
+              type="button"
+              icon={Check}
+              isLoading={busyAction === 'complete-production'}
+              onClick={() => askConfirmation({
+                key: 'complete-production',
+                title: 'Complete production task?',
+                message: 'This will mark your production task as complete and move the manuscript toward publication readiness.',
+                confirmText: 'Complete Task',
+                variant: 'primary',
+                run: () => runAction('complete-production', () => api.post(`/admin/production-assignments/${myProductionAssignment.id}/complete`, buildFormData({}, { production_file: files.production_file }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Production task completed.'),
+              })}
+            >
+              Complete Task
+            </Button>
+          </ActionBlock>
+        )}
+
+        {!canCompleteProduction && completedProductionAssignment && (
+          <Alert tone="success" title="Production task complete">
+            This {completedProductionAssignment.role?.replaceAll('_', ' ')} assignment is completed and read-only.
+          </Alert>
+        )}
+
+        {canShowPublish && (
+          <ActionBlock title="Publication" description="Finalize issue placement, publication metadata, and the published PDF where needed.">
+            <Button type="button" icon={FileCheck2} onClick={onOpenPublish}>Publish Manuscript</Button>
+          </ActionBlock>
+        )}
+
+        {canPostPublication && (
+          <ActionBlock title="Post-Publication Action" description="Record a correction, retraction, update, archive, or unpublish action.">
+            <Field label="Action Type">
+              <Select value={postForm.action_type} onChange={(event) => setPostForm({ ...postForm, action_type: event.target.value })}>
+                {postPublicationActions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </Select>
+            </Field>
+            <Field label="Reason" required>
+              <Textarea value={postForm.reason} onChange={(event) => setPostForm({ ...postForm, reason: event.target.value })} rows={3} />
+            </Field>
+            <Field label="Public Notice" required>
+              <Textarea value={postForm.notice_text} onChange={(event) => setPostForm({ ...postForm, notice_text: event.target.value })} rows={3} />
+            </Field>
+            <Button
+              type="button"
+              icon={FileCheck2}
+              isLoading={busyAction === 'post-publication'}
+              disabled={!postForm.reason.trim() || !postForm.notice_text.trim()}
+              onClick={() => askConfirmation({
+                key: 'post-publication',
+                title: 'Record post-publication action?',
+                message: 'This will record a public post-publication action and may change the publication state.',
+                confirmText: 'Record Action',
+                variant: postForm.action_type === 'retraction' || postForm.action_type === 'unpublish' ? 'danger' : 'primary',
+                run: () => runAction('post-publication', () => api.post(`/admin/articles/${article.id}/post-publication-actions`, postForm), 'Post-publication action recorded.'),
+              })}
+            >
+              Record Action
+            </Button>
+          </ActionBlock>
         )}
       </div>
 
-      <div className="p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 space-y-3">
-        <div className="flex items-center gap-2">
-          <History className="w-4 h-4 text-amber-600" />
-          <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Version History</h4>
-        </div>
-        {(article.versions || []).length === 0 ? (
-          <p className="text-xs text-zinc-500">No version snapshots have been recorded yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {(article.versions || []).map((version) => (
-              <div key={version.id} className="rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-850 p-3 space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs font-black text-zinc-900 dark:text-zinc-100">
-                      v{version.version_number} · {version.label || 'Snapshot'}
-                    </p>
-                    <p className="text-[10px] text-zinc-450 font-mono">
-                      {version.status_snapshot?.replaceAll('_', ' ')} · {version.creator?.name || 'Unknown'} · {version.created_at ? new Date(version.created_at).toLocaleString() : ''}
-                    </p>
-                  </div>
-                </div>
-                {(version.change_summary || version.author_response) && (
-                  <div className="space-y-1 text-xs text-zinc-600 dark:text-zinc-350">
-                    {version.change_summary && <p><span className="font-bold">Summary:</span> {version.change_summary}</p>}
-                    {version.author_response && <p><span className="font-bold">Author response:</span> {version.author_response}</p>}
-                  </div>
-                )}
-                {(version.files || []).length === 0 ? (
-                  <p className="text-[10px] text-zinc-450">No files are visible for this version.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {(version.files || []).map((file) => (
-                      <div key={file.id} className="flex items-center justify-between gap-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-850 px-2.5 py-2">
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 truncate">{file.original_name}</p>
-                          <p className="text-[9px] text-zinc-450 font-mono">{file.file_type?.replaceAll('_', ' ')}</p>
-                        </div>
-                        <a href={fileDownloadUrl(file.download_url)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 hover:underline">
-                          <Download className="w-3.5 h-3.5" />
-                          Open
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      <ConfirmationModal
+        isOpen={Boolean(confirmAction)}
+        title={confirmAction?.title}
+        message={confirmAction?.message}
+        confirmText={confirmAction?.confirmText || 'Confirm'}
+        variant={confirmAction?.variant === 'danger' ? 'danger' : 'primary'}
+        isLoading={busyAction === confirmAction?.key}
+        onCancel={() => setConfirmAction(null)}
+        onConfirm={() => confirmAction?.run()}
+      />
+    </WorkflowSection>
   );
 }

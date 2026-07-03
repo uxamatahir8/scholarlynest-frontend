@@ -1,26 +1,36 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { AlertCircle, Loader2, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import DOMPurify from 'dompurify';
+import { ArrowRight } from 'lucide-react';
 import api from '../../../../utils/api';
-import { logError } from '../../../../utils/safeLogger';
+import { logWarn } from '../../../../utils/safeLogger';
+import { useAuth } from '../../../../context/AuthContext';
 import SeoHead from '../../../../components/SeoHead';
-import MagazineArticleCarousel from '../../../../components/magazine/MagazineArticleCarousel';
+import LoadingState from '../../../../components/ui/LoadingState';
+import ErrorState from '../../../../components/ui/ErrorState';
 
-const getFullImageUrl = (path) => {
-  if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
-  if (path.startsWith('/images/') || path.startsWith('images/')) return path.startsWith('/') ? path : '/' + path;
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-  const domain = apiBase.replace(/\/api$/, '');
-  const cleanPath = path.startsWith('/') ? path : '/' + path;
-  return `${domain}${cleanPath}`;
+const cleanHtml = (html = '') => {
+  if (!html) return '';
+  if (typeof window !== 'undefined') return DOMPurify.sanitize(html);
+  return html;
+};
+
+const issueLabel = (issue) => {
+  if (!issue) return '';
+  const parts = [];
+  if (issue.volume_number) parts.push(`Volume ${issue.volume_number}`);
+  if (issue.issue_number) parts.push(`Issue ${issue.issue_number}`);
+  if (issue.issue_month || issue.issue_year) parts.push([issue.issue_month, issue.issue_year].filter(Boolean).join(' '));
+  return parts.join(' - ');
 };
 
 export default function MagazineAboutPage() {
   const params = useParams();
   const slug = params?.slug;
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +38,7 @@ export default function MagazineAboutPage() {
 
   useEffect(() => {
     if (!slug) return;
+    let active = true;
 
     const fetchPage = async () => {
       try {
@@ -37,80 +48,96 @@ export default function MagazineAboutPage() {
           api.get(`/magazines/${slug}/about-and-overview`),
           api.get(`/magazines/${slug}/latest-published-articles`, { params: { limit: 10 } }),
         ]);
+        if (!active) return;
         setData(aboutRes.data);
         setArticles(articlesRes.data?.data || []);
       } catch (err) {
-        logError('Failed to load magazine about page', err);
-        setError('The requested magazine overview could not be loaded.');
+        logWarn('Magazine overview unavailable', err.message);
+        if (active) setError('The requested magazine overview could not be loaded.');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     fetchPage();
+    return () => {
+      active = false;
+    };
   }, [slug]);
 
-  const handleTrackClick = async (articleId) => {
-    try {
-      await api.post(`/articles/${articleId}/click`);
-    } catch (err) {
-      logError('Failed to track click', err);
-    }
-  };
+  const magazine = data?.magazine;
+  const cleanAboutHtml = useMemo(() => cleanHtml(magazine?.about_text || ''), [magazine]);
+  const latestIssueArticle = useMemo(() => articles.find((article) => article.issue), [articles]);
+  const latestArticles = useMemo(() => articles.slice(0, 3), [articles]);
+  const submitHref = user ? '/admin/articles/new' : '/login';
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
-        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono">Loading overview...</span>
-      </div>
-    );
+  if (loading) return <LoadingState label="Loading overview..." className="min-h-[320px]" />;
+
+  if (error || !magazine) {
+    return <ErrorState title="Overview could not be loaded">{error || 'Overview could not be resolved.'}</ErrorState>;
   }
-
-  if (error || !data?.magazine) {
-    return (
-      <div className="max-w-md mx-auto flex items-center space-x-3 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl text-red-700 dark:text-red-400 text-xs">
-        <AlertCircle className="w-5 h-5 shrink-0" />
-        <span className="font-semibold">{error || 'Overview could not be resolved.'}</span>
-      </div>
-    );
-  }
-
-  const magazine = data.magazine;
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-300">
+    <div className="space-y-12">
       <SeoHead title={data.seo?.title} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/magazines/${slug}/about-and-overview`} />
 
-      <section className="space-y-6">
-        <div className="border-b border-zinc-100 dark:border-zinc-900/80 pb-4">
-          <h2 className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">About the Magazine</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_160px] gap-6 items-start">
-          <div className="space-y-5">
-            <p className="text-zinc-650 dark:text-zinc-350 text-sm leading-relaxed font-medium">{magazine.description}</p>
-            <div className="text-zinc-650 dark:text-zinc-350 text-sm leading-relaxed prose dark:prose-invert max-w-none font-serif tracking-normal" dangerouslySetInnerHTML={{ __html: magazine.about_text || 'No comprehensive overview description has been drafted for this publication.' }} />
-          </div>
-          {magazine.cover_image && (
-            <div className="hidden md:block rounded-xl overflow-hidden border border-zinc-200/70 dark:border-zinc-850 bg-white/80 dark:bg-zinc-900/30 shadow-sm">
-              <img src={getFullImageUrl(magazine.cover_image)} alt={magazine.title} className="w-full aspect-[3/4] object-cover" />
-            </div>
+      {(magazine.description || cleanAboutHtml) && (
+        <section aria-labelledby="about-magazine-heading">
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Overview</p>
+          <h2 id="about-magazine-heading" className="mt-2 font-serif text-3xl font-bold text-zinc-950 dark:text-white sm:text-4xl">{magazine.title}</h2>
+          {magazine.description && <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-650 dark:text-zinc-300">{magazine.description}</p>}
+          {cleanAboutHtml && (
+            <div className="cms-content-prose mt-8 max-w-none" dangerouslySetInnerHTML={{ __html: cleanAboutHtml }} />
           )}
-        </div>
-      </section>
+        </section>
+      )}
 
-      <section className="space-y-6" aria-labelledby="magazine-latest-articles-heading">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-t border-zinc-100 dark:border-zinc-900/80 pt-8">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/5 border border-amber-500/10 text-[9px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">
-              <Sparkles className="w-3 h-3" />
-              Latest Published Articles
-            </div>
-            <h3 id="magazine-latest-articles-heading" className="font-serif text-xl font-bold text-zinc-900 dark:text-white">Published in {magazine.title}</h3>
+      {latestIssueArticle && (
+        <section className="grid gap-8 border-t border-[var(--border)] pt-10 lg:grid-cols-[0.36fr_0.64fr]" aria-labelledby="latest-issue-heading">
+          <div>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Latest available issue</p>
+            <h2 id="latest-issue-heading" className="mt-2 font-serif text-3xl font-bold text-zinc-950 dark:text-white">Issue context</h2>
           </div>
-        </div>
-        <MagazineArticleCarousel articles={articles} coverImage={magazine.cover_image} getImageUrl={getFullImageUrl} onArticleClick={handleTrackClick} />
-      </section>
+          <article className="max-w-3xl border-y border-[var(--border)] py-6">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{issueLabel(latestIssueArticle.issue) || 'Published issue'}</p>
+            <h3 className="mt-2 font-serif text-2xl font-bold text-zinc-950 dark:text-white">{latestIssueArticle.issue?.special_title || latestIssueArticle.title}</h3>
+            <p className="mt-3 text-sm leading-7 text-zinc-600 dark:text-zinc-350">Latest article in this issue: {latestIssueArticle.title}</p>
+            <Link href={`/magazines/${slug}/table-of-contents`} className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300">
+              Browse this issue <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </article>
+        </section>
+      )}
+
+      {latestArticles.length > 0 && (
+        <section className="border-t border-[var(--border)] pt-10" aria-labelledby="latest-articles-heading">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Latest published articles</p>
+            <h2 id="latest-articles-heading" className="mt-2 font-serif text-3xl font-bold text-zinc-950 dark:text-white">Recent research</h2>
+          </div>
+          <div className="mt-6 divide-y divide-[var(--border)]">
+            {latestArticles.map((article) => (
+              <article key={article.id} className="py-5">
+                <h3 className="font-serif text-xl font-bold leading-snug text-zinc-950 dark:text-white">
+                  <Link href={`/articles/${article.slug}`} className="underline-offset-4 hover:text-amber-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:text-amber-300">
+                    {article.title}
+                  </Link>
+                </h3>
+                {article.issue && <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{issueLabel(article.issue)}</p>}
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="flex flex-col gap-3 border-t border-[var(--border)] pt-10 sm:flex-row">
+        <Link href={`/magazines/${slug}/table-of-contents`} className="inline-flex min-h-11 items-center justify-center rounded-md bg-zinc-950 px-5 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">
+          View Table of Contents
+        </Link>
+        <Link href={submitHref} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-5 text-sm font-bold text-zinc-850 transition-colors hover:bg-zinc-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-zinc-100 dark:hover:bg-zinc-900">
+          Submit Article <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </div>
     </div>
   );
 }
