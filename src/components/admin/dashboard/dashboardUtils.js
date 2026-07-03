@@ -1,5 +1,3 @@
-import { BookOpen, ClipboardCheck, FileText, Newspaper, Settings, Users } from 'lucide-react';
-
 export const completedAssignmentStatuses = new Set(['completed']);
 
 export function articleQueueItem(article, actionLabel = 'Open Article') {
@@ -42,13 +40,33 @@ export function publicationQueueItem(article, actionLabel = 'Open Publishing') {
   };
 }
 
-export function validAdminLinks({ includeUsers = false, includeNewsletter = true } = {}) {
-  return [
-    includeUsers ? { label: 'Users', href: '/admin/users', icon: Users, description: 'Manage authorized console accounts.' } : null,
-    { label: 'Articles', href: '/admin/articles', icon: FileText, description: 'Open the full manuscript queue.' },
-    { label: 'Magazines', href: '/admin/magazines', icon: BookOpen, description: 'Review publication catalog records.' },
-    { label: 'FAQ Management', href: '/admin/cms/faqs', icon: ClipboardCheck, description: 'Maintain public help content.' },
-    includeNewsletter ? { label: 'Newsletter', href: '/admin/newsletter', icon: Newspaper, description: 'Review communications tools.' } : null,
-    { label: 'Settings', href: '/admin/settings', icon: Settings, description: 'Manage your account and security.' },
-  ].filter(Boolean);
+const TOOL_DESCRIPTIONS = {
+  '/admin/users': 'Manage authorized console accounts.',
+  '/admin/articles': 'Open the full manuscript queue.',
+  '/admin/magazines': 'Review publication catalog records.',
+  '/admin/cms/faqs': 'Maintain public help content.',
+  '/admin/newsletter': 'Open newsletter communications.',
+  '/admin/settings': 'Manage account and security settings.',
+  '/admin/editor/sub-editors': 'Manage assigned sub-editor relationships.',
+  '/admin/issues': 'Manage issue records and publication placement.',
+  '/admin/sub-editor': 'Open your assigned recommendation desk.',
+  '/admin/reviewer': 'Open your assigned review desk.',
+  '/admin/copy-editor': 'Open your copyediting assignments.',
+  '/admin/proofreader': 'Open your proofing assignments.',
+  '/admin/publisher': 'Open publication-ready work.',
+  '/admin/articles/new': 'Start a manuscript submission.',
+};
+
+export function dashboardLinksFromNavigation(navigation, preferredHrefs = [], limit = 6) {
+  const items = navigation.flatMap((section) => section.items);
+  const byHref = new Map(items.map((item) => [item.href, item]));
+  const preferred = preferredHrefs.map((href) => byHref.get(href)).filter(Boolean);
+  const fallback = items.filter((item) => !preferredHrefs.includes(item.href));
+
+  return [...preferred, ...fallback].slice(0, limit).map((item) => ({
+    label: item.label,
+    href: item.href,
+    icon: item.icon,
+    description: TOOL_DESCRIPTIONS[item.href],
+  }));
 }

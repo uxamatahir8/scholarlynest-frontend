@@ -78,10 +78,10 @@ export default function ConsoleShell({ children, auth }) {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[var(--console-bg)] text-[var(--foreground)]">
-      <div className="flex min-h-screen">
+    <div className="h-screen overflow-hidden bg-[var(--console-bg)] text-[var(--foreground)]">
+      <div className="flex h-full min-h-0">
         <ConsoleSidebar user={user} navigation={navigation} pathname={pathname} />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <ConsoleImpersonationBanner
             impersonationStatus={impersonationStatus}
             onReturn={handleReturnToSuperAdmin}
@@ -100,7 +100,7 @@ export default function ConsoleShell({ children, auth }) {
             onStopImpersonation={handleReturnToSuperAdmin}
             stoppingImpersonation={stoppingImpersonation}
           />
-          <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
             <div className="mx-auto w-full max-w-[1600px]">
               {children}
             </div>

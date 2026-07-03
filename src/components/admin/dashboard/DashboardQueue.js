@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import DashboardQueueRow from './DashboardQueueRow';
 import DashboardEmptyState from './DashboardEmptyState';
 
-export default function DashboardQueue({ title, description, items = [], emptyTitle, emptyDescription, actionHref, actionLabel }) {
+export default function DashboardQueue({ title, description, items = [], emptyTitle, emptyDescription, actionHref, actionLabel, priority = false }) {
   return (
     <section className="space-y-3" aria-labelledby={`${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-queue`}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -22,8 +22,8 @@ export default function DashboardQueue({ title, description, items = [], emptyTi
       {items.length === 0 ? (
         <DashboardEmptyState title={emptyTitle || 'No work in this queue'}>{emptyDescription || 'There is nothing waiting here right now.'}</DashboardEmptyState>
       ) : (
-        <ul className="space-y-3">
-          {items.map((item) => <DashboardQueueRow key={item.id} item={item} />)}
+        <ul className={priority ? 'divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] bg-[var(--surface)]' : 'space-y-2'}>
+          {items.map((item) => <DashboardQueueRow key={item.id} item={item} compact={!priority} />)}
         </ul>
       )}
     </section>

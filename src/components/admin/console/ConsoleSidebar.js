@@ -52,7 +52,7 @@ export function ConsoleNavigationList({ navigation, pathname, onNavigate, compac
 
 export default function ConsoleSidebar({ user, navigation, pathname }) {
   return (
-    <aside className="hidden h-screen w-[var(--console-sidebar-width)] shrink-0 border-r border-[var(--border)] bg-[var(--console-sidebar-bg)] lg:flex lg:flex-col" aria-label="Console sidebar">
+    <aside className="hidden h-screen w-[var(--console-sidebar-width)] shrink-0 border-r border-[var(--border)] bg-[var(--console-sidebar-bg)] lg:sticky lg:top-0 lg:flex lg:flex-col" aria-label="Console sidebar">
       <div className="flex min-h-[var(--console-topbar-height)] items-center border-b border-[var(--border)] px-6">
         <Link href="/admin" className="flex min-w-0 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
           <Image src="/logo.png" alt="ScholarlyNest" width={690} height={362} className="h-9 w-auto object-contain" priority />

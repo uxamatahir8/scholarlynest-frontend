@@ -15,13 +15,17 @@ import DashboardQuickLinks from './DashboardQuickLinks';
 import { articleQueueItem } from './dashboardUtils';
 
 async function fetchArticleQueue(queue) {
-  const params = { per_page: queue.limit || 5 };
-  if (queue.status) params.status = queue.status;
-  const response = await api.get('/admin/articles', { params });
-  const data = response.data?.data || [];
+  const statuses = queue.statuses || (queue.status ? [queue.status] : [null]);
+  const previewLimit = queue.previewLimit || 3;
+  const responses = await Promise.all(statuses.map((status) => {
+    const params = { per_page: previewLimit };
+    if (status) params.status = status;
+    return api.get('/admin/articles', { params });
+  }));
+  const data = responses.flatMap((response) => response.data?.data || []).slice(0, previewLimit);
   return {
     ...queue,
-    total: response.data?.total ?? data.length,
+    total: responses.reduce((sum, response) => sum + (response.data?.total ?? response.data?.data?.length ?? 0), 0),
     items: data.map((article) => articleQueueItem(article, queue.itemActionLabel)),
   };
 }
@@ -68,10 +72,25 @@ export default function ArticleDashboardWorkspace({ title, description, action, 
         <ErrorState title="Workspace could not be loaded">{error}</ErrorState>
       ) : (
         <>
-          <DashboardSummary items={summaryItems} />
-          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.6fr)]">
-            <div className="space-y-8">
-              {queueData.map((queue) => (
+          <div className="space-y-8">
+            <DashboardSummary items={summaryItems} />
+            {queueData[0] && (
+              <DashboardQueue
+                title={queueData[0].title}
+                description={queueData[0].description}
+                items={queueData[0].items}
+                emptyTitle={queueData[0].emptyTitle}
+                emptyDescription={queueData[0].emptyDescription}
+                actionHref={queueData[0].actionHref}
+                actionLabel={queueData[0].actionLabel}
+                priority
+              />
+            )}
+          </div>
+
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+            <div className="space-y-7">
+              {queueData.slice(1).map((queue) => (
                 <DashboardQueue
                   key={queue.key}
                   title={queue.title}
@@ -84,7 +103,7 @@ export default function ArticleDashboardWorkspace({ title, description, action, 
                 />
               ))}
             </div>
-            <DashboardSection title="Useful Links" description="Open the full tools for this workspace.">
+            <DashboardSection title="Workspace Tools" description="Managed links available to your current role.">
               <DashboardQuickLinks links={quickLinks} />
             </DashboardSection>
           </div>

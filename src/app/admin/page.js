@@ -1,22 +1,23 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { BookOpen, ClipboardCheck, FileText, Settings, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getPrimaryRole, hasRole as userHasRole, normalizeRoleName } from '../../utils/roles';
+import { getVisibleConsoleNavigation } from '../../components/admin/console/consoleNavigation';
 import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
 import ArticleDashboardWorkspace, { dashboardIcons } from '../../components/admin/dashboard/ArticleDashboardWorkspace';
 import AssignmentDashboardWorkspace from '../../components/admin/dashboard/AssignmentDashboardWorkspace';
 import PublisherDashboardWorkspace from '../../components/admin/dashboard/PublisherDashboardWorkspace';
-import { validAdminLinks } from '../../components/admin/dashboard/dashboardUtils';
+import { dashboardLinksFromNavigation } from '../../components/admin/dashboard/dashboardUtils';
 
 const superAdminQueues = [
   {
     key: 'submitted',
     title: 'Articles Requiring Attention',
     description: 'Submitted manuscripts waiting for editorial screening.',
-    status: 'submitted',
+    statuses: ['submitted'],
+    statusScope: 'submitted',
     icon: dashboardIcons.submitted,
     emptyTitle: 'No submitted manuscripts waiting',
     emptyDescription: 'New submissions will appear here when authors send manuscripts for review.',
@@ -28,7 +29,8 @@ const superAdminQueues = [
     key: 'under-review',
     title: 'Active Review Work',
     description: 'Manuscripts currently moving through review and editorial follow-up.',
-    status: 'under_review',
+    statuses: ['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress'],
+    statusScope: 'under_review, assigned_to_sub_editor, reviewer_assigned, review_in_progress',
     icon: dashboardIcons.active,
     emptyTitle: 'No active review work',
     emptyDescription: 'Manuscripts under review will appear here.',
@@ -40,7 +42,8 @@ const superAdminQueues = [
     key: 'revision',
     title: 'Revision Follow-up',
     description: 'Manuscripts waiting on author revision or resubmission review.',
-    status: 'revision_required',
+    statuses: ['revision_required', 'minor_revision_required', 'major_revision_required', 'resubmitted'],
+    statusScope: 'revision_required, minor_revision_required, major_revision_required, resubmitted',
     icon: dashboardIcons.article,
     emptyTitle: 'No revision follow-up',
     emptyDescription: 'Revision requests and resubmissions will appear here when action is needed.',
@@ -55,7 +58,8 @@ const adminQueues = [
     key: 'submitted',
     title: 'Administrative Article Queue',
     description: 'Manuscripts visible to your role that need review or routing.',
-    status: 'submitted',
+    statuses: ['submitted'],
+    statusScope: 'submitted',
     icon: dashboardIcons.submitted,
     emptyTitle: 'No submitted manuscripts waiting',
     emptyDescription: 'Submitted manuscripts will appear here when they are visible to your role.',
@@ -67,7 +71,8 @@ const adminQueues = [
     key: 'active',
     title: 'Active Manuscripts',
     description: 'Work currently moving through editorial or publishing steps.',
-    status: 'under_review',
+    statuses: ['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress'],
+    statusScope: 'under_review, assigned_to_sub_editor, reviewer_assigned, review_in_progress',
     icon: dashboardIcons.active,
     emptyTitle: 'No active manuscripts',
     emptyDescription: 'Active manuscripts will appear here when available.',
@@ -82,7 +87,8 @@ const editorialQueues = [
     key: 'submitted',
     title: 'Awaiting Editorial Screening',
     description: 'New submissions assigned to magazines you can manage.',
-    status: 'submitted',
+    statuses: ['submitted'],
+    statusScope: 'submitted',
     icon: dashboardIcons.submitted,
     emptyTitle: 'No manuscripts awaiting screening',
     emptyDescription: 'New submitted manuscripts will appear here.',
@@ -94,7 +100,8 @@ const editorialQueues = [
     key: 'review',
     title: 'Review in Progress',
     description: 'Manuscripts currently in review or awaiting editorial follow-up.',
-    status: 'under_review',
+    statuses: ['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress'],
+    statusScope: 'under_review, assigned_to_sub_editor, reviewer_assigned, review_in_progress',
     icon: dashboardIcons.active,
     emptyTitle: 'No review work in progress',
     emptyDescription: 'Reviewer-assigned manuscripts will appear here.',
@@ -106,7 +113,8 @@ const editorialQueues = [
     key: 'revision',
     title: 'Revision Follow-up',
     description: 'Manuscripts requiring author revision or resubmission handling.',
-    status: 'revision_required',
+    statuses: ['revision_required', 'minor_revision_required', 'major_revision_required', 'resubmitted'],
+    statusScope: 'revision_required, minor_revision_required, major_revision_required, resubmitted',
     icon: dashboardIcons.article,
     emptyTitle: 'No revision requests',
     emptyDescription: 'Revision-required manuscripts will appear here when available.',
@@ -121,7 +129,8 @@ const authorQueues = [
     key: 'drafts',
     title: 'Draft Manuscripts',
     description: 'Manuscripts you have started but not submitted.',
-    status: 'draft',
+    statuses: ['draft'],
+    statusScope: 'draft',
     icon: dashboardIcons.article,
     emptyTitle: 'No drafts yet',
     emptyDescription: 'Start a new submission when you are ready to prepare a manuscript.',
@@ -133,7 +142,8 @@ const authorQueues = [
     key: 'submitted',
     title: 'Submitted Manuscripts',
     description: 'Your manuscripts currently waiting in the review process.',
-    status: 'submitted',
+    statuses: ['submitted', 'under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress'],
+    statusScope: 'submitted, under_review, assigned_to_sub_editor, reviewer_assigned, review_in_progress',
     icon: dashboardIcons.submitted,
     emptyTitle: 'No submitted manuscripts',
     emptyDescription: 'Submitted manuscripts will appear here after you send them for review.',
@@ -145,7 +155,8 @@ const authorQueues = [
     key: 'revision',
     title: 'Revision Requests',
     description: 'Manuscripts that need an author revision response.',
-    status: 'revision_required',
+    statuses: ['revision_required', 'minor_revision_required', 'major_revision_required'],
+    statusScope: 'revision_required, minor_revision_required, major_revision_required',
     icon: dashboardIcons.active,
     emptyTitle: 'No revision requests',
     emptyDescription: 'Revision requests will appear here when editors need changes from you.',
@@ -157,7 +168,8 @@ const authorQueues = [
     key: 'published',
     title: 'Recently Published',
     description: 'Your manuscripts that have reached publication.',
-    status: 'published',
+    statuses: ['published'],
+    statusScope: 'published',
     icon: dashboardIcons.complete,
     emptyTitle: 'No published manuscripts yet',
     emptyDescription: 'Published manuscripts will appear here after completion.',
@@ -175,9 +187,13 @@ function primaryRoleForUser(user, hasRole) {
 }
 
 export default function AdminOverview() {
-  const { user, loading, hasRole, impersonationStatus } = useAuth();
+  const { user, loading, hasRole, hasPermission, impersonationStatus } = useAuth();
 
   const role = useMemo(() => primaryRoleForUser(user, hasRole), [user, hasRole]);
+  const navigation = useMemo(
+    () => getVisibleConsoleNavigation({ user, hasPermission, impersonationStatus }),
+    [user, hasPermission, impersonationStatus],
+  );
 
   if (loading) return <LoadingState label="Loading workspace..." className="min-h-[420px]" />;
   if (!user) return <ErrorState title="Session required">Please sign in to view your workspace.</ErrorState>;
@@ -195,7 +211,7 @@ export default function AdminOverview() {
           label: 'Open Article Queue',
         }}
         queues={superAdminQueues}
-        quickLinks={validAdminLinks({ includeUsers: true })}
+        quickLinks={dashboardLinksFromNavigation(navigation, ['/admin/users', '/admin/articles', '/admin/magazines', '/admin/cms/faqs', '/admin/newsletter', '/admin/settings'])}
       />
     );
   }
@@ -213,7 +229,7 @@ export default function AdminOverview() {
           label: 'Open Articles',
         }}
         queues={adminQueues}
-        quickLinks={validAdminLinks({ includeUsers: false })}
+        quickLinks={dashboardLinksFromNavigation(navigation, ['/admin/articles', '/admin/magazines', '/admin/cms/faqs', '/admin/newsletter', '/admin/settings'])}
       />
     );
   }
@@ -232,9 +248,7 @@ export default function AdminOverview() {
         }}
         queues={editorialQueues}
         quickLinks={[
-          { label: 'Article Queue', href: '/admin/articles', icon: FileText, description: 'Open the full editorial article list.' },
-          { label: 'My Sub Editors', href: '/admin/editor/sub-editors', icon: Users, description: 'Manage assigned sub-editor relationships.' },
-          { label: 'Magazines', href: '/admin/magazines', icon: BookOpen, description: 'Review assigned magazine records.' },
+          ...dashboardLinksFromNavigation(navigation, ['/admin/articles', '/admin/editor/sub-editors', '/admin/magazines', '/admin/settings'], 4),
         ]}
       />
     );
@@ -321,9 +335,7 @@ export default function AdminOverview() {
       }}
       queues={authorQueues}
       quickLinks={[
-        { label: 'My Articles', href: '/admin/articles', icon: FileText, description: 'Review all manuscript records visible to you.' },
-        { label: 'New Submission', href: '/admin/articles/new', icon: ClipboardCheck, description: 'Start a manuscript submission.' },
-        { label: 'My Account', href: '/admin/settings', icon: Settings, description: 'Manage profile and security settings.' },
+        ...dashboardLinksFromNavigation(navigation, ['/admin/articles', '/admin/articles/new', '/admin/settings'], 3),
       ]}
     />
   );
