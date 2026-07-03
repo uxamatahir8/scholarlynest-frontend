@@ -12,7 +12,8 @@ export function ConfirmationModal({
   onConfirm,
   onCancel,
   variant = 'danger',
-  isLoading = false
+  isLoading = false,
+  children
 }) {
   return (
     <Dialog
@@ -32,7 +33,10 @@ export function ConfirmationModal({
         <div className={`${variant === 'danger' ? 'bg-red-500/10 text-red-600' : variant === 'gold' ? 'bg-amber-500/10 text-amber-600' : 'bg-blue-500/10 text-blue-600'} flex h-10 w-10 shrink-0 items-center justify-center rounded-lg`}>
           <AlertTriangle className="h-5 w-5" aria-hidden="true" />
         </div>
-        <p className="text-sm leading-relaxed text-[var(--muted)]">{message}</p>
+        <div className="min-w-0 space-y-4">
+          <p className="text-sm leading-relaxed text-[var(--muted)]">{message}</p>
+          {children}
+        </div>
       </div>
     </Dialog>
   );

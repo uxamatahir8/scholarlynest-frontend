@@ -130,12 +130,6 @@ export const consoleNavigation = [
         icon: UserCheck,
         isVisible: ({ user, hasPermission, impersonationStatus }) => userHasRole(user, 'super_admin') && !impersonationStatus?.active && can(hasPermission, 'roles.view-any'),
       },
-      {
-        label: 'Registration Settings',
-        href: '/admin/user-management/registration-settings',
-        icon: Settings,
-        isVisible: ({ user, impersonationStatus }) => userHasRole(user, 'super_admin') && !impersonationStatus?.active,
-      },
     ],
   },
   {
@@ -174,9 +168,20 @@ export const consoleNavigation = [
     ],
   },
   {
-    group: 'Settings',
+    group: 'Account',
     items: [
       { label: 'My Account', href: '/admin/settings', icon: Settings },
+    ],
+  },
+  {
+    group: 'System Settings',
+    items: [
+      {
+        label: 'Registration Settings',
+        href: '/admin/user-management/registration-settings',
+        icon: Settings,
+        isVisible: ({ user, impersonationStatus }) => userHasRole(user, 'super_admin') && !impersonationStatus?.active,
+      },
       {
         label: 'Article Types',
         href: '/admin/settings/types',

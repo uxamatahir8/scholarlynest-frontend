@@ -136,12 +136,12 @@ export default function RegistrationSettingsPage() {
   return (
     <main className="space-y-6">
       <title>Registration Settings - ScholarlyNest</title>
-      <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 lg:flex-row lg:items-start lg:justify-between">
+      <header className="flex flex-col gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">People and Access</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-[var(--foreground)]">Registration Settings</h1>
+          <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">People and Access</p>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-[var(--foreground)]">Registration Settings</h1>
           <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-            Control backend-enforced public author registration, default public role, verification expectations, and registration notice text.
+            Control backend-enforced public Author registration, default public role, required email verification, and registration notice text.
           </p>
         </div>
         <Button type="button" variant="secondary" onClick={fetchData} disabled={loading} icon={RefreshCw}>Refresh</Button>
