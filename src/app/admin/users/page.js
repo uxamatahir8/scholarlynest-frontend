@@ -1,331 +1,206 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../context/AuthContext';
-import api from '../../../utils/api';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import {
-  Users, RefreshCw, ShieldAlert, Search, Loader2, ChevronLeft, ChevronRight, AlertTriangle, Plus
-} from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
-import { Badge } from '../../../components/ui/Badge';
-import RoleBadge from '../../../components/ui/RoleBadge';
-import { Button } from '../../../components/ui/Button';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Plus, RefreshCw, Users } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
-import { hasRole as userHasRole } from '../../../utils/roles';
+import api from '../../../utils/api';
+import { safeApiMessage } from '../../../utils/safeErrors';
+import Alert from '../../../components/ui/Alert';
+import { Button } from '../../../components/ui/Button';
+import EmptyState from '../../../components/ui/EmptyState';
+import ErrorState from '../../../components/ui/ErrorState';
+import LoadingState from '../../../components/ui/LoadingState';
+import Pagination from '../../../components/ui/Pagination';
+import UserList from '../../../components/admin/users/UserList';
+import UserManagementFilters from '../../../components/admin/users/UserManagementFilters';
+import ImpersonationConfirmationDialog from '../../../components/admin/users/ImpersonationConfirmationDialog';
+import { normalizeUserPage, USER_PER_PAGE } from '../../../utils/userManagement';
 
 export default function UserAccountsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user: authUser, hasRole, loading: authLoading, impersonationStatus, startImpersonationSession } = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
-  const [impersonateTarget, setImpersonateTarget] = useState(null);
 
-  const handleImpersonateConfirm = async () => {
-    if (!impersonateTarget) return;
-    try {
-      const res = await api.post(`/admin/users/${impersonateTarget.id}/impersonate`, { confirmed: true });
-      const { user: targetUserData, access_token } = res.data;
-      startImpersonationSession(targetUserData, access_token);
-      toast(`Logged in as ${targetUserData.name} successfully.`, 'success');
-      router.push('/admin');
-    } catch (err) {
-      toast('Unable to start impersonation. Please try again.', 'error');
-    } finally {
-      setImpersonateTarget(null);
-    }
-  };
+  const canUsePage = Boolean(authUser && hasRole('super_admin') && !impersonationStatus?.active);
+  const initialSearch = searchParams.get('search') || '';
+  const page = normalizeUserPage(searchParams.get('page'));
 
-  // Query States
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  // Pagination States
-  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
-  const perPage = 20;
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [impersonateTarget, setImpersonateTarget] = useState(null);
+  const [impersonating, setImpersonating] = useState(false);
 
-  const isSuperAdmin = authUser && hasRole('super_admin');
+  const currentUrl = useMemo(() => {
+    const query = searchParams.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  }, [pathname, searchParams]);
 
-  // 1. Debounce the Search Input (300-500ms target)
+  const updateQuery = (updates) => {
+    const next = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value || (key === 'page' && Number(value) <= 1)) {
+        next.delete(key);
+      } else {
+        next.set(key, String(value));
+      }
+    });
+    const query = next.toString();
+    const nextUrl = query ? `${pathname}?${query}` : pathname;
+    if (nextUrl !== currentUrl) router.push(nextUrl, { scroll: false });
+  };
+
   useEffect(() => {
-    const handler = setTimeout(() => {
+    if (authLoading) return;
+    if (!canUsePage) router.replace('/admin');
+  }, [authLoading, canUsePage, router]);
+
+  useEffect(() => {
+    const urlSearch = searchParams.get('search') || '';
+    setSearchQuery(urlSearch);
+    setDebouncedSearch(urlSearch);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
       const trimmed = searchQuery.trim();
       setDebouncedSearch(trimmed);
-      setPage(1); // Reset page to 1 on query changes
-    }, 400);
-
-    return () => {
-      clearTimeout(handler);
-    };
+      if (trimmed !== (searchParams.get('search') || '')) {
+        updateQuery({ search: trimmed, page: 1 });
+      }
+    }, 350);
+    return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // 2. Fetch User Directory
   const fetchUsers = async () => {
-    if (!isSuperAdmin) return;
+    if (!canUsePage) return;
     setLoading(true);
-    setError(null);
+    setErrorMessage('');
     try {
-      const res = await api.get('/admin/users', {
+      const response = await api.get('/admin/users', {
         params: {
           search: debouncedSearch,
-          page: page,
-          per_page: perPage
-        }
+          page,
+          per_page: USER_PER_PAGE,
+        },
       });
-      setUsers(res.data?.data || []);
-      setTotalPages(res.data?.last_page || 1);
-      setTotalUsers(res.data?.total || 0);
-    } catch (err) {
-      setError('An error occurred while loading the user directory.');
+      setUsers(response.data?.data || []);
+      setTotalPages(response.data?.last_page || 1);
+      setTotalUsers(response.data?.total || 0);
+    } catch (error) {
       setUsers([]);
+      setErrorMessage(safeApiMessage(error, 'The user directory could not be loaded.'));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!authLoading) {
-      if (!isSuperAdmin) {
-        router.push('/admin');
-      } else {
-        fetchUsers();
-      }
-    }
-  }, [authLoading, isSuperAdmin, debouncedSearch, page]);
+    if (!authLoading && canUsePage) fetchUsers();
+  }, [authLoading, canUsePage, debouncedSearch, page]);
 
-  if (authLoading || (!isSuperAdmin && authUser)) {
-    return (
-      <div className="flex flex-col items-center justify-center py-32 space-y-4">
-        <Loader2 className="w-10 h-10 animate-spin text-amber-600 dark:text-amber-400" />
-        <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest font-mono">Authenticating Privileges...</span>
-      </div>
-    );
+  const handleImpersonateConfirm = async () => {
+    if (!impersonateTarget) return;
+    setImpersonating(true);
+    try {
+      const response = await api.post(`/admin/users/${impersonateTarget.id}/impersonate`, { confirmed: true });
+      startImpersonationSession(response.data.user, response.data.access_token);
+      toast(`Temporary session started for ${response.data.user.name}.`, 'success');
+      router.push('/admin');
+    } catch (error) {
+      toast(safeApiMessage(error, 'Unable to start impersonation.'), 'error');
+    } finally {
+      setImpersonating(false);
+      setImpersonateTarget(null);
+    }
+  };
+
+  if (authLoading || (!canUsePage && authUser)) {
+    return <LoadingState label="Checking user-management privileges..." className="min-h-[420px]" />;
   }
 
-  if (!isSuperAdmin) {
-    return (
-      <div className="p-6 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-xl flex items-start space-x-4 animate-in fade-in slide-in-from-bottom-4">
-        <ShieldAlert className="w-6 h-6 text-red-500 shrink-0" />
-        <div>
-          <h3 className="text-sm font-bold text-red-700 dark:text-red-400">Access Restricted</h3>
-          <p className="text-xs text-red-600 dark:text-red-300 mt-1">
-            You must possess Super Admin privileges to view and configure team access controls.
-          </p>
-        </div>
-      </div>
-    );
+  if (!canUsePage) {
+    return <ErrorState title="Access Restricted">Only non-impersonated Super Admin sessions can manage users.</ErrorState>;
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <title>User Accounts - ScholarlyNest</title>
+    <main className="space-y-6">
+      <title>User Management - ScholarlyNest</title>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--foreground)]">
-            User Accounts
-          </h1>
-          <p className="text-xs text-[var(--muted)] mt-1.5 font-medium max-w-2xl">
-            Inspect active personnel accounts, view workflow roles, and monitor system-wide user credentials.
+      <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">People and Access</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-[var(--foreground)]">User Management</h1>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+            Manage people, account state, role assignment, Sub Editor relationships, and temporary support impersonation.
           </p>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchUsers}
-            disabled={loading}
-            className="flex items-center gap-1.5 border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 text-xs py-2 h-auto cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </Button>
-          <Link href="/admin/users/create" passHref legacyBehavior>
-            <Button
-              variant="default"
-              size="sm"
-              className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs py-2 h-auto cursor-pointer font-bold rounded-lg border border-amber-600 hover:border-amber-700"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Create User</span>
-            </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" onClick={fetchUsers} disabled={loading} icon={RefreshCw}>Refresh</Button>
+          <Link href="/admin/users/create">
+            <Button type="button" variant="primary" icon={Plus}>Create User</Button>
           </Link>
         </div>
-      </div>
+      </header>
 
-      <Card className="border border-[var(--muted-border)] bg-[var(--card-bg)] shadow-md">
-        <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center space-x-2">
-                <Users className="w-4 h-4 text-[var(--muted)]" />
-                <CardTitle className="text-xs font-bold uppercase tracking-widest text-[var(--foreground)]">System User Directory</CardTitle>
-              </div>
-              <CardDescription className="text-xs mt-1">
-                A read-only catalog of all registered platform personnel.
-              </CardDescription>
-            </div>
-            
-            {/* Search Input */}
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
-              <input
-                type="text"
-                placeholder="Search users by name, email, or role"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-xs font-semibold pl-9 pr-3 py-2 bg-[var(--foreground)]/5 border border-[var(--muted-border)] rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-[var(--foreground)]"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="p-0 overflow-x-auto">
-          {error ? (
-            <div className="py-16 px-6 text-center flex flex-col items-center justify-center space-y-2">
-              <AlertTriangle className="w-8 h-8 text-amber-500" />
-              <h4 className="text-xs font-bold text-[var(--foreground)]">Query Failed</h4>
-              <p className="text-xs text-[var(--muted)] max-w-md">{error}</p>
-            </div>
-          ) : loading ? (
-            <div className="py-20 flex flex-col items-center justify-center space-y-4">
-              <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Querying User Records...</span>
-            </div>
-          ) : users.length === 0 ? (
-            <div className="py-20 px-6 text-center text-xs text-[var(--muted)] font-medium">
-              No personnel records match your search criteria.
-            </div>
-          ) : (
-            <>
-              <table className="w-full text-left border-collapse min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-[var(--muted-border)] bg-black/5 dark:bg-white/5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">
-                    <th className="px-6 py-4">User Details</th>
-                    <th className="px-6 py-4">Email Address</th>
-                    <th className="px-6 py-4">Assigned Role</th>
-                    <th className="px-6 py-4">Account Status</th>
-                    <th className="px-6 py-4">Created Date</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--muted-border)]/50 text-xs">
-                  {users.map(u => (
-                    <tr key={u.id} className="hover:bg-[var(--foreground)]/5 transition-colors">
-                      <td className="px-6 py-4 font-bold text-[var(--foreground)] flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center font-bold text-xs uppercase shrink-0">
-                          {u.profile_image ? (
-                            <img src={u.profile_image} alt={u.name} className="w-8 h-8 rounded-full object-cover" />
-                          ) : (
-                            u.name.charAt(0)
-                          )}
-                        </div>
-                        <span className="truncate max-w-[180px]">{u.name}</span>
-                      </td>
-                      <td className="px-6 py-4 font-medium text-[var(--muted)] truncate max-w-[200px]">{u.email}</td>
-                      <td className="px-6 py-4">
-                        <RoleBadge user={u} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant={u.status === 'active' ? 'success' : 'warning'}>
-                          {u.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 font-medium text-[var(--muted)]">
-                        {u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 text-right flex items-center justify-end space-x-2">
-                        {isSuperAdmin && u.id !== authUser.id && u.status === 'active' && !userHasRole(u, 'super_admin') && !impersonationStatus.active && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setImpersonateTarget(u)}
-                            className="border-amber-500/20 text-amber-600 hover:bg-amber-500/10 dark:text-amber-450 text-[10px] font-bold uppercase py-1 px-2.5 h-auto cursor-pointer rounded-lg shrink-0"
-                          >
-                            Login as User
-                          </Button>
-                        )}
-                        <Link href={`/admin/users/${u.id}/edit`} passHref legacyBehavior>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 text-[10px] font-bold uppercase py-1 px-2.5 h-auto cursor-pointer rounded-lg shrink-0"
-                          >
-                            Edit
-                          </Button>
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+        <UserManagementFilters
+          search={searchQuery}
+          onSearchChange={setSearchQuery}
+          onClear={() => {
+            setSearchQuery('');
+            updateQuery({ search: '', page: 1 });
+          }}
+          loading={loading}
+        />
+      </section>
 
-              {/* Pagination Controls */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-[var(--muted-border)] text-xs text-[var(--muted)] font-medium">
-                <div>
-                  Showing page <span className="font-bold text-[var(--foreground)]">{page}</span> of{' '}
-                  <span className="font-bold text-[var(--foreground)]">{totalPages}</span> ({totalUsers} users total)
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(p => Math.max(p - 1, 1))}
-                    disabled={page <= 1}
-                    className="p-1 h-auto cursor-pointer border-[var(--muted-border)]"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(p => Math.min(p + 1, totalPages))}
-                    disabled={page >= totalPages}
-                    className="p-1 h-auto cursor-pointer border-[var(--muted-border)]"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {errorMessage && <ErrorState title="User directory unavailable">{errorMessage}</ErrorState>}
 
-      {/* Impersonation Confirmation Modal */}
-      {impersonateTarget && (
-        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-[var(--card-bg)] border border-[var(--muted-border)] max-w-sm w-full rounded-2xl shadow-xl p-6 space-y-4 animate-in zoom-in-95 text-left">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--foreground)] font-mono">Confirm Impersonation</h3>
-            <p className="text-xs text-[var(--muted)] leading-relaxed">
-              You are about to log in as <span className="font-bold text-[var(--foreground)]">{impersonateTarget.name}</span>. Your current session will switch to the target user. Do you wish to continue?
+      {loading ? (
+        <LoadingState label="Loading user directory..." className="min-h-[360px]" />
+      ) : !errorMessage && users.length === 0 ? (
+        <EmptyState icon={Users} title="No users match this search">
+          Try a different name, email, or role search.
+        </EmptyState>
+      ) : !errorMessage ? (
+        <>
+          <Alert tone="info" title="Directory scope">
+            This view uses the existing Super Admin-only user directory endpoint. It does not expose passwords, tokens, raw permissions, or audit records.
+          </Alert>
+          <UserList
+            users={users}
+            authUser={authUser}
+            impersonationStatus={impersonationStatus}
+            onImpersonate={setImpersonateTarget}
+          />
+          <div className="flex flex-col gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-[var(--muted)]">
+              Showing page <span className="font-bold text-[var(--foreground)]">{page}</span> of{' '}
+              <span className="font-bold text-[var(--foreground)]">{totalPages}</span> for{' '}
+              <span className="font-bold text-[var(--foreground)]">{totalUsers}</span> users.
             </p>
-            <div className="flex items-center justify-end space-x-3 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setImpersonateTarget(null)}
-                className="text-xs border-[var(--muted-border)] hover:bg-[var(--foreground)]/5 font-bold cursor-pointer rounded-lg"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleImpersonateConfirm}
-                className="text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold cursor-pointer rounded-lg"
-              >
-                Continue
-              </Button>
-            </div>
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={(nextPage) => updateQuery({ page: nextPage })} label="User directory pagination" />
           </div>
-        </div>
-      )}
-    </div>
+        </>
+      ) : null}
+
+      <ImpersonationConfirmationDialog
+        open={Boolean(impersonateTarget)}
+        user={impersonateTarget}
+        loading={impersonating}
+        onCancel={() => setImpersonateTarget(null)}
+        onConfirm={handleImpersonateConfirm}
+      />
+    </main>
   );
 }

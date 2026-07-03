@@ -2,27 +2,23 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  AlertTriangle,
-  Check,
-  Key,
-  Loader2,
-  Lock,
-  Plus,
-  RefreshCw,
-  Shield,
-  ShieldAlert,
-  Trash2,
-  X
-} from 'lucide-react';
+import { Lock, Plus, RefreshCw, Shield, Trash2 } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../context/ToastContext';
 import api from '../../../../utils/api';
 import { safeApiMessage } from '../../../../utils/safeErrors';
+import Alert from '../../../../components/ui/Alert';
 import { Badge } from '../../../../components/ui/Badge';
 import { Button } from '../../../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../../components/ui/Card';
 import { ConfirmationModal } from '../../../../components/ui/ConfirmationModal';
+import Dialog from '../../../../components/ui/Dialog';
+import EmptyState from '../../../../components/ui/EmptyState';
+import ErrorState from '../../../../components/ui/ErrorState';
+import Field from '../../../../components/ui/Field';
+import { Input } from '../../../../components/ui/Input';
+import LoadingState from '../../../../components/ui/LoadingState';
+import { permissionCategory, permissionLabel, roleAccessAreas, rolePurpose } from '../../../../utils/userManagement';
 
 const PROTECTED_PERMISSION_NAMES = new Set([
   'roles.view-any',
@@ -30,19 +26,10 @@ const PROTECTED_PERMISSION_NAMES = new Set([
   'users.view-any',
   'users.create',
   'users.manage',
-  'settings.manage'
+  'settings.manage',
 ]);
 
-const moduleLabel = (moduleName) => {
-  if (!moduleName) return 'General';
-  return moduleName
-    .replace(/[-_]/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
-    .replace(/\bSeo\b/g, 'SEO')
-    .replace(/\bCms\b/g, 'CMS');
-};
-
-const isProtectedPermission = (permissionName) => (
+const isProtectedPermission = (permissionName = '') => (
   PROTECTED_PERMISSION_NAMES.has(permissionName)
   || permissionName.includes('.delete')
   || permissionName.includes('impersonat')
@@ -52,67 +39,51 @@ export default function RolesPermissionsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user: authUser, hasRole, loading: authLoading, impersonationStatus } = useAuth();
-
   const canUsePage = Boolean(authUser && hasRole('super_admin') && !impersonationStatus?.active);
 
   const [roles, setRoles] = useState([]);
   const [permissions, setPermissions] = useState([]);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [updatingPermission, setUpdatingPermission] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
-
-  const [showCreateRoleModal, setShowCreateRoleModal] = useState(false);
-  const [newRoleName, setNewRoleName] = useState('');
-  const [newRoleDisplayName, setNewRoleDisplayName] = useState('');
-  const [newRoleDescription, setNewRoleDescription] = useState('');
-  const [isRoleNameManuallyEdited, setIsRoleNameManuallyEdited] = useState(false);
-  const [validationErrors, setValidationErrors] = useState({});
+  const [updatingPermission, setUpdatingPermission] = useState(null);
+  const [showCreateRole, setShowCreateRole] = useState(false);
+  const [newRole, setNewRole] = useState({ display_name: '', name: '', description: '' });
+  const [createErrors, setCreateErrors] = useState({});
   const [creatingRole, setCreatingRole] = useState(false);
-
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [deleteRoleId, setDeleteRoleId] = useState(null);
-  const [deleteRoleName, setDeleteRoleName] = useState('');
+  const [deleteRole, setDeleteRole] = useState(null);
   const [deletingRole, setDeletingRole] = useState(false);
 
-  const selectedRole = useMemo(
-    () => roles.find((role) => role.id === selectedRoleId) || roles[0] || null,
-    [roles, selectedRoleId]
-  );
+  const selectedRole = useMemo(() => roles.find((role) => role.id === selectedRoleId) || roles[0] || null, [roles, selectedRoleId]);
 
   const groupedPermissions = useMemo(() => {
     return permissions.reduce((groups, permission) => {
-      const moduleName = permission.module || 'general';
-      if (!groups[moduleName]) groups[moduleName] = [];
-      groups[moduleName].push(permission);
+      const category = permissionCategory(permission.name || permission.module);
+      if (!groups[category]) groups[category] = [];
+      groups[category].push(permission);
       return groups;
     }, {});
   }, [permissions]);
 
-  const selectedPermissionIds = useMemo(() => {
-    return new Set((selectedRole?.permissions || []).map((permission) => permission.id));
-  }, [selectedRole]);
+  const selectedPermissionIds = useMemo(() => new Set((selectedRole?.permissions || []).map((permission) => permission.id)), [selectedRole]);
+  const selectedAreas = selectedRole ? roleAccessAreas(selectedRole, selectedRole.permissions) : [];
+  const selectedLocked = Boolean(selectedRole?.is_locked || selectedRole?.is_system);
 
   const fetchData = async () => {
     if (!canUsePage) return;
-
     setLoading(true);
     setErrorMessage('');
     try {
-      const [rolesRes, permissionsRes] = await Promise.all([
+      const [rolesResponse, permissionsResponse] = await Promise.all([
         api.get('/admin/rbac/roles'),
-        api.get('/admin/rbac/permissions')
+        api.get('/admin/rbac/permissions'),
       ]);
-      const nextRoles = rolesRes.data || [];
+      const nextRoles = rolesResponse.data || [];
       setRoles(nextRoles);
-      setPermissions(permissionsRes.data || []);
-      setSelectedRoleId((currentId) => {
-        if (nextRoles.some((role) => role.id === currentId)) return currentId;
-        return nextRoles[0]?.id || null;
-      });
-    } catch (err) {
-      setErrorMessage('Roles and permissions could not be loaded.');
-      toast('Roles and permissions could not be loaded.', 'error');
+      setPermissions(permissionsResponse.data || []);
+      setSelectedRoleId((current) => nextRoles.some((role) => role.id === current) ? current : nextRoles[0]?.id || null);
+    } catch (error) {
+      setErrorMessage(safeApiMessage(error, 'Roles and permissions could not be loaded.'));
     } finally {
       setLoading(false);
     }
@@ -121,509 +92,271 @@ export default function RolesPermissionsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!canUsePage) {
-      router.push('/admin');
+      router.replace('/admin');
       return;
     }
     fetchData();
-  }, [authLoading, canUsePage]);
+  }, [authLoading, canUsePage, router]);
 
-  useEffect(() => {
-    if (!showCreateRoleModal) {
-      setValidationErrors({});
-      setIsRoleNameManuallyEdited(false);
+  const handleTogglePermission = async (permission) => {
+    if (!selectedRole) return;
+    if (selectedLocked) {
+      toast('System role permissions are read-only.', 'error');
+      return;
     }
-  }, [showCreateRoleModal]);
-
-  const clearFieldError = (field) => {
-    if (!validationErrors[field]) return;
-    setValidationErrors((prev) => {
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
-  };
-
-  const handleCreateRole = async (event) => {
-    event.preventDefault();
-    const errors = {};
-    if (!newRoleDisplayName.trim()) errors.newRoleDisplayName = 'Display Name is required.';
-    if (!newRoleName.trim()) errors.newRoleName = 'Role Identifier is required.';
-
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors);
+    if (isProtectedPermission(permission.name)) {
+      toast('Protected Super Admin, deletion, and impersonation permissions cannot be assigned here.', 'error');
       return;
     }
 
-    setCreatingRole(true);
-    try {
-      const res = await api.post('/admin/rbac/roles', {
-        name: newRoleName,
-        display_name: newRoleDisplayName,
-        description: newRoleDescription || null
-      });
-      const rolesRes = await api.get('/admin/rbac/roles');
-      const nextRoles = rolesRes.data || [];
-      setRoles(nextRoles);
-      setSelectedRoleId(res.data?.id || nextRoles.find((role) => role.name === res.data?.name)?.id || nextRoles[0]?.id || null);
-      setNewRoleName('');
-      setNewRoleDisplayName('');
-      setNewRoleDescription('');
-      setShowCreateRoleModal(false);
-      toast('Custom role created.', 'success');
-    } catch (err) {
-      toast(safeApiMessage(err, 'Custom role could not be created.'), 'error');
-      const apiErrors = err?.response?.data?.errors || {};
-      setValidationErrors({
-        newRoleName: apiErrors.name?.[0],
-        newRoleDisplayName: apiErrors.display_name?.[0],
-        newRoleDescription: apiErrors.description?.[0]
-      });
-    } finally {
-      setCreatingRole(false);
-    }
-  };
+    const currentIds = (selectedRole.permissions || []).map((item) => item.id);
+    const nextIds = selectedPermissionIds.has(permission.id)
+      ? currentIds.filter((id) => id !== permission.id)
+      : [...currentIds, permission.id];
 
-  const syncRolePermissions = async (role, nextPermissionIds, permissionId) => {
-    setUpdatingPermission(permissionId);
+    setUpdatingPermission(permission.id);
     try {
-      const res = await api.post(`/admin/rbac/roles/${role.id}/permissions`, {
-        permissions: nextPermissionIds
-      });
-      setRoles((currentRoles) => currentRoles.map((item) => (
-        item.id === role.id ? { ...item, permissions: res.data.permissions || [] } : item
-      )));
-      toast('Permissions updated.', 'success');
-    } catch (err) {
-      toast(safeApiMessage(err, 'Permissions could not be updated.'), 'error');
+      const response = await api.post(`/admin/rbac/roles/${selectedRole.id}/permissions`, { permissions: nextIds });
+      setRoles((currentRoles) => currentRoles.map((role) => role.id === selectedRole.id ? { ...role, permissions: response.data.permissions || [] } : role));
+      toast('Role permissions updated.', 'success');
+    } catch (error) {
+      toast(safeApiMessage(error, 'Permissions could not be updated.'), 'error');
     } finally {
       setUpdatingPermission(null);
     }
   };
 
-  const handleTogglePermission = (permission) => {
-    if (!selectedRole) return;
-    if (selectedRole.is_locked || selectedRole.is_system) {
-      toast('Locked system role permissions cannot be changed.', 'error');
-      return;
+  const handleCreateRole = async (event) => {
+    event.preventDefault();
+    const errors = {};
+    if (!newRole.display_name.trim()) errors.display_name = 'Display name is required.';
+    if (!newRole.name.trim()) errors.name = 'Role identifier is required.';
+    setCreateErrors(errors);
+    if (Object.keys(errors).length) return;
+
+    setCreatingRole(true);
+    try {
+      const response = await api.post('/admin/rbac/roles', newRole);
+      const rolesResponse = await api.get('/admin/rbac/roles');
+      const nextRoles = rolesResponse.data || [];
+      setRoles(nextRoles);
+      setSelectedRoleId(response.data?.id || nextRoles[0]?.id || null);
+      setNewRole({ display_name: '', name: '', description: '' });
+      setShowCreateRole(false);
+      toast('Custom role created.', 'success');
+    } catch (error) {
+      const apiErrors = error?.response?.data?.errors || {};
+      setCreateErrors({
+        name: apiErrors.name?.[0],
+        display_name: apiErrors.display_name?.[0],
+        description: apiErrors.description?.[0],
+      });
+      toast(safeApiMessage(error, 'Custom role could not be created.'), 'error');
+    } finally {
+      setCreatingRole(false);
     }
-    if (isProtectedPermission(permission.name)) {
-      toast('Protected Super Admin permissions cannot be assigned to custom roles.', 'error');
-      return;
-    }
-
-    const currentIds = (selectedRole.permissions || []).map((item) => item.id);
-    const nextPermissionIds = selectedPermissionIds.has(permission.id)
-      ? currentIds.filter((id) => id !== permission.id)
-      : [...currentIds, permission.id];
-
-    syncRolePermissions(selectedRole, nextPermissionIds, permission.id);
-  };
-
-  const openDeleteRoleModal = (role) => {
-    setDeleteRoleId(role.id);
-    setDeleteRoleName(role.display_name || role.name);
-    setIsConfirmOpen(true);
   };
 
   const executeDeleteRole = async () => {
-    if (!deleteRoleId) return;
-
+    if (!deleteRole) return;
     setDeletingRole(true);
     try {
-      await api.delete(`/admin/rbac/roles/${deleteRoleId}`);
-      const rolesRes = await api.get('/admin/rbac/roles');
-      const nextRoles = rolesRes.data || [];
+      await api.delete(`/admin/rbac/roles/${deleteRole.id}`);
+      const rolesResponse = await api.get('/admin/rbac/roles');
+      const nextRoles = rolesResponse.data || [];
       setRoles(nextRoles);
       setSelectedRoleId(nextRoles[0]?.id || null);
       toast('Custom role deleted.', 'success');
-    } catch (err) {
-      toast(safeApiMessage(err, 'Custom role could not be deleted.'), 'error');
+    } catch (error) {
+      toast(safeApiMessage(error, 'Custom role could not be deleted.'), 'error');
     } finally {
       setDeletingRole(false);
-      setIsConfirmOpen(false);
-      setDeleteRoleId(null);
-      setDeleteRoleName('');
+      setDeleteRole(null);
     }
   };
 
   if (authLoading || (!canUsePage && authUser)) {
-    return (
-      <div className="flex flex-col items-center justify-center py-32 space-y-4">
-        <Loader2 className="w-10 h-10 animate-spin text-amber-600 dark:text-amber-400" />
-        <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest font-mono">Checking privileges...</span>
-      </div>
-    );
+    return <LoadingState label="Checking role-management privileges..." className="min-h-[420px]" />;
   }
 
   if (!canUsePage) {
-    return (
-      <div className="p-6 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-lg flex items-start space-x-4">
-        <ShieldAlert className="w-6 h-6 text-red-500 shrink-0" />
-        <div>
-          <h3 className="text-sm font-bold text-red-700 dark:text-red-400">Access Restricted</h3>
-          <p className="text-xs text-red-600 dark:text-red-300 mt-1">Only non-impersonated Super Admin sessions can view this page.</p>
-        </div>
-      </div>
-    );
+    return <ErrorState title="Access Restricted">Only non-impersonated Super Admin sessions can view role management.</ErrorState>;
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <title>Roles & Permission Matrix - ScholarlyNest</title>
-
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--foreground)]">
-            Roles & Permission Matrix
-          </h1>
-          <p className="text-xs text-[var(--muted)] mt-1.5 font-medium max-w-2xl">
-            Review locked system roles and assign approved permissions to custom roles.
+    <main className="space-y-6">
+      <title>Roles and Permissions - ScholarlyNest</title>
+      <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">People and Access</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-[var(--foreground)]">Roles and Permissions</h1>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
+            Review protected system roles and manage custom-role access without exposing a raw permission wall.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={fetchData}
-            disabled={loading}
-            className="gap-1.5"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowCreateRoleModal(true)}
-            className="gap-1.5"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Custom</span>
-          </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" onClick={fetchData} disabled={loading} icon={RefreshCw}>Refresh</Button>
+          <Button type="button" variant="primary" onClick={() => setShowCreateRole(true)} icon={Plus}>Create Custom Role</Button>
         </div>
-      </div>
+      </header>
 
-      {errorMessage && (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/[0.03] px-4 py-3 flex items-center gap-3 text-red-600 dark:text-red-400">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
-          <span className="text-xs font-semibold">{errorMessage}</span>
-        </div>
-      )}
+      {errorMessage && <ErrorState title="Role matrix unavailable">{errorMessage}</ErrorState>}
 
       {loading ? (
-        <div className="py-20 flex flex-col items-center justify-center space-y-4">
-          <Loader2 className="w-8 h-8 animate-spin text-[var(--accent)]" />
-          <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Loading matrix...</span>
-        </div>
+        <LoadingState label="Loading role access map..." className="min-h-[360px]" />
       ) : roles.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-[var(--muted-border)] rounded-lg bg-[var(--card-bg)] text-[var(--muted)]">
-          <Key className="w-8 h-8 mx-auto opacity-50 mb-3" />
-          <span className="text-xs font-semibold">No roles are available.</span>
-        </div>
+        <EmptyState icon={Shield} title="No roles are available">The backend returned no role records.</EmptyState>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          <div className="xl:col-span-4 space-y-4">
-            <Card className="border border-[var(--muted-border)] bg-[var(--card-bg)] shadow-md rounded-lg overflow-hidden">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-xs font-bold uppercase tracking-widest text-[var(--foreground)]">Roles</CardTitle>
-                <CardDescription className="text-[10px]">System roles are read-only; custom roles can be configured.</CardDescription>
+        <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <Card className="border border-[var(--border)] bg-[var(--surface)]">
+            <CardHeader>
+              <CardTitle>Roles</CardTitle>
+              <CardDescription>System roles are locked. Custom roles can use supported controls.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {roles.map((role) => {
+                const selected = selectedRole?.id === role.id;
+                const locked = role.is_locked || role.is_system;
+                return (
+                  <button
+                    key={role.id}
+                    type="button"
+                    onClick={() => setSelectedRoleId(role.id)}
+                    className={`w-full rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${selected ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]' : 'border-[var(--border)] bg-[var(--surface-muted)] hover:bg-[var(--surface)]'}`}
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span>
+                        <span className="block text-sm font-bold">{role.display_name}</span>
+                        <span className={`mt-1 block text-xs ${selected ? 'text-white/80' : 'text-[var(--muted)]'}`}>{rolePurpose(role)}</span>
+                      </span>
+                      <Badge variant={locked ? 'default' : 'success'} className={selected ? 'border-white/25 bg-white/15 text-white' : ''}>{locked ? 'System' : 'Custom'}</Badge>
+                    </span>
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          <section className="space-y-5">
+            <Card className="border border-[var(--border)] bg-[var(--surface)]">
+              <CardHeader>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <CardTitle>{selectedRole.display_name}</CardTitle>
+                    <CardDescription>{selectedRole.description || rolePurpose(selectedRole)}</CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant={selectedLocked ? 'default' : 'success'}>{selectedLocked ? 'Locked System Role' : 'Editable Custom Role'}</Badge>
+                    {!selectedLocked && (
+                      <Button type="button" variant="danger" size="sm" icon={Trash2} onClick={() => setDeleteRole(selectedRole)}>Delete Custom Role</Button>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="p-2 space-y-1">
-                {roles.map((role) => {
-                  const isSelected = selectedRole?.id === role.id;
-                  const isLocked = role.is_locked || role.is_system;
-                  return (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      key={role.id}
-                      onClick={() => setSelectedRoleId(role.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          setSelectedRoleId(role.id);
-                        }
-                      }}
-                      className={`w-full flex items-center justify-between gap-3 p-3 rounded-lg transition-all text-left ${
-                        isSelected
-                          ? 'bg-[var(--accent)] text-white shadow-sm'
-                          : 'hover:bg-[var(--foreground)]/5 text-[var(--muted)] hover:text-[var(--foreground)]'
-                      }`}
-                    >
-                      <span className="min-w-0 flex items-center gap-2.5">
-                        {isLocked ? <Lock className="w-4 h-4 shrink-0" /> : <Shield className="w-4 h-4 shrink-0" />}
-                        <span className="min-w-0">
-                          <span className="text-xs block font-bold truncate">{role.display_name}</span>
-                          <span className={`text-[9px] block truncate ${isSelected ? 'text-zinc-200' : 'text-zinc-400'}`}>{role.name}</span>
-                        </span>
-                      </span>
-                      <span className="flex items-center gap-2 shrink-0">
-                        <Badge variant={isLocked ? 'default' : 'success'} className={isSelected ? 'bg-white/20 border-white/20 text-white' : ''}>
-                          {isLocked ? 'System' : 'Custom'}
-                        </Badge>
-                        {!isLocked && (
-                          <button
-                            type="button"
-                            title="Delete custom role"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openDeleteRoleModal(role);
-                            }}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                openDeleteRoleModal(role);
-                              }
-                            }}
-                            className="p-1 rounded text-red-500 hover:bg-red-500/10"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </span>
-                    </div>
-                  );
-                })}
+              <CardContent className="space-y-4">
+                <div>
+                  <h2 className="text-sm font-bold text-[var(--foreground)]">Access Areas</h2>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedAreas.map((area) => <Badge key={area} variant="outline">{area}</Badge>)}
+                  </div>
+                </div>
+                <Alert tone={selectedLocked ? 'warning' : 'info'} title={selectedLocked ? 'Protected system role' : 'Custom role controls'}>
+                  {selectedLocked
+                    ? 'This predefined role is managed by platform configuration. Permission controls are read-only here.'
+                    : 'Only supported permissions can be assigned. Super Admin, deletion, and impersonation permissions remain protected.'}
+                </Alert>
               </CardContent>
             </Card>
-          </div>
 
-          <div className="xl:col-span-8">
-            {selectedRole ? (
-              <Card className="border border-[var(--muted-border)] bg-[var(--card-bg)] shadow-md rounded-lg overflow-hidden">
-                <CardHeader className="border-b border-[var(--muted-border)]/55 pb-4">
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div>
-                      <CardTitle className="text-sm font-bold text-[var(--foreground)]">
-                        {selectedRole.display_name}
-                      </CardTitle>
-                      <CardDescription className="text-xs mt-1">
-                        {selectedRole.description || 'No description has been configured for this role.'}
-                      </CardDescription>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={selectedRole.is_locked || selectedRole.is_system ? 'default' : 'success'}>
-                        {selectedRole.is_locked || selectedRole.is_system ? 'Locked System Role' : 'Editable Custom Role'}
-                      </Badge>
-                      <Badge variant={selectedRole.name === 'super_admin' ? 'gold' : 'primary'}>{selectedRole.name}</Badge>
-                    </div>
-                  </div>
-                  {(selectedRole.is_locked || selectedRole.is_system) && (
-                    <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/[0.04] px-4 py-3 flex items-start gap-3">
-                      <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                      <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-300">
-                        This role is part of the protected workflow baseline. Its name, label, and mandatory permissions are managed by the platform.
-                      </p>
-                    </div>
-                  )}
-                </CardHeader>
-
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[720px] text-left">
-                      <thead className="bg-[var(--foreground)]/[0.03] border-b border-[var(--muted-border)]">
-                        <tr>
-                          <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Permission</th>
-                          <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Module</th>
-                          <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">State</th>
-                          <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Enabled</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[var(--muted-border)]/60">
-                        {Object.entries(groupedPermissions).map(([moduleName, modulePermissions]) => (
-                          <React.Fragment key={moduleName}>
-                            <tr className="bg-[var(--foreground)]/[0.015]">
-                              <td colSpan={4} className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-[var(--foreground)]">
-                                {moduleLabel(moduleName)}
-                              </td>
-                            </tr>
-                            {modulePermissions.map((permission) => {
-                              const checked = selectedPermissionIds.has(permission.id);
-                              const locked = selectedRole.is_locked || selectedRole.is_system || isProtectedPermission(permission.name);
-                              const updating = updatingPermission === permission.id;
-                              return (
-                                <tr key={permission.id} className="align-top">
-                                  <td className="px-4 py-3">
-                                    <div className="space-y-1">
-                                      <div className="text-xs font-bold text-[var(--foreground)]">{permission.display_name || permission.name}</div>
-                                      <div className="text-[10px] font-mono text-[var(--muted)]">{permission.name}</div>
-                                      {permission.description && (
-                                        <div className="text-[11px] text-[var(--muted)] max-w-md">{permission.description}</div>
-                                      )}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <Badge variant="default">{moduleLabel(permission.module)}</Badge>
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold ${checked ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500'}`}>
-                                      {checked ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
-                                      {checked ? 'Assigned' : 'Not Assigned'}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <label className={`inline-flex items-center gap-2 ${locked ? 'cursor-not-allowed opacity-65' : 'cursor-pointer'}`} title={locked ? 'This permission cannot be changed for this role.' : 'Toggle permission'}>
-                                      <input
-                                        type="checkbox"
-                                        checked={checked}
-                                        disabled={locked || updating}
-                                        onChange={() => handleTogglePermission(permission)}
-                                        className="w-4 h-4 rounded border-[var(--muted-border)] text-[var(--accent)] focus:ring-[var(--accent)] disabled:cursor-not-allowed"
-                                        aria-label={`${checked ? 'Remove' : 'Assign'} ${permission.display_name || permission.name}`}
-                                      />
-                                      {updating && <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--muted)]" />}
-                                    </label>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </React.Fragment>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="text-center py-20 border border-dashed border-[var(--muted-border)] rounded-lg bg-[var(--card-bg)] text-[var(--muted)]">
-                <Key className="w-8 h-8 mx-auto opacity-50 mb-3" />
-                <span className="text-xs font-semibold">Select a role to inspect its permissions.</span>
-              </div>
-            )}
-          </div>
+            <div className="grid gap-4">
+              {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
+                <Card key={category} className="border border-[var(--border)] bg-[var(--surface)]">
+                  <CardHeader>
+                    <CardTitle>{category}</CardTitle>
+                    <CardDescription>{categoryPermissions.length} permission{categoryPermissions.length === 1 ? '' : 's'} in this access area.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid gap-2">
+                    {categoryPermissions.map((permission) => {
+                      const assigned = selectedPermissionIds.has(permission.id);
+                      const protectedPermission = isProtectedPermission(permission.name);
+                      const locked = selectedLocked || protectedPermission;
+                      return (
+                        <label key={permission.id} className={`flex items-start gap-3 rounded-lg border border-[var(--border)] p-3 ${locked ? 'cursor-not-allowed opacity-75' : 'cursor-pointer hover:bg-[var(--surface-muted)]'}`}>
+                          <input
+                            type="checkbox"
+                            checked={assigned}
+                            disabled={locked || updatingPermission === permission.id}
+                            onChange={() => handleTogglePermission(permission)}
+                            className="mt-1 h-4 w-4 rounded border-[var(--border)] text-[var(--primary)] focus-visible:ring-[var(--focus-ring)]"
+                            aria-label={`${assigned ? 'Remove' : 'Assign'} ${permissionLabel(permission)}`}
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-bold text-[var(--foreground)]">{permissionLabel(permission)}</span>
+                            {permission.description && <span className="mt-1 block text-xs text-[var(--muted)]">{permission.description}</span>}
+                            <span className="mt-1 block text-[10px] font-mono text-[var(--muted)]">{permission.name}</span>
+                          </span>
+                          <Badge variant={assigned ? 'success' : 'default'}>{assigned ? 'Assigned' : 'Off'}</Badge>
+                        </label>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </section>
         </div>
       )}
 
-      {showCreateRoleModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <form
-            onSubmit={handleCreateRole}
-            className="w-full max-w-md glass-panel rounded-lg p-6 shadow-2xl border border-[var(--muted-border)] bg-[var(--card-bg)] animate-in zoom-in-95 duration-200 space-y-4"
-          >
-            <div className="flex justify-between items-start pb-4 border-b border-[var(--muted-border)]">
-              <div>
-                <h3 className="text-base font-bold text-[var(--foreground)]">Create Custom Role</h3>
-                <p className="text-[11px] text-[var(--muted)] mt-1 font-medium">Custom roles start without permissions.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCreateRoleModal(false)}
-                className="p-1 text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--foreground)]/5 rounded-lg transition-colors"
-                aria-label="Close create role dialog"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]" htmlFor="role-display-name">Display Name</label>
-                <input
-                  id="role-display-name"
-                  type="text"
-                  value={newRoleDisplayName}
-                  onChange={(event) => {
-                    const value = event.target.value;
-                    setNewRoleDisplayName(value);
-                    if (!isRoleNameManuallyEdited) {
-                      setNewRoleName(value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, ''));
-                    }
-                    clearFieldError('newRoleDisplayName');
-                  }}
-                  placeholder="Senior Reviewer"
-                  className={`w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)] ${
-                    validationErrors.newRoleDisplayName ? 'border-red-500 focus:border-red-500' : 'border-[var(--muted-border)]'
-                  }`}
-                />
-                {validationErrors.newRoleDisplayName && (
-                  <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newRoleDisplayName}</span>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]" htmlFor="role-name">Role Identifier</label>
-                <input
-                  id="role-name"
-                  type="text"
-                  value={newRoleName}
-                  onChange={(event) => {
-                    const formatted = event.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
-                    setNewRoleName(formatted);
-                    setIsRoleNameManuallyEdited(formatted !== '');
-                    clearFieldError('newRoleName');
-                  }}
-                  placeholder="senior-reviewer"
-                  className={`w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)] ${
-                    validationErrors.newRoleName ? 'border-red-500 focus:border-red-500' : 'border-[var(--muted-border)]'
-                  }`}
-                />
-                {validationErrors.newRoleName && (
-                  <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newRoleName}</span>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]" htmlFor="role-description">Description</label>
-                <textarea
-                  id="role-description"
-                  value={newRoleDescription}
-                  onChange={(event) => {
-                    setNewRoleDescription(event.target.value);
-                    clearFieldError('newRoleDescription');
-                  }}
-                  rows={3}
-                  placeholder="Optional role purpose"
-                  className={`w-full text-xs font-medium px-3 py-2 bg-[var(--foreground)]/5 border rounded-md focus:outline-none placeholder-zinc-400 text-[var(--foreground)] resize-none ${
-                    validationErrors.newRoleDescription ? 'border-red-500 focus:border-red-500' : 'border-[var(--muted-border)]'
-                  }`}
-                />
-                {validationErrors.newRoleDescription && (
-                  <span className="text-red-500 text-[10px] font-bold mt-1 block">{validationErrors.newRoleDescription}</span>
-                )}
-              </div>
-            </div>
-
-            <div className="pt-4 border-t border-[var(--muted-border)] flex items-center justify-end space-x-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowCreateRoleModal(false)}
-                className="text-xs border border-[var(--muted-border)]"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                disabled={creatingRole}
-                className="text-xs gap-1.5"
-              >
-                {creatingRole ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                <span>{creatingRole ? 'Creating...' : 'Create Role'}</span>
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
+      <Dialog
+        open={showCreateRole}
+        onClose={() => setShowCreateRole(false)}
+        title="Create Custom Role"
+        description="Custom roles start without permissions and cannot receive protected Super Admin controls."
+        footer={(
+          <>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowCreateRole(false)} disabled={creatingRole}>Cancel</Button>
+            <Button type="submit" form="create-role-form" variant="primary" size="sm" isLoading={creatingRole}>Create Role</Button>
+          </>
+        )}
+      >
+        <form id="create-role-form" onSubmit={handleCreateRole} className="space-y-4">
+          <Field label="Display Name" required error={createErrors.display_name}>
+            <Input
+              value={newRole.display_name}
+              onChange={(event) => {
+                const value = event.target.value;
+                setNewRole((current) => ({
+                  ...current,
+                  display_name: value,
+                  name: current.name || value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, ''),
+                }));
+              }}
+              placeholder="Senior Reviewer"
+            />
+          </Field>
+          <Field label="Role Identifier" required error={createErrors.name} helperText="Used by backend role configuration. Reserved system names are rejected.">
+            <Input
+              value={newRole.name}
+              onChange={(event) => setNewRole((current) => ({ ...current, name: event.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '') }))}
+              placeholder="senior-reviewer"
+            />
+          </Field>
+          <Field label="Purpose" error={createErrors.description}>
+            <Input value={newRole.description} onChange={(event) => setNewRole((current) => ({ ...current, description: event.target.value }))} placeholder="Optional plain-language purpose" />
+          </Field>
+        </form>
+      </Dialog>
 
       <ConfirmationModal
-        isOpen={isConfirmOpen}
-        title="Delete Role?"
-        message={`Are you sure you want to permanently delete the role "${deleteRoleName}"? This action cannot be undone.`}
+        isOpen={Boolean(deleteRole)}
+        title="Delete Custom Role?"
+        message={`Delete "${deleteRole?.display_name || deleteRole?.name}"? Backend rules prevent deleting assigned or protected roles.`}
         confirmText="Delete Role"
         cancelText="Cancel"
         onConfirm={executeDeleteRole}
-        onCancel={() => {
-          setIsConfirmOpen(false);
-          setDeleteRoleId(null);
-          setDeleteRoleName('');
-        }}
-        variant="danger"
+        onCancel={() => setDeleteRole(null)}
         isLoading={deletingRole}
       />
-    </div>
+    </main>
   );
 }
