@@ -68,6 +68,7 @@ export default function ConsoleShell({ children, auth }) {
     () => getVisibleConsoleNavigation({ user, hasPermission, impersonationStatus }),
     [user, hasPermission, impersonationStatus],
   );
+  const useDocumentScroll = pathname === '/admin/articles/new' || /^\/admin\/articles\/[^/]+\/edit$/.test(pathname || '');
 
   if (authLoading || !user) {
     return (
@@ -78,8 +79,8 @@ export default function ConsoleShell({ children, auth }) {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-[var(--console-bg)] text-[var(--foreground)]">
-      <div className="flex h-full min-h-0">
+    <div className={`${useDocumentScroll ? 'min-h-screen' : 'h-screen overflow-hidden'} bg-[var(--console-bg)] text-[var(--foreground)]`}>
+      <div className={`flex min-h-0 ${useDocumentScroll ? 'min-h-screen' : 'h-full'}`}>
         <ConsoleSidebar user={user} navigation={navigation} pathname={pathname} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <ConsoleImpersonationBanner
@@ -100,7 +101,7 @@ export default function ConsoleShell({ children, auth }) {
             onStopImpersonation={handleReturnToSuperAdmin}
             stoppingImpersonation={stoppingImpersonation}
           />
-          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+          <main className={`min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 ${useDocumentScroll ? '' : 'min-h-0 overflow-y-auto'}`}>
             <div className="mx-auto w-full max-w-[1600px]">
               {children}
             </div>
