@@ -70,6 +70,7 @@ export const DEFAULT_ARTICLE_QUEUE_ID = 'all';
 
 export const ARTICLE_QUEUE_TABS = [
   ARTICLE_QUEUES.all,
+  ARTICLE_QUEUES.drafts,
   ARTICLE_QUEUES.submitted,
   ARTICLE_QUEUES['active-review'],
   ARTICLE_QUEUES['revision-follow-up'],

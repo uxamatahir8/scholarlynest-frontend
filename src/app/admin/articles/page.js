@@ -43,6 +43,165 @@ const getFullImageUrl = (path) => {
   return `${domain}${cleanPath}`;
 };
 
+const AUTHOR_STATUS_LABELS = {
+  draft: 'Draft',
+  submitted: 'Submitted',
+  under_review: 'Under review',
+  assigned_to_sub_editor: 'Under review',
+  reviewer_assigned: 'Under review',
+  review_in_progress: 'Under review',
+  revision_required: 'Revision required',
+  minor_revision_required: 'Minor revision required',
+  major_revision_required: 'Major revision required',
+  resubmitted: 'Resubmitted',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  copy_editing: 'In production',
+  proofreading: 'In production',
+  ready_for_publication: 'Ready for publication',
+  published: 'Published',
+  withdrawn: 'Withdrawn',
+  archived: 'Archived',
+};
+
+const REVISION_STATUSES = new Set(['revision_required', 'minor_revision_required', 'major_revision_required']);
+
+function AuthorManuscriptWorkspace({ articles, loading, error, getStatusBadge }) {
+  const groups = [
+    {
+      id: 'drafts',
+      title: 'Drafts',
+      emptyTitle: 'No drafts yet',
+      emptyDescription: 'Start a new submission and save it as a draft when you are not ready to submit.',
+      filter: (article) => article.status === 'draft',
+    },
+    {
+      id: 'revisions',
+      title: 'Revision Requests',
+      emptyTitle: 'No revision requests right now',
+      emptyDescription: 'Manuscripts needing author revision will appear here.',
+      filter: (article) => REVISION_STATUSES.has(article.status),
+    },
+    {
+      id: 'submitted',
+      title: 'Submitted Manuscripts',
+      emptyTitle: 'No submitted manuscripts yet',
+      emptyDescription: 'Submitted and in-review manuscripts will appear here after final submission.',
+      filter: (article) => ['submitted', 'under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted', 'accepted', 'copy_editing', 'proofreading', 'ready_for_publication'].includes(article.status),
+    },
+    {
+      id: 'published',
+      title: 'Published',
+      emptyTitle: 'No published manuscripts yet',
+      emptyDescription: 'Published manuscripts will appear here once they are available publicly.',
+      filter: (article) => article.status === 'published',
+    },
+  ];
+
+  const primaryAction = (article) => {
+    if (article.status === 'draft') {
+      return { label: 'Continue Draft', href: `/admin/articles/${article.id}/edit`, icon: Edit };
+    }
+    if (REVISION_STATUSES.has(article.status)) {
+      return { label: 'Respond to Revision Request', href: `/admin/articles/${article.id}/edit`, icon: Edit };
+    }
+    if (article.status === 'published') {
+      return { label: 'View Published Article', href: `/admin/articles/${article.id}/workflow`, icon: Eye };
+    }
+    return { label: 'View Submission Status', href: `/admin/articles/${article.id}/workflow`, icon: Eye };
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 space-y-4 border border-zinc-200/80 rounded-2xl bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/20">
+        <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
+        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Loading My Manuscripts...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center space-x-3 p-4 bg-red-500/[0.04] border border-red-500/10 rounded-xl text-red-650 text-xs">
+        <AlertCircle className="w-5 h-5 shrink-0" />
+        <span className="font-semibold text-xs leading-none">{error}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {groups.map((group) => {
+        const items = articles.filter(group.filter);
+        return (
+          <section key={group.id} aria-labelledby={`author-manuscripts-${group.id}`} className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 id={`author-manuscripts-${group.id}`} className="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                {group.title}
+              </h2>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{items.length} total</span>
+            </div>
+            {items.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-zinc-200 bg-white/70 p-6 text-center dark:border-zinc-800 dark:bg-zinc-900/20">
+                <FileText className="mx-auto mb-3 h-6 w-6 text-zinc-350" />
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-150">{group.emptyTitle}</h3>
+                <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-zinc-500">{group.emptyDescription}</p>
+                {group.id === 'drafts' && (
+                  <Link href="/admin/articles/new" className="mt-4 inline-flex">
+                    <Button type="button" variant="secondary" size="sm" icon={Plus}>Start a New Submission</Button>
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {items.map((article) => {
+                  const action = primaryAction(article);
+                  const ActionIcon = action.icon;
+                  return (
+                    <article key={article.id} className="rounded-xl border border-zinc-200/80 bg-white/80 p-5 shadow-sm transition hover:border-amber-500/30 dark:border-zinc-850 dark:bg-zinc-900/30">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {getStatusBadge(article.status)}
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{AUTHOR_STATUS_LABELS[article.status] || 'Manuscript'}</span>
+                          </div>
+                          <h3 className="text-base font-bold leading-snug text-zinc-950 dark:text-white">{article.title}</h3>
+                          <div className="flex flex-wrap gap-3 text-[11px] font-semibold text-zinc-500">
+                            <span className="inline-flex items-center gap-1">
+                              <BookOpen className="h-3.5 w-3.5 text-amber-600" />
+                              {article.magazine?.title || 'Journal not selected'}
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5 text-zinc-400" />
+                              Updated {article.updated_at ? new Date(article.updated_at).toLocaleDateString() : 'recently'}
+                            </span>
+                          </div>
+                          {article.abstract && (
+                            <p className="line-clamp-2 max-w-3xl text-xs leading-relaxed text-zinc-500">
+                              {article.abstract.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ')}
+                            </p>
+                          )}
+                        </div>
+                        <Link
+                          href={action.href}
+                          className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-zinc-950 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-100 dark:text-zinc-950"
+                        >
+                          <ActionIcon className="h-4 w-4" />
+                          {action.label}
+                        </Link>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }) {
   const { toast } = useToast();
   const { user, hasPermission, hasRole, loading: authLoading } = useAuth();
@@ -250,6 +409,83 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
             You must possess article viewing privileges to access this registry.
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (!isAdminOrEditor) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-300 text-left font-sans">
+        <title>My Manuscripts - ScholarlyNest</title>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-900 pb-6">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white leading-none">My Manuscripts</h1>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+              Continue drafts, respond to revision requests, and follow submitted manuscripts through editorial review.
+            </p>
+          </div>
+          {hasPermission('articles.create') && (
+            <Link href="/admin/articles/new" className="self-start sm:self-auto">
+              <Button variant="primary" size="sm" icon={Plus}>New Submission</Button>
+            </Link>
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full lg:w-auto">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-405" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search my manuscripts..."
+              className="w-full text-xs font-semibold pl-9 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear manuscript search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 p-0.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <select
+              value={selectedMagazineId}
+              onChange={(e) => {
+                setSelectedMagazineId(e.target.value);
+                updateQuery({ magazine_id: e.target.value });
+              }}
+              className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100 cursor-pointer appearance-none"
+            >
+              <option value="all">All Journals</option>
+              {magazines.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.title}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+          </div>
+        </div>
+
+        <AuthorManuscriptWorkspace
+          articles={articles}
+          loading={loading}
+          error={error}
+          getStatusBadge={getStatusBadge}
+        />
+
+        {totalPages > 1 && (
+          <div className="flex justify-center">
+            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+          </div>
+        )}
       </div>
     );
   }

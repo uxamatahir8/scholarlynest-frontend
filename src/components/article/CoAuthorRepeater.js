@@ -4,7 +4,7 @@ import React from 'react';
 import { Plus, Trash2, Shield, UserPlus, AlertCircle, Star, MailCheck } from 'lucide-react';
 import { createEmptyAuthor, normalizeAuthorRows } from './academicArticleForm';
 
-export default function CoAuthorRepeater({ coAuthors, setCoAuthors, currentUserEmail, required = false }) {
+export default function CoAuthorRepeater({ coAuthors, setCoAuthors, currentUserEmail, required = false, allowOwnerControl = true }) {
   
   const addCoAuthor = () => {
     setCoAuthors([
@@ -203,18 +203,20 @@ export default function CoAuthorRepeater({ coAuthors, setCoAuthors, currentUserE
 
                 {/* Checkboxes Wrapper */}
                 <div className="flex flex-wrap items-center gap-4">
-                  <label className="inline-flex items-center space-x-2 select-none cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={!!author.is_owner}
-                      onChange={(e) => updateCoAuthor(index, 'is_owner', e.target.checked)}
-                      className="w-4 h-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
-                    />
-                    <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center">
-                      <Star className="w-3.5 h-3.5 mr-1 text-zinc-400" />
-                      Article Owner
-                    </span>
-                  </label>
+                  {allowOwnerControl && (
+                    <label className="inline-flex items-center space-x-2 select-none cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!!author.is_owner}
+                        onChange={(e) => updateCoAuthor(index, 'is_owner', e.target.checked)}
+                        className="w-4 h-4 rounded border-zinc-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                      />
+                      <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center">
+                        <Star className="w-3.5 h-3.5 mr-1 text-zinc-400" />
+                        Article Owner
+                      </span>
+                    </label>
+                  )}
 
                   <label className="inline-flex items-center space-x-2 select-none cursor-pointer">
                     <input
