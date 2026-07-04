@@ -22,6 +22,7 @@ export default function AssignmentDashboardWorkspace({
   endpoint,
   primaryHref,
   primaryLabel,
+  fullDeskLabel,
   activeTitle,
   activeDescription,
   completedTitle = 'Completed Work',
@@ -106,7 +107,7 @@ export default function AssignmentDashboardWorkspace({
                 emptyTitle="No active assignments"
                 emptyDescription={observerMode && observerUser ? `No active assignments are visible for ${observerUser.name}.` : emptyActive}
                 actionHref={observerMode ? null : primaryHref}
-                actionLabel={observerMode ? null : 'Open Full Desk'}
+                actionLabel={observerMode ? null : (fullDeskLabel || 'Open Full Desk')}
               />
               <DashboardQueue
                 title={completedTitle}
@@ -115,13 +116,13 @@ export default function AssignmentDashboardWorkspace({
                 emptyTitle="No completed work yet"
                 emptyDescription={observerMode && observerUser ? `No completed assignments are visible for ${observerUser.name}.` : emptyCompleted}
                 actionHref={observerMode ? null : primaryHref}
-                actionLabel={observerMode ? null : 'Open Full Desk'}
+                actionLabel={observerMode ? null : (fullDeskLabel || 'Open Full Desk')}
               />
             </div>
             {!observerMode && (
             <DashboardSection title="Desk Links" description="Continue in the full task workspace when needed.">
               <DashboardQuickLinks links={[
-                { label: 'Open Full Desk', href: primaryHref, icon: ClipboardCheck, description: 'View all assignments and workflow actions.' },
+                { label: fullDeskLabel || 'Open Full Desk', href: primaryHref, icon: ClipboardCheck, description: 'View all assignments and workflow actions.' },
                 ...quickLinks,
               ]} />
             </DashboardSection>
