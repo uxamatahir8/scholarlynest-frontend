@@ -13,6 +13,7 @@ import RoleBadge from './ui/RoleBadge';
 import GlobalSearchInput from './home/GlobalSearchInput';
 
 const NAV_LINKS = [
+  { label: 'Home', href: '/' },
   { label: 'Magazines', href: '/magazines' },
   { label: 'About', href: '/about' },
   { label: 'Contact', href: '/contact' },
