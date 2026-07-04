@@ -84,6 +84,27 @@ const AUTHOR_MANUSCRIPT_STATUSES = [
   'published',
 ];
 
+const groupStatusOptionsByLabel = (options) => {
+  const grouped = new Map();
+  options.forEach((option) => {
+    const label = option.label || AUTHOR_STATUS_LABELS[option.value] || option.value;
+    const existing = grouped.get(label) || {
+      label,
+      values: [],
+      count: 0,
+    };
+    existing.values.push(option.value);
+    existing.count += Number(option.count || 0);
+    grouped.set(label, existing);
+  });
+
+  return Array.from(grouped.values()).map((option) => ({
+    value: option.values.join(','),
+    label: option.label,
+    count: option.count,
+  }));
+};
+
 function AuthorManuscriptWorkspace({ articles, loading, error, getStatusBadge }) {
   const groups = [
     {
@@ -366,7 +387,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
           params.search = debouncedSearchQuery.trim();
         }
         const response = await api.get('/admin/articles/status-options', { params });
-        const options = response.data?.data || [];
+        const options = groupStatusOptionsByLabel(response.data?.data || []);
         setStatusOptions(options);
         if (selectedStatus !== 'all' && !options.some((option) => option.value === selectedStatus)) {
           setSelectedStatus('all');
