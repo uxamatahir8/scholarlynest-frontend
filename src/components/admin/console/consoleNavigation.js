@@ -105,7 +105,7 @@ export const consoleNavigation = [
         label: 'Issue Manager',
         href: '/admin/issues',
         icon: Newspaper,
-        isVisible: ({ user }) => hasAnyRole(user, ['super_admin', 'admin', 'publisher']),
+        isVisible: ({ user }) => hasAnyRole(user, ['super_admin', 'admin', 'publisher', 'editor', 'magazine_editor']),
       },
       {
         label: 'Magazine Tags',

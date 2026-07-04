@@ -62,7 +62,8 @@ export default function IssueWorkspace() {
   const [articleAction, setArticleAction] = useState(null);
   const [latestCitation, setLatestCitation] = useState('');
 
-  const canUsePage = hasRole('publisher') || hasRole('super_admin') || hasRole('admin');
+  const canUsePage = hasRole('publisher') || hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor') || hasRole('super_admin') || hasRole('admin');
+  const canPublishIssues = hasRole('publisher') || hasRole('super_admin') || hasRole('admin');
   const magazineFilter = searchParams.get('magazine_id') || '';
   const selectedIssueId = searchParams.get('issue_id') || '';
   const page = Math.max(1, Number(searchParams.get('page') || 1));
@@ -194,6 +195,7 @@ export default function IssueWorkspace() {
       const payload = new FormData();
       Object.entries(issueForm).forEach(([key, value]) => {
         if (key === 'id' || value === null || value === '') return;
+        if (!canPublishIssues && ['status', 'is_published', 'published_at'].includes(key)) return;
         payload.append(key, value);
       });
       const endpoint = issueForm.id ? `/admin/issues/${issueForm.id}` : '/admin/issues';
@@ -277,7 +279,7 @@ export default function IssueWorkspace() {
   }
 
   if (!canUsePage) {
-    return <ErrorState title="Access restricted">Issue publication operations are available only to authorized publishers and administrators.</ErrorState>;
+    return <ErrorState title="Access restricted">Issue management is available only to authorized journal editors, publishers, and administrators.</ErrorState>;
   }
 
   return (
@@ -349,14 +351,16 @@ export default function IssueWorkspace() {
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Button type="button" variant="outline" size="sm" onClick={() => selectIssue(issue)}>Open</Button>
                         <Button type="button" variant="ghost" size="sm" onClick={() => editIssue(issue)}>Edit</Button>
-                        <Button
-                          type="button"
-                          variant={issue.is_published ? 'outline' : 'primary'}
-                          size="sm"
-                          onClick={() => setIssueAction({ issue, action: issue.is_published ? 'unpublish' : 'publish' })}
-                        >
-                          {issue.is_published ? 'Unpublish' : 'Publish Issue'}
-                        </Button>
+                        {canPublishIssues && (
+                          <Button
+                            type="button"
+                            variant={issue.is_published ? 'outline' : 'primary'}
+                            size="sm"
+                            onClick={() => setIssueAction({ issue, action: issue.is_published ? 'unpublish' : 'publish' })}
+                          >
+                            {issue.is_published ? 'Unpublish' : 'Publish Issue'}
+                          </Button>
+                        )}
                       </div>
                     </article>
                   ))}
@@ -380,12 +384,21 @@ export default function IssueWorkspace() {
                     {magazines.map((magazine) => <option key={magazine.id} value={magazine.id}>{magazine.title}</option>)}
                   </select>
                 </label>
-                <label className="block">
-                  <span className="text-sm font-semibold text-[var(--foreground)]">Issue status</span>
-                  <select value={issueForm.status} onChange={(event) => setIssueForm({ ...issueForm, status: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
-                    {issueStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </select>
-                </label>
+                {canPublishIssues ? (
+                  <label className="block">
+                    <span className="text-sm font-semibold text-[var(--foreground)]">Issue status</span>
+                    <select value={issueForm.status} onChange={(event) => setIssueForm({ ...issueForm, status: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                      {issueStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </label>
+                ) : (
+                  <div className="block">
+                    <span className="text-sm font-semibold text-[var(--foreground)]">Issue status</span>
+                    <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm font-semibold text-[var(--muted)]">
+                      Status changes are handled by publishers.
+                    </div>
+                  </div>
+                )}
                 <label className="block">
                   <span className="text-sm font-semibold text-[var(--foreground)]">Volume</span>
                   <input type="number" min="1" required value={issueForm.volume_number} onChange={(event) => setIssueForm({ ...issueForm, volume_number: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" />
@@ -475,7 +488,7 @@ export default function IssueWorkspace() {
 
                   <section>
                     <h3 className="text-sm font-bold text-[var(--foreground)]">Available Articles for Placement</h3>
-                    <p className="mt-1 text-sm text-[var(--muted)]">The current backend places an article into an issue as part of publication.</p>
+                    <p className="mt-1 text-sm text-[var(--muted)]">{canPublishIssues ? 'The current backend places an article into an issue as part of publication.' : 'Eligible articles are visible for planning. Publishing into an issue is handled by publishers.'}</p>
                     {latestCitation && (
                       <div className="mt-3 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
                         <strong>Generated citation:</strong> {latestCitation}
@@ -485,7 +498,7 @@ export default function IssueWorkspace() {
                       <EmptyState icon={FileText} title="No unplaced eligible articles." className="mt-3">
                         Articles appear here after they are accepted or marked ready for publication within this journal.
                       </EmptyState>
-                    ) : (
+                    ) : canPublishIssues ? (
                       <div className="mt-3 space-y-3">
                         {unplacedEligibleArticles.map((article) => {
                           const form = { ...publicationFormDefaults(article, selectedIssue), ...(articleForms[article.id] || {}) };
@@ -517,6 +530,21 @@ export default function IssueWorkspace() {
                             </article>
                           );
                         })}
+                      </div>
+                    ) : (
+                      <div className="mt-3 space-y-2">
+                        {unplacedEligibleArticles.map((article) => (
+                          <article key={article.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-[var(--foreground)]">{article.title}</h4>
+                                <p className="mt-1 text-sm text-[var(--muted)]">{authorsLine(article)}</p>
+                                <p className="mt-2 line-clamp-2 text-sm text-[var(--muted)]">{compactText(article.abstract, 'No abstract excerpt available.')}</p>
+                              </div>
+                              <PublicationStatusBadge status={article.status} />
+                            </div>
+                          </article>
+                        ))}
                       </div>
                     )}
                   </section>
