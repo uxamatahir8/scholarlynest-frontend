@@ -15,6 +15,7 @@ import { useAuth } from '../../../context/AuthContext';
 import ArticlePagination from '../../../components/article/ArticlePagination';
 import SeoHead from '../../../components/SeoHead';
 import AuthorHeaderBlock from '../../../components/article/AuthorHeaderBlock';
+import { isArticleEditableStatus } from '../../../utils/status';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -75,7 +76,7 @@ export default function ArticleDetail() {
   const isCoAuthorEditor = user && article && article.article_authors?.some(
     author => author.user_id === user.id && author.can_edit
   );
-  const showEditButton = isPrimaryAuthor || isCoAuthorEditor;
+  const showEditButton = (isPrimaryAuthor || isCoAuthorEditor) && isArticleEditableStatus(article?.status);
   
   const [downloading, setDownloading] = useState(false);
 

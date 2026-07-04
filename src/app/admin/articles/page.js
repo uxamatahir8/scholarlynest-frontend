@@ -28,6 +28,7 @@ import {
   getArticleQueue,
   isValidArticleQueue,
 } from '../../../utils/articleQueues';
+import { isArticleEditableStatus } from '../../../utils/status';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -99,11 +100,18 @@ function AuthorManuscriptWorkspace({ articles, loading, error, getStatusBadge })
   ];
 
   const primaryAction = (article) => {
-    if (article.status === 'draft') {
+    const canEdit = article.can_edit_article !== false && isArticleEditableStatus(article.status);
+    if (canEdit && article.status === 'draft') {
       return { label: 'Continue Draft', href: `/admin/articles/${article.id}/edit`, icon: Edit };
     }
-    if (REVISION_STATUSES.has(article.status)) {
+    if (canEdit && REVISION_STATUSES.has(article.status)) {
       return { label: 'Respond to Revision Request', href: `/admin/articles/${article.id}/edit`, icon: Edit };
+    }
+    if (canEdit && article.status === 'ready_for_publication') {
+      return { label: 'Update Publication Details', href: `/admin/articles/${article.id}/edit`, icon: Edit };
+    }
+    if (canEdit) {
+      return { label: 'Edit Manuscript', href: `/admin/articles/${article.id}/edit`, icon: Edit };
     }
     if (article.status === 'published') {
       return { label: 'View Published Article', href: `/admin/articles/${article.id}/workflow`, icon: Eye };
@@ -634,7 +642,9 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-850/60 text-xs font-semibold text-zinc-700 dark:text-zinc-305">
-                {articles.map((art) => (
+                {articles.map((art) => {
+                  const canEditArticle = art.can_edit_article !== false && isArticleEditableStatus(art.status);
+                  return (
                   <tr key={art.id} className="hover:bg-amber-500/[0.01] transition-colors">
                     <td className="px-6 py-4 max-w-[340px]">
                       <div className="flex items-center space-x-3.5 text-left">
@@ -677,7 +687,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
                     )}
                     <td className="px-6 py-4">{getStatusBadge(art.status)}</td>
                     <td className="px-6 py-4 text-right space-x-3.5">
-                      {hasPermission('articles.edit-own') && !isEditor && !observerMode && (
+                      {hasPermission('articles.edit-own') && canEditArticle && !observerMode && (
                         <Link
                           href={`/admin/articles/${art.id}/edit`}
                           className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-blue-605 hover:underline cursor-pointer"
@@ -718,7 +728,8 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

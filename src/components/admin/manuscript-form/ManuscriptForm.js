@@ -4,7 +4,7 @@ import { safeApiMessage } from '../../../utils/safeErrors';
 import { logError } from '../../../utils/safeLogger';
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   AlertCircle,
@@ -40,18 +40,12 @@ import {
   normalizeAuthorRows,
   validateAuthors,
 } from '../../article/academicArticleForm';
+import { isArticleEditableStatus, normalizeStatus } from '../../../utils/status';
 
 const RichEditor = dynamic(() => import('../../ui/RichEditor'), {
   ssr: false,
   loading: () => <LoadingState label="Loading writing editor..." className="min-h-[180px]" />,
 });
-
-const AUTHOR_EDITABLE_STATUSES = new Set([
-  'draft',
-  'revision_required',
-  'minor_revision_required',
-  'major_revision_required',
-]);
 
 const REVISION_STATUSES = new Set([
   'revision_required',
@@ -151,6 +145,7 @@ function FilePicker({ id, label, accept, fileName, existingLabel, onChange, onCl
 
 export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { user, hasRole, hasPermission, loading: authLoading } = useAuth();
   const isEdit = mode === 'edit';
@@ -190,9 +185,13 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [saving, setSaving] = useState(false);
   const [savingMessage, setSavingMessage] = useState('');
 
-  const status = article?.status || 'draft';
+  const status = normalizeStatus(article?.status || 'draft');
   const isRevision = REVISION_STATUSES.has(status);
-  const canEditForm = !isEdit || isSuperAdmin || AUTHOR_EDITABLE_STATUSES.has(status);
+  const observerReadonly = searchParams.get('observer_readonly') === '1'
+    || searchParams.has('observer_user')
+    || searchParams.has('observer_user_id');
+  const backendAllowsEdit = article?.can_edit_article !== false;
+  const canEditForm = !isEdit || (!observerReadonly && backendAllowsEdit && isArticleEditableStatus(status));
 
   const visibleAuthors = useMemo(() => {
     if (isSuperAdmin) return normalizeAuthorRows(authors);
@@ -239,7 +238,12 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
           api.get('/languages', { params: { active_only: 1 } }),
         ];
         if (isEdit && articleId) {
-          requests.push(api.get(`/admin/articles/${articleId}`));
+          requests.push(api.get(`/admin/articles/${articleId}`, {
+            params: {
+              view_context: 'edit',
+              ...(observerReadonly ? { observer_readonly: 1 } : {}),
+            },
+          }));
         }
 
         const [magazinesRes, typesRes, categoriesRes, areasRes, languagesRes, articleRes] = await Promise.all(requests);
@@ -297,7 +301,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
         }
       } catch (err) {
         logError(err);
-        setError('The manuscript workspace could not be loaded.');
+        setError(safeApiMessage(err, 'The manuscript workspace could not be loaded.'));
       } finally {
         setLoading(false);
       }
@@ -385,11 +389,14 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
 
   const buildFormData = (intent) => {
     const formData = new FormData();
+    const nextStatus = !isEdit
+      ? (intent === 'submit' ? 'submitted' : 'draft')
+      : (status === 'draft' ? (intent === 'submit' ? 'submitted' : 'draft') : status);
     formData.append('magazine_id', magazineId);
     formData.append('title', title);
     formData.append('abstract', abstract);
     formData.append('full_text', fullText);
-    formData.append('status', intent === 'submit' ? 'submitted' : 'draft');
+    formData.append('status', nextStatus);
     appendAcademicMetadata(formData, academicMetadata);
     if (pdfFile) formData.append('pdf_file', pdfFile);
     if (featuredImage) formData.append('featured_image', featuredImage);
@@ -477,6 +484,16 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   }
 
   if (isEdit && !canEditForm) {
+    const title = observerReadonly
+      ? 'Observer mode is read-only'
+      : isArticleEditableStatus(status)
+        ? 'You do not have edit access for this manuscript'
+        : 'This manuscript cannot be edited at this workflow stage';
+    const description = observerReadonly
+      ? 'This record was opened from a Super Admin observer queue. Workflow and manuscript editing actions are disabled in this view.'
+      : isArticleEditableStatus(status)
+        ? 'You can still review the manuscript workflow if you have access to the record.'
+        : 'Submitted, review, production, published, rejected, withdrawn, and archived manuscripts are managed from the workflow view.';
     return (
       <div className="space-y-6">
         <Link href="/admin/articles" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--foreground)]">
@@ -485,14 +502,14 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
         </Link>
         <EmptyState
           icon={FileText}
-          title="This manuscript is no longer editable as a draft"
+          title={title}
           action={(
             <Link href={`/admin/articles/${articleId}/workflow`}>
               <Button type="button" variant="primary" icon={ChevronRight}>View Submission Status</Button>
             </Link>
           )}
         >
-          Submitted, review, production, and published manuscripts are managed through the workflow status view.
+          {description}
         </EmptyState>
       </div>
     );

@@ -44,6 +44,15 @@ const STATUS_TONES = {
   draft: 'neutral',
 };
 
+const EDITABLE_ARTICLE_STATUSES = new Set([
+  'draft',
+  'revision_required',
+  'minor_revision_required',
+  'major_revision_required',
+  'resubmitted',
+  'ready_for_publication',
+]);
+
 const humanize = (value) => String(value || 'Unknown')
   .replaceAll('-', '_')
   .replaceAll('_', ' ')
@@ -63,6 +72,14 @@ export function getStatusTone(status) {
   return STATUS_TONES[normalized] || 'neutral';
 }
 
+export function isArticleEditableStatus(status) {
+  return EDITABLE_ARTICLE_STATUSES.has(normalizeStatus(status));
+}
+
+export function canEditArticleAtStatus(status) {
+  return isArticleEditableStatus(status);
+}
+
 export function getWorkflowActionLabel(status, role) {
   const normalized = normalizeStatus(status);
   const normalizedRole = String(role || '').toLowerCase().replaceAll('-', '_');
@@ -76,4 +93,4 @@ export function getWorkflowActionLabel(status, role) {
   return 'Review Next Step';
 }
 
-export { STATUS_LABELS, STATUS_TONES };
+export { EDITABLE_ARTICLE_STATUSES, STATUS_LABELS, STATUS_TONES };
