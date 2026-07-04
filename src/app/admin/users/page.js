@@ -28,10 +28,13 @@ export default function UserAccountsPage() {
 
   const canUsePage = Boolean(authUser && hasRole('super_admin') && !impersonationStatus?.active);
   const initialSearch = searchParams.get('search') || '';
+  const initialRole = searchParams.get('role') || 'all';
   const page = normalizeUserPage(searchParams.get('page'));
 
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
+  const [roleFilter, setRoleFilter] = useState(initialRole);
+  const [roles, setRoles] = useState([]);
   const [users, setUsers] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -66,9 +69,26 @@ export default function UserAccountsPage() {
 
   useEffect(() => {
     const urlSearch = searchParams.get('search') || '';
+    const urlRole = searchParams.get('role') || 'all';
     setSearchQuery(urlSearch);
     setDebouncedSearch(urlSearch);
+    setRoleFilter(urlRole);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!canUsePage) return;
+
+    const fetchRoles = async () => {
+      try {
+        const response = await api.get('/admin/rbac/roles');
+        setRoles(response.data || []);
+      } catch (error) {
+        setRoles([]);
+      }
+    };
+
+    fetchRoles();
+  }, [canUsePage]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -89,6 +109,7 @@ export default function UserAccountsPage() {
       const response = await api.get('/admin/users', {
         params: {
           search: debouncedSearch,
+          role: roleFilter === 'all' ? undefined : roleFilter,
           page,
           per_page: USER_PER_PAGE,
         },
@@ -106,7 +127,7 @@ export default function UserAccountsPage() {
 
   useEffect(() => {
     if (!authLoading && canUsePage) fetchUsers();
-  }, [authLoading, canUsePage, debouncedSearch, page]);
+  }, [authLoading, canUsePage, debouncedSearch, roleFilter, page]);
 
   const handleImpersonateConfirm = async () => {
     if (!impersonateTarget) return;
@@ -155,10 +176,17 @@ export default function UserAccountsPage() {
       <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
         <UserManagementFilters
           search={searchQuery}
+          role={roleFilter}
+          roles={roles}
           onSearchChange={setSearchQuery}
+          onRoleChange={(nextRole) => {
+            setRoleFilter(nextRole);
+            updateQuery({ role: nextRole === 'all' ? '' : nextRole, page: 1 });
+          }}
           onClear={() => {
             setSearchQuery('');
-            updateQuery({ search: '', page: 1 });
+            setRoleFilter('all');
+            updateQuery({ search: '', role: '', page: 1 });
           }}
           loading={loading}
         />
@@ -169,8 +197,8 @@ export default function UserAccountsPage() {
       {loading ? (
         <LoadingState label="Loading user directory..." className="min-h-[360px]" />
       ) : !errorMessage && users.length === 0 ? (
-        <EmptyState icon={Users} title="No users match this search">
-          Try a different name, email, or role search.
+        <EmptyState icon={Users} title="No users match these filters">
+          Try a different name, email, or role filter.
         </EmptyState>
       ) : !errorMessage ? (
         <>

@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Search, X } from 'lucide-react';
+import { Filter, Search, X } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 
-export default function UserManagementFilters({ search, onSearchChange, onClear, loading }) {
+export default function UserManagementFilters({ search, role, roles = [], onSearchChange, onRoleChange, onClear, loading }) {
+  const hasFilters = Boolean(search || (role && role !== 'all'));
+
   return (
     <form className="flex flex-col gap-3 sm:flex-row sm:items-end" role="search" onSubmit={(event) => event.preventDefault()}>
       <div className="relative w-full sm:max-w-md">
@@ -29,7 +31,26 @@ export default function UserManagementFilters({ search, onSearchChange, onClear,
           </button>
         )}
       </div>
-      <Button type="button" variant="secondary" size="md" onClick={onClear} disabled={loading || !search}>
+      <div className="w-full sm:max-w-xs">
+        <label htmlFor="user-role-filter" className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+          <Filter className="h-3.5 w-3.5" aria-hidden="true" />
+          Filter by role
+        </label>
+        <select
+          id="user-role-filter"
+          value={role || 'all'}
+          onChange={(event) => onRoleChange(event.target.value)}
+          disabled={loading}
+          className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--foreground)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--focus-ring)] disabled:opacity-60"
+          aria-label="Filter users by role"
+        >
+          <option value="all">All roles</option>
+          {roles.map((item) => (
+            <option key={item.id} value={item.name}>{item.display_name || item.name}</option>
+          ))}
+        </select>
+      </div>
+      <Button type="button" variant="secondary" size="md" onClick={onClear} disabled={loading || !hasFilters}>
         Reset
       </Button>
     </form>

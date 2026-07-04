@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Filter, Lock, Plus, RefreshCw, Shield, Trash2 } from 'lucide-react';
+import { Lock, Plus, RefreshCw, Shield, Trash2 } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../context/ToastContext';
 import api from '../../../../utils/api';
@@ -53,17 +53,8 @@ export default function RolesPermissionsPage() {
   const [creatingRole, setCreatingRole] = useState(false);
   const [deleteRole, setDeleteRole] = useState(null);
   const [deletingRole, setDeletingRole] = useState(false);
-  const [roleFilterId, setRoleFilterId] = useState('all');
 
-  const filteredRoles = useMemo(() => (
-    roleFilterId === 'all'
-      ? roles
-      : roles.filter((role) => String(role.id) === String(roleFilterId))
-  ), [roleFilterId, roles]);
-
-  const selectedRole = useMemo(() => (
-    filteredRoles.find((role) => role.id === selectedRoleId) || filteredRoles[0] || null
-  ), [filteredRoles, selectedRoleId]);
+  const selectedRole = useMemo(() => roles.find((role) => role.id === selectedRoleId) || roles[0] || null, [roles, selectedRoleId]);
 
   const groupedPermissions = useMemo(() => {
     return permissions.reduce((groups, permission) => {
@@ -106,17 +97,6 @@ export default function RolesPermissionsPage() {
     }
     fetchData();
   }, [authLoading, canUsePage, router]);
-
-  useEffect(() => {
-    if (roleFilterId !== 'all' && !roles.some((role) => String(role.id) === String(roleFilterId))) {
-      setRoleFilterId('all');
-      return;
-    }
-
-    if (filteredRoles.length > 0 && !filteredRoles.some((role) => role.id === selectedRoleId)) {
-      setSelectedRoleId(filteredRoles[0].id);
-    }
-  }, [filteredRoles, roleFilterId, roles, selectedRoleId]);
 
   const handleTogglePermission = async (permission) => {
     if (!selectedRole) return;
@@ -161,7 +141,6 @@ export default function RolesPermissionsPage() {
       const nextRoles = rolesResponse.data || [];
       setRoles(nextRoles);
       setSelectedRoleId(response.data?.id || nextRoles[0]?.id || null);
-      setRoleFilterId(response.data?.id ? String(response.data.id) : 'all');
       setNewRole({ display_name: '', name: '', description: '' });
       setShowCreateRole(false);
       toast('Custom role created.', 'success');
@@ -187,7 +166,6 @@ export default function RolesPermissionsPage() {
       const nextRoles = rolesResponse.data || [];
       setRoles(nextRoles);
       setSelectedRoleId(nextRoles[0]?.id || null);
-      setRoleFilterId('all');
       toast('Custom role deleted.', 'success');
     } catch (error) {
       toast(safeApiMessage(error, 'Custom role could not be deleted.'), 'error');
@@ -232,43 +210,11 @@ export default function RolesPermissionsPage() {
         <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
           <Card className="border border-[var(--border)] bg-[var(--surface)]">
             <CardHeader>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <CardTitle>Roles</CardTitle>
-                  <CardDescription>System roles are locked. Custom roles can use supported controls.</CardDescription>
-                </div>
-                <Badge variant="outline">{filteredRoles.length} of {roles.length}</Badge>
-              </div>
-              <div className="mt-4">
-                <label htmlFor="role-filter" className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-                  <Filter className="h-3.5 w-3.5" aria-hidden="true" />
-                  Filter by role
-                </label>
-                <select
-                  id="role-filter"
-                  value={roleFilterId}
-                  onChange={(event) => {
-                    const nextFilter = event.target.value;
-                    setRoleFilterId(nextFilter);
-                    if (nextFilter === 'all') {
-                      setSelectedRoleId(roles[0]?.id || null);
-                    } else {
-                      setSelectedRoleId(Number(nextFilter));
-                    }
-                  }}
-                  className="min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-semibold text-[var(--foreground)] outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--focus-ring)]"
-                >
-                  <option value="all">All roles</option>
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id}>{role.display_name}</option>
-                  ))}
-                </select>
-              </div>
+              <CardTitle>Roles</CardTitle>
+              <CardDescription>System roles are locked. Custom roles can use supported controls.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              {filteredRoles.length === 0 ? (
-                <EmptyState icon={Shield} title="No roles match this filter">Choose All roles to return to the full role list.</EmptyState>
-              ) : filteredRoles.map((role) => {
+              {roles.map((role) => {
                 const selected = selectedRole?.id === role.id;
                 const locked = role.is_locked || role.is_system;
                 return (
