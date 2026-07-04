@@ -194,6 +194,22 @@ export default function WorkflowActionPanel({
   const canPostPublication = canPublish && status === 'published';
   const canShowProductionAssignment = canAssignProduction && productionStatuses.has(status);
   const canCompleteProduction = (isAdmin || isCopyEditor || isProofreader) && myProductionAssignment;
+  const productionTaskLabel = myProductionAssignment?.role === 'copy_editor'
+    ? 'Copyediting Task'
+    : myProductionAssignment?.role === 'proofreader'
+      ? 'Proofreading Task'
+      : 'Production Task';
+  const productionFileLabel = myProductionAssignment?.role === 'proofreader' ? 'Proof File' : 'Copyedited Manuscript';
+  const productionCompleteLabel = myProductionAssignment?.role === 'copy_editor'
+    ? 'Mark Copyediting Complete'
+    : myProductionAssignment?.role === 'proofreader'
+      ? 'Mark Proofreading Complete'
+      : 'Complete Task';
+  const productionCompleteMessage = myProductionAssignment?.role === 'copy_editor'
+    ? 'This will mark your copyediting task as complete and move the manuscript toward publication readiness.'
+    : myProductionAssignment?.role === 'proofreader'
+      ? 'This will mark your proofreading task as complete and move the manuscript toward publication readiness.'
+      : 'This will mark your production task as complete and move the manuscript toward publication readiness.';
 
   const hasAnyAction = canScreen || canAssignSubEditor || canShowReviewerAssignment || (isSubEditor && mySubEditorAssignment)
     || (isReviewer && myReviewerAssignment) || canFinalDecision || canShowProductionAssignment || canCompleteProduction
@@ -509,23 +525,23 @@ export default function WorkflowActionPanel({
         )}
 
         {canCompleteProduction && (
-          <ActionBlock title="My Production Task" description="Complete your assigned production work when the manuscript file is ready.">
+          <ActionBlock title={`My ${productionTaskLabel}`} description={myProductionAssignment.role === 'copy_editor' ? 'Review the permitted manuscript files, upload a copyedited file if needed, then mark copyediting complete.' : 'Complete your assigned production work when the manuscript file is ready.'}>
             <p className="text-sm text-[var(--muted)]">Current task: {myProductionAssignment.role?.replaceAll('_', ' ')}.</p>
-            {fileInput('production_file', myProductionAssignment.role === 'proofreader' ? 'Proof File' : 'Copyedited Manuscript')}
+            {fileInput('production_file', productionFileLabel)}
             <Button
               type="button"
               icon={Check}
               isLoading={busyAction === 'complete-production'}
               onClick={() => askConfirmation({
                 key: 'complete-production',
-                title: 'Complete production task?',
-                message: 'This will mark your production task as complete and move the manuscript toward publication readiness.',
-                confirmText: 'Complete Task',
+                title: `${productionCompleteLabel}?`,
+                message: productionCompleteMessage,
+                confirmText: productionCompleteLabel,
                 variant: 'primary',
                 run: () => runAction('complete-production', () => api.post(`/admin/production-assignments/${myProductionAssignment.id}/complete`, buildFormData({}, { production_file: files.production_file }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Production task completed.'),
               })}
             >
-              Complete Task
+              {productionCompleteLabel}
             </Button>
           </ActionBlock>
         )}

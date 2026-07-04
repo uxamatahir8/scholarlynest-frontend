@@ -103,7 +103,18 @@ export function nextStepText(article, user, hasRole) {
     const own = (article?.sub_editor_assignments || []).find((item) => Number(item.sub_editor_id) === Number(user?.id));
     if (own && own.status !== 'completed') return 'Review the manuscript and submit your recommendation to the Editor.';
   }
-  if (hasRole('copy_editor') || hasRole('proofreader')) return 'Complete your assigned production task when your file review is ready.';
+  if (hasRole('copy_editor')) {
+    const own = (article?.production_assignments || []).find((item) => Number(item.user_id) === Number(user?.id) && item.role === 'copy_editor');
+    if (own?.status === 'completed') return 'Your copyediting task is complete. Review the manuscript record if needed.';
+    if (own) return 'Open the manuscript files, upload a copyedited manuscript if needed, then mark copyediting complete.';
+    return 'No copyediting action is assigned to you for this manuscript right now.';
+  }
+  if (hasRole('proofreader')) {
+    const own = (article?.production_assignments || []).find((item) => Number(item.user_id) === Number(user?.id) && item.role === 'proofreader');
+    if (own?.status === 'completed') return 'Your proofreading task is complete. Review the manuscript record if needed.';
+    if (own) return 'Open the manuscript files, upload a proof file if needed, then mark proofreading complete.';
+    return 'No proofreading action is assigned to you for this manuscript right now.';
+  }
   if (hasRole('publisher') && ['accepted', 'ready_for_publication'].includes(status)) return 'Prepare publication metadata and issue placement.';
   if (hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor') || hasRole('super_admin') || hasRole('admin')) {
     if (['submitted', 'pending'].includes(status)) return 'Complete editorial screening.';
