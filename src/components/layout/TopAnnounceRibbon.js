@@ -15,7 +15,7 @@ export default function TopAnnounceRibbon({ items = [], onDismiss }) {
   if (validItems.length === 0) return null;
 
   return (
-    <section className="bg-zinc-950 text-white" aria-label="Latest publication headlines">
+    <section className="relative left-1/2 w-screen -translate-x-1/2 bg-zinc-950 text-white" aria-label="Latest publication headlines">
       <div className="mx-auto flex min-h-10 w-full max-w-[1440px] items-center gap-3 px-4 py-2 text-sm sm:px-6 lg:px-8">
         <p className="hidden shrink-0 text-xs font-bold text-amber-300 sm:block">Latest</p>
 
