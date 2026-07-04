@@ -219,6 +219,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
   const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
 
   const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || hasPermission('articles.auto-approve') || isEditor) : false;
+  const isAuthorWorkspace = !isAdminOrEditor;
 
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -318,9 +319,9 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
     const fetchMagazines = async () => {
       try {
         setLoadingMagazines(true);
-        const endpoint = hasPermission('magazines.view-any') || hasPermission('magazines.view-own') ? '/admin/magazines' : '/magazines';
+        const endpoint = isAuthorWorkspace ? '/magazines' : '/admin/magazines';
         const response = await api.get(endpoint, { params: { all: true } });
-        setMagazines(response.data || []);
+        setMagazines(Array.isArray(response.data) ? response.data : (response.data?.data || []));
       } catch (err) {
         logError('Failed to fetch magazines for filter', err);
       } finally {
@@ -328,7 +329,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
       }
     };
     fetchMagazines();
-  }, [hasPermission]);
+  }, [isAuthorWorkspace]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -344,7 +345,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
       
       const params = {
         page: currentPage,
-        per_page: itemsPerPage,
+        per_page: isAuthorWorkspace ? 100 : itemsPerPage,
         ...observerParams,
       };
 
@@ -355,14 +356,16 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
         params.search = debouncedSearchQuery.trim();
       }
 
-      const statuses = selectedQueue.statuses.length ? selectedQueue.statuses : [null];
+      const statuses = isAuthorWorkspace ? [null] : (selectedQueue.statuses.length ? selectedQueue.statuses : [null]);
       const perStatusPage = Math.max(1, Math.ceil(itemsPerPage / statuses.length));
       const responses = await Promise.all(statuses.map((status) => {
-        const nextParams = { ...params, per_page: perStatusPage };
+        const nextParams = { ...params, per_page: isAuthorWorkspace ? params.per_page : perStatusPage };
         if (status) nextParams.status = status;
         return api.get('/admin/articles', { params: nextParams });
       }));
-      const combined = responses.flatMap((response) => response.data?.data || []).slice(0, itemsPerPage);
+      const combined = responses
+        .flatMap((response) => response.data?.data || [])
+        .slice(0, isAuthorWorkspace ? params.per_page : itemsPerPage);
       const total = responses.reduce((sum, response) => sum + (response.data?.total || response.data?.data?.length || 0), 0);
       const pages = Math.max(...responses.map((response) => response.data?.last_page || 1));
       
