@@ -48,6 +48,7 @@ const postPublicationActions = [
 ];
 
 const productionStatuses = new Set(['accepted', 'ready_for_publication']);
+const activeProductionAssignmentStatuses = new Set(['active', 'pending', 'in_progress', 'assigned']);
 
 function ActionBlock({ title, description, children }) {
   return (
@@ -112,7 +113,7 @@ export default function WorkflowActionPanel({
     (workflowContext?.production_assignments || []).find((item) => {
       const roleMatches = isCopyEditor ? item.role === 'copy_editor' : isProofreader ? item.role === 'proofreader' : true;
       const userMatches = isAdmin || Number(item.user_id) === Number(user?.id);
-      return userMatches && roleMatches && ['pending', 'in_progress', 'assigned'].includes(item.status);
+      return userMatches && roleMatches && activeProductionAssignmentStatuses.has(item.status);
     })
   ), [workflowContext, user, isAdmin, isCopyEditor, isProofreader]);
 

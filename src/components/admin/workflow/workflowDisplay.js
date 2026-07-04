@@ -92,6 +92,8 @@ export function statusSentence(status) {
   return getStatusLabel(status);
 }
 
+const activeProductionAssignmentStatuses = new Set(['active', 'pending', 'in_progress', 'assigned']);
+
 export function nextStepText(article, user, hasRole) {
   const status = normalizeStatus(article?.status);
   if (hasRole('reviewer')) {
@@ -106,13 +108,13 @@ export function nextStepText(article, user, hasRole) {
   if (hasRole('copy_editor')) {
     const own = (article?.production_assignments || []).find((item) => Number(item.user_id) === Number(user?.id) && item.role === 'copy_editor');
     if (own?.status === 'completed') return 'Your copyediting task is complete. Review the manuscript record if needed.';
-    if (own) return 'Open the manuscript files, upload a copyedited manuscript if needed, then mark copyediting complete.';
+    if (own && activeProductionAssignmentStatuses.has(own.status)) return 'Open the manuscript files, upload a copyedited manuscript if needed, then mark copyediting complete.';
     return 'No copyediting action is assigned to you for this manuscript right now.';
   }
   if (hasRole('proofreader')) {
     const own = (article?.production_assignments || []).find((item) => Number(item.user_id) === Number(user?.id) && item.role === 'proofreader');
     if (own?.status === 'completed') return 'Your proofreading task is complete. Review the manuscript record if needed.';
-    if (own) return 'Open the manuscript files, upload a proof file if needed, then mark proofreading complete.';
+    if (own && activeProductionAssignmentStatuses.has(own.status)) return 'Open the manuscript files, upload a proof file if needed, then mark proofreading complete.';
     return 'No proofreading action is assigned to you for this manuscript right now.';
   }
   if (hasRole('publisher') && ['accepted', 'ready_for_publication'].includes(status)) return 'Prepare publication metadata and issue placement.';
