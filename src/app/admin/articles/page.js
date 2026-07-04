@@ -66,6 +66,23 @@ const AUTHOR_STATUS_LABELS = {
 };
 
 const REVISION_STATUSES = new Set(['revision_required', 'minor_revision_required', 'major_revision_required']);
+const AUTHOR_MANUSCRIPT_STATUSES = [
+  'draft',
+  'revision_required',
+  'minor_revision_required',
+  'major_revision_required',
+  'submitted',
+  'under_review',
+  'assigned_to_sub_editor',
+  'reviewer_assigned',
+  'review_in_progress',
+  'resubmitted',
+  'accepted',
+  'copy_editing',
+  'proofreading',
+  'ready_for_publication',
+  'published',
+];
 
 function AuthorManuscriptWorkspace({ articles, loading, error, getStatusBadge }) {
   const groups = [
@@ -342,10 +359,11 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
     try {
       setLoading(true);
       setError(null);
+      const authorItemsPerStatus = 10;
       
       const params = {
         page: currentPage,
-        per_page: isAuthorWorkspace ? 100 : itemsPerPage,
+        per_page: isAuthorWorkspace ? authorItemsPerStatus : itemsPerPage,
         ...observerParams,
       };
 
@@ -356,16 +374,15 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
         params.search = debouncedSearchQuery.trim();
       }
 
-      const statuses = isAuthorWorkspace ? [null] : (selectedQueue.statuses.length ? selectedQueue.statuses : [null]);
+      const statuses = isAuthorWorkspace ? AUTHOR_MANUSCRIPT_STATUSES : (selectedQueue.statuses.length ? selectedQueue.statuses : [null]);
       const perStatusPage = Math.max(1, Math.ceil(itemsPerPage / statuses.length));
       const responses = await Promise.all(statuses.map((status) => {
         const nextParams = { ...params, per_page: isAuthorWorkspace ? params.per_page : perStatusPage };
         if (status) nextParams.status = status;
         return api.get('/admin/articles', { params: nextParams });
       }));
-      const combined = responses
-        .flatMap((response) => response.data?.data || [])
-        .slice(0, isAuthorWorkspace ? params.per_page : itemsPerPage);
+      const combinedResults = responses.flatMap((response) => response.data?.data || []);
+      const combined = isAuthorWorkspace ? combinedResults : combinedResults.slice(0, itemsPerPage);
       const total = responses.reduce((sum, response) => sum + (response.data?.total || response.data?.data?.length || 0), 0);
       const pages = Math.max(...responses.map((response) => response.data?.last_page || 1));
       
