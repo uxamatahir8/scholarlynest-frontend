@@ -281,8 +281,11 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
   // Live search and magazine filter state
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [selectedMagazineId, setSelectedMagazineId] = useState(searchParams.get('magazine_id') || 'all');
+  const [selectedStatus, setSelectedStatus] = useState(searchParams.get('status') || 'all');
   const [magazines, setMagazines] = useState([]);
   const [loadingMagazines, setLoadingMagazines] = useState(false);
+  const [statusOptions, setStatusOptions] = useState([]);
+  const [loadingStatusOptions, setLoadingStatusOptions] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -326,9 +329,11 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
   useEffect(() => {
     const nextSearch = searchParams.get('search') || '';
     const nextMagazineId = searchParams.get('magazine_id') || 'all';
+    const nextStatus = searchParams.get('status') || 'all';
     setSearchQuery(nextSearch);
     setDebouncedSearchQuery(nextSearch);
     setSelectedMagazineId(nextMagazineId);
+    setSelectedStatus(nextStatus);
   }, [searchParams]);
 
   // Fetch magazines for the filter dropdown
@@ -348,10 +353,39 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
     fetchMagazines();
   }, [isAuthorWorkspace]);
 
+  useEffect(() => {
+    const fetchStatusOptions = async () => {
+      if (!isAuthorWorkspace || authLoading || !user) return;
+      try {
+        setLoadingStatusOptions(true);
+        const params = { ...observerParams };
+        if (selectedMagazineId !== 'all') {
+          params.magazine_id = selectedMagazineId;
+        }
+        if (debouncedSearchQuery.trim()) {
+          params.search = debouncedSearchQuery.trim();
+        }
+        const response = await api.get('/admin/articles/status-options', { params });
+        const options = response.data?.data || [];
+        setStatusOptions(options);
+        if (selectedStatus !== 'all' && !options.some((option) => option.value === selectedStatus)) {
+          setSelectedStatus('all');
+          updateQuery({ status: 'all' });
+        }
+      } catch (err) {
+        logError('Failed to fetch article status filter options', err);
+        setStatusOptions([]);
+      } finally {
+        setLoadingStatusOptions(false);
+      }
+    };
+    fetchStatusOptions();
+  }, [isAuthorWorkspace, authLoading, user, selectedMagazineId, debouncedSearchQuery, observerParams]);
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, selectedMagazineId, queueId]);
+  }, [debouncedSearchQuery, selectedMagazineId, selectedStatus, queueId]);
 
   // Fetch articles based on filter
   const fetchArticles = async () => {
@@ -359,11 +393,10 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
     try {
       setLoading(true);
       setError(null);
-      const authorItemsPerStatus = 10;
       
       const params = {
         page: currentPage,
-        per_page: isAuthorWorkspace ? authorItemsPerStatus : itemsPerPage,
+        per_page: itemsPerPage,
         ...observerParams,
       };
 
@@ -374,15 +407,26 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
         params.search = debouncedSearchQuery.trim();
       }
 
-      const statuses = isAuthorWorkspace ? AUTHOR_MANUSCRIPT_STATUSES : (selectedQueue.statuses.length ? selectedQueue.statuses : [null]);
+      if (isAuthorWorkspace) {
+        if (selectedStatus !== 'all') {
+          params.status = selectedStatus;
+        }
+        const response = await api.get('/admin/articles', { params });
+        setArticles(response.data?.data || []);
+        setTotalArticles(response.data?.total || response.data?.data?.length || 0);
+        setTotalPages(response.data?.last_page || 1);
+        return;
+      }
+
+      const statuses = selectedQueue.statuses.length ? selectedQueue.statuses : [null];
       const perStatusPage = Math.max(1, Math.ceil(itemsPerPage / statuses.length));
       const responses = await Promise.all(statuses.map((status) => {
-        const nextParams = { ...params, per_page: isAuthorWorkspace ? params.per_page : perStatusPage };
+        const nextParams = { ...params, per_page: perStatusPage };
         if (status) nextParams.status = status;
         return api.get('/admin/articles', { params: nextParams });
       }));
       const combinedResults = responses.flatMap((response) => response.data?.data || []);
-      const combined = isAuthorWorkspace ? combinedResults : combinedResults.slice(0, itemsPerPage);
+      const combined = combinedResults.slice(0, itemsPerPage);
       const total = responses.reduce((sum, response) => sum + (response.data?.total || response.data?.data?.length || 0), 0);
       const pages = Math.max(...responses.map((response) => response.data?.last_page || 1));
       
@@ -401,7 +445,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
     if (!authLoading && user) {
       fetchArticles();
     }
-  }, [currentPage, queueId, selectedMagazineId, debouncedSearchQuery, user, authLoading, observerParams]);
+  }, [currentPage, queueId, selectedMagazineId, selectedStatus, debouncedSearchQuery, user, authLoading, observerParams]);
 
   const getStatusBadge = (status) => {
     const [label, tone = 'zinc'] = STATUS_META[status] || [(status || 'Unknown').replaceAll('_', ' '), 'zinc'];
@@ -441,83 +485,6 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
     );
   }
 
-  if (!isAdminOrEditor) {
-    return (
-      <div className="space-y-8 animate-in fade-in duration-300 text-left font-sans">
-        <title>My Manuscripts - ScholarlyNest</title>
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-900 pb-6">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white leading-none">My Manuscripts</h1>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-              Continue drafts, respond to revision requests, and follow submitted manuscripts through editorial review.
-            </p>
-          </div>
-          {hasPermission('articles.create') && (
-            <Link href="/admin/articles/new" className="self-start sm:self-auto">
-              <Button variant="primary" size="sm" icon={Plus}>New Submission</Button>
-            </Link>
-          )}
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full lg:w-auto">
-          <div className="relative w-full sm:max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-405" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search my manuscripts..."
-              className="w-full text-xs font-semibold pl-9 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                aria-label="Clear manuscript search"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 p-0.5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          <div className="relative w-full sm:w-64">
-            <select
-              value={selectedMagazineId}
-              onChange={(e) => {
-                setSelectedMagazineId(e.target.value);
-                updateQuery({ magazine_id: e.target.value });
-              }}
-              className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100 cursor-pointer appearance-none"
-            >
-              <option value="all">All Journals</option>
-              {magazines.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.title}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
-          </div>
-        </div>
-
-        <AuthorManuscriptWorkspace
-          articles={articles}
-          loading={loading}
-          error={error}
-          getStatusBadge={getStatusBadge}
-        />
-
-        {totalPages > 1 && (
-          <div className="flex justify-center">
-            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8 animate-in fade-in duration-300 text-left font-sans">
       <title>{isAdminOrEditor ? "Manuscripts Board - ScholarlyNest" : "My Articles - ScholarlyNest"}</title>
@@ -526,12 +493,12 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-900 pb-6">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white leading-none">
-            {selectedQueue.heading || (isAdminOrEditor ? "Manuscripts Editorial Board" : "My Research Articles")}
+            {isAdminOrEditor ? selectedQueue.heading : "My Manuscripts"}
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-            {selectedQueue.description || (isAdminOrEditor
-              ? "Oversee platform submissions, review papers, and download manuscript files." 
-              : "Manage drafts, track editorial review cycles, and publish new academic work.")}
+            {isAdminOrEditor
+              ? selectedQueue.description
+              : "Filter your manuscript submissions by journal, workflow status, or search text."}
           </p>
         </div>
         {hasPermission('articles.create') && !observerMode && (
@@ -542,7 +509,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
               className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white shadow-sm cursor-pointer shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Add Article</span>
+              <span>{isAuthorWorkspace ? "New Submission" : "Add Article"}</span>
             </Button>
           </Link>
         )}
@@ -550,34 +517,35 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
 
       {/* Filter Tabs & Search row */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 font-sans">
-        {/* Status selection */}
-        <div
-          role="tablist"
-          aria-label="Article queues"
-          className="flex flex-wrap gap-1 rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/40 w-full lg:max-w-5xl"
-        >
-          {ARTICLE_QUEUE_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              id={`article-queue-tab-${tab.id}`}
-              aria-controls="article-queue-panel"
-              aria-selected={queueId === tab.id}
-              onClick={() => handleQueueChange(tab.id)}
-              className={`px-3 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-100 dark:focus-visible:ring-offset-zinc-900 ${
-                queueId === tab.id
-                  ? 'bg-white shadow text-amber-600 dark:bg-zinc-950 dark:text-amber-400'
-                  : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {isAdminOrEditor && (
+          <div
+            role="tablist"
+            aria-label="Article queues"
+            className="flex flex-wrap gap-1 rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/40 w-full lg:max-w-5xl"
+          >
+            {ARTICLE_QUEUE_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`article-queue-tab-${tab.id}`}
+                aria-controls="article-queue-panel"
+                aria-selected={queueId === tab.id}
+                onClick={() => handleQueueChange(tab.id)}
+                className={`px-3 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-100 dark:focus-visible:ring-offset-zinc-900 ${
+                  queueId === tab.id
+                    ? 'bg-white shadow text-amber-600 dark:bg-zinc-950 dark:text-amber-400'
+                    : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Inputs */}
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full lg:w-auto">
+        <div className={`flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full ${isAuthorWorkspace ? 'lg:w-full lg:justify-start' : 'lg:w-auto'}`}>
           {/* Search box */}
           <div className="relative w-full sm:w-60">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-405" />
@@ -585,7 +553,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search registry..."
+              placeholder={isAuthorWorkspace ? "Search my manuscripts..." : "Search registry..."}
               className="w-full text-xs font-semibold pl-9 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100"
             />
             {searchQuery && (
@@ -599,6 +567,28 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
             )}
           </div>
 
+          {isAuthorWorkspace && (
+            <div className="relative w-full sm:w-56">
+              <select
+                value={selectedStatus}
+                onChange={(e) => {
+                  setSelectedStatus(e.target.value);
+                  updateQuery({ status: e.target.value });
+                }}
+                disabled={loadingStatusOptions}
+                className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100 cursor-pointer appearance-none disabled:cursor-wait disabled:text-zinc-400"
+              >
+                <option value="all">All Statuses</option>
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} ({option.count})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+            </div>
+          )}
+
           {/* Magazine selector */}
           <div className="relative w-full sm:w-56">
             <select
@@ -609,7 +599,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
               }}
               className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100 cursor-pointer appearance-none"
             >
-              <option value="all">All Magazines</option>
+              <option value="all">{isAuthorWorkspace ? "All Journals" : "All Magazines"}</option>
               {magazines.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.title}
