@@ -17,6 +17,16 @@ import Pagination from '../../ui/Pagination';
 import MagazineFormDialog from './MagazineFormDialog';
 import { compactText } from './publicationUtils';
 
+const getFullImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
+  if (path.startsWith('/images/') || path.startsWith('images/')) return path.startsWith('/') ? path : `/${path}`;
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  const domain = apiBase.replace(/\/api$/, '');
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${domain}${cleanPath}`;
+};
+
 export default function MagazineWorkspace() {
   const { user, loading: authLoading, hasPermission, hasRole } = useAuth();
   const { toast } = useToast();
@@ -94,11 +104,11 @@ export default function MagazineWorkspace() {
       }
 
       if (dialogState.mode === 'create') {
-        await api.post('/admin/magazines', payload, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.post('/admin/magazines', payload);
         toast('Journal created.', 'success');
       } else {
         payload.append('_method', 'PUT');
-        await api.post(`/admin/magazines/${dialogState.magazine.id}`, payload, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.post(`/admin/magazines/${dialogState.magazine.id}`, payload);
         toast('Journal updated.', 'success');
       }
 
@@ -181,7 +191,7 @@ export default function MagazineWorkspace() {
               <article key={magazine.id} className="grid gap-4 p-5 md:grid-cols-[96px_minmax(0,1fr)_auto] md:items-center">
                 <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]">
                   {magazine.cover_image ? (
-                    <img src={magazine.cover_image} alt="" className="h-full w-full object-cover" />
+                    <img src={getFullImageUrl(magazine.cover_image)} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <ImageIcon className="h-7 w-7 text-[var(--muted)]" aria-hidden="true" />
                   )}
