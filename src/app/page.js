@@ -262,8 +262,8 @@ export default function Home() {
           {currentIssueArticle ? (
             <article className="grid gap-5 sm:grid-cols-[160px_1fr]">
               <div className="aspect-[4/3] overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900">
-                {currentIssueArticle.magazine?.cover_image ? (
-                  <img src={getFullImageUrl(currentIssueArticle.magazine.cover_image)} alt="" className="h-full w-full object-cover" loading="lazy" />
+                {(currentIssueArticle.magazine?.cover_image_url || currentIssueArticle.magazine?.cover_image) ? (
+                  <img src={currentIssueArticle.magazine.cover_image_url || getFullImageUrl(currentIssueArticle.magazine.cover_image)} alt="" className="h-full w-full object-cover" loading="lazy" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
                     <BookOpen className="h-8 w-8 text-zinc-400" aria-hidden="true" />

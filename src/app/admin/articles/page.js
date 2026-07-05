@@ -681,9 +681,9 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
                       <div className="flex items-center space-x-3.5 text-left">
                         {/* Thumbnail */}
                         <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-zinc-200/80 dark:border-zinc-800/85 bg-zinc-50 flex items-center justify-center">
-                          {(art.featured_image || art.magazine?.cover_image) ? (
+                          {(art.featured_image_url || art.featured_image || art.magazine?.cover_image_url || art.magazine?.cover_image) ? (
                             <img 
-                              src={getFullImageUrl(art.featured_image || art.magazine?.cover_image)} 
+                              src={art.featured_image_url || art.magazine?.cover_image_url || getFullImageUrl(art.featured_image || art.magazine?.cover_image)}
                               alt="" 
                               className="w-full h-full object-cover" 
                             />

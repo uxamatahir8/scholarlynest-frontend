@@ -12,14 +12,14 @@ const getFullImageUrl = (path) => {
   return `${domain}${cleanPath}`;
 };
 
-export default function MagazineCard({ title, slug, cover_image, description, articles_count }) {
+export default function MagazineCard({ title, slug, cover_image, cover_image_url, description, articles_count }) {
   const articleCount = Number(articles_count || 0);
 
   return (
     <article className="group grid min-w-0 gap-5 border-t border-[var(--border)] pt-5 sm:grid-cols-[150px_1fr] lg:block">
       <Link href={`/magazines/${slug}/about-and-overview`} className="relative block aspect-[4/3] w-full max-w-[220px] overflow-hidden rounded-md bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-zinc-900 sm:max-w-none" aria-label={`View ${title}`}>
-        {cover_image ? (
-          <img src={getFullImageUrl(cover_image)} alt={`${title} cover`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" loading="lazy" />
+        {(cover_image_url || cover_image) ? (
+          <img src={cover_image_url || getFullImageUrl(cover_image)} alt={`${title} cover`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" loading="lazy" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-zinc-100 dark:bg-zinc-900">
             <BookOpen className="h-9 w-9 text-zinc-350 dark:text-zinc-650" aria-hidden="true" />
