@@ -191,7 +191,7 @@ export default function MagazineWorkspace() {
               <article key={magazine.id} className="grid gap-4 p-5 md:grid-cols-[96px_minmax(0,1fr)_auto] md:items-center">
                 <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]">
                   {magazine.cover_image ? (
-                    <img src={getFullImageUrl(magazine.cover_image)} alt="" className="h-full w-full object-cover" />
+                    <img src={magazine.cover_image_url || getFullImageUrl(magazine.cover_image)} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <ImageIcon className="h-7 w-7 text-[var(--muted)]" aria-hidden="true" />
                   )}
