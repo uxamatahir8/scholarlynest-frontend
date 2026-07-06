@@ -3,6 +3,7 @@
 import api from '../../utils/api';
 
 const RESUME_KEY = 'scholarlynest.mediaUpload.resume.v1';
+const inFlightUploads = new Map();
 
 export function fileFingerprint(file) {
   return [file.name, file.size, file.lastModified].join(':');
@@ -70,6 +71,42 @@ export async function uploadDirectToS3({
   onState,
 }) {
   const fingerprint = fileFingerprint(file);
+  const lockKey = [
+    purpose,
+    attachableId || '',
+    extra.assignment_type || '',
+    extra.assignment_id || '',
+    fingerprint,
+  ].join('|');
+  if (inFlightUploads.has(lockKey)) {
+    return inFlightUploads.get(lockKey);
+  }
+
+  const upload = performDirectUpload({
+    file,
+    purpose,
+    attachableId,
+    extra,
+    onProgress,
+    onState,
+    fingerprint,
+  }).finally(() => {
+    inFlightUploads.delete(lockKey);
+  });
+
+  inFlightUploads.set(lockKey, upload);
+  return upload;
+}
+
+async function performDirectUpload({
+  file,
+  purpose,
+  attachableId,
+  extra = {},
+  onProgress,
+  onState,
+  fingerprint,
+}) {
   onState?.('initiating');
 
   const initiated = await api.post('/media/uploads/initiate', {
