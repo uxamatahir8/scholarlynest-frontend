@@ -13,6 +13,18 @@ export function articleQueueItem(article, actionLabel = 'Open Article') {
 
 export function assignmentQueueItem(assignment, actionLabel = 'Open Task') {
   const article = assignment.article || {};
+  let primaryActionLabel = actionLabel;
+
+  if (assignment.primary_action === 'continue_screening') primaryActionLabel = 'Continue Screening';
+  else if (assignment.primary_action === 'manage_reviewers') primaryActionLabel = 'Manage Reviewers';
+  else if (assignment.primary_action === 'review_reviewer_progress') primaryActionLabel = 'Review Reviewer Progress';
+  else if (assignment.primary_action === 'submit_recommendation') primaryActionLabel = 'Submit Recommendation';
+  else if (assignment.primary_action === 'accept_decline') primaryActionLabel = 'Accept / Decline Review';
+  else if (assignment.primary_action === 'start_review') primaryActionLabel = 'Start Review';
+  else if (assignment.primary_action === 'continue_review') primaryActionLabel = 'Continue Review';
+  else if (assignment.primary_action === 'view_submitted_review') primaryActionLabel = 'View Submitted Review';
+  else if (assignment.primary_action === 'view_recommendation') primaryActionLabel = 'View Recommendation';
+
   return {
     id: assignment.id,
     title: article.title,
@@ -20,7 +32,7 @@ export function assignmentQueueItem(assignment, actionLabel = 'Open Task') {
     context: article.magazine?.title || 'Assigned manuscript',
     dueDate: assignment.due_date,
     href: article.id ? `/admin/articles/${article.id}/workflow` : undefined,
-    actionLabel,
+    actionLabel: primaryActionLabel,
   };
 }
 

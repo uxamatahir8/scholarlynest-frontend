@@ -2,20 +2,25 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useAuth } from '../../../context/AuthContext';
 import LoadingState from '../../ui/LoadingState';
 import DeskObserverBanner from './DeskObserverBanner';
 import DeskObserverSelector from './DeskObserverSelector';
 import { observerApiParam, observerParam } from './deskObserverUtils';
 
 export default function DeskObserverContext({ fixedRole, roles, children }) {
+  const { user, hasRole, impersonationStatus } = useAuth();
   const searchParams = useSearchParams();
   const [observerUser, setObserverUser] = useState(null);
-  const [resolved, setResolved] = useState(!searchParams.get(observerParam));
+  const canUseObserver = Boolean(user && hasRole('super_admin') && !impersonationStatus?.active);
+  const [resolved, setResolved] = useState(!searchParams.get(observerParam) || !canUseObserver);
   const [selectorKey, setSelectorKey] = useState(0);
-  const observerMode = Boolean(observerUser);
-  const requestedObserver = Boolean(searchParams.get(observerParam));
+  const observerMode = Boolean(canUseObserver && observerUser);
+  const requestedObserver = Boolean(canUseObserver && searchParams.get(observerParam));
 
-  const observerParams = useMemo(() => observerApiParam(observerUser), [observerUser]);
+  const observerParams = useMemo(() => (
+    canUseObserver ? observerApiParam(observerUser) : {}
+  ), [canUseObserver, observerUser]);
   const showSelector = useCallback(() => setSelectorKey((current) => current + 1), []);
 
   return (
