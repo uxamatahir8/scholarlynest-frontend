@@ -156,3 +156,15 @@ export async function pollUploadUntilSettled(uploadId, onStatus) {
   }
   return null;
 }
+
+export async function uploadAndAwaitClean(options) {
+  const upload = await uploadDirectToS3(options);
+  const settled = await pollUploadUntilSettled(upload.id, options.onStatus);
+  if (!settled) {
+    throw new Error('Upload scan did not finish in time.');
+  }
+  if (settled.status !== 'clean') {
+    throw new Error(settled.failure_reason || 'Upload did not pass security scanning.');
+  }
+  return settled;
+}

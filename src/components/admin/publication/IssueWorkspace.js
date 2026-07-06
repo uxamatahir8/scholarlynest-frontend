@@ -17,6 +17,7 @@ import LoadingState from '../../ui/LoadingState';
 import Pagination from '../../ui/Pagination';
 import PublicationStatusBadge from './PublicationStatusBadge';
 import { authorsLine, compactText, issueDate, issueLabel, issueStatusOptions, MONTHS } from './publicationUtils';
+import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
 
 const emptyIssueForm = {
   id: null,
@@ -194,10 +195,15 @@ export default function IssueWorkspace() {
     try {
       const payload = new FormData();
       Object.entries(issueForm).forEach(([key, value]) => {
+        if (key === 'cover_image') return;
         if (key === 'id' || value === null || value === '') return;
         if (!canPublishIssues && ['status', 'is_published', 'published_at'].includes(key)) return;
         payload.append(key, value);
       });
+      if (issueForm.cover_image) {
+        const coverUpload = await uploadAndAwaitClean({ file: issueForm.cover_image, purpose: 'issue_cover' });
+        payload.append('cover_image_upload_id', coverUpload.id);
+      }
       const endpoint = issueForm.id ? `/admin/issues/${issueForm.id}` : '/admin/issues';
       const response = await api.post(endpoint, payload, { headers: { 'Content-Type': 'multipart/form-data' } });
       toast(issueForm.id ? 'Issue updated.' : 'Issue created.', 'success');
@@ -257,7 +263,14 @@ export default function IssueWorkspace() {
       if (form.doi) payload.append('doi', form.doi);
       if (form.page_start) payload.append('page_start', form.page_start);
       if (form.page_end) payload.append('page_end', form.page_end);
-      if (form.publication_pdf) payload.append('publication_pdf', form.publication_pdf);
+      if (form.publication_pdf) {
+        const pdfUpload = await uploadAndAwaitClean({
+          file: form.publication_pdf,
+          purpose: 'article_published_pdf',
+          attachableId: article.id,
+        });
+        payload.append('publication_pdf_upload_id', pdfUpload.id);
+      }
 
       const response = await api.post(`/admin/articles/${article.id}/publish`, payload, { headers: { 'Content-Type': 'multipart/form-data' } });
       setLatestCitation(response.data?.citation?.text || '');

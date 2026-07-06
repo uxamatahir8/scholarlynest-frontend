@@ -16,6 +16,7 @@ import LoadingState from '../../ui/LoadingState';
 import Pagination from '../../ui/Pagination';
 import MagazineFormDialog from './MagazineFormDialog';
 import { compactText } from './publicationUtils';
+import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -96,7 +97,10 @@ export default function MagazineWorkspace() {
       payload.append('description', form.description || '');
       payload.append('about_text', form.about_text || '');
       payload.append('editor_id', form.editor_id || '');
-      if (form.cover_image_file) payload.append('cover_image', form.cover_image_file);
+      if (form.cover_image_file) {
+        const coverUpload = await uploadAndAwaitClean({ file: form.cover_image_file, purpose: 'magazine_cover' });
+        payload.append('cover_image_upload_id', coverUpload.id);
+      }
       if (canEditSeo) {
         payload.append('seo_title', form.seo_title || '');
         payload.append('seo_description', form.seo_description || '');

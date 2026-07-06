@@ -17,6 +17,7 @@ import {
   PUBLISHABLE_STATUSES,
   REVIEWABLE_STATUSES,
 } from './articleWorkflow';
+import { uploadAndAwaitClean } from '../../lib/mediaUploads/DirectUploadClient';
 
 const recommendationOptions = [
   { value: 'accept', label: 'Accept' },
@@ -176,6 +177,21 @@ export default function WorkflowActionPanel({
     return formData;
   };
 
+  const buildDirectUploadFormData = async (payload, uploadMap = {}) => {
+    const formData = buildFormData(payload);
+    for (const [field, config] of Object.entries(uploadMap)) {
+      if (!config.file) continue;
+      const upload = await uploadAndAwaitClean({
+        file: config.file,
+        purpose: config.purpose,
+        attachableId: article.id,
+        extra: config.extra || {},
+      });
+      formData.append(field, upload.id);
+    }
+    return formData;
+  };
+
   const fileInput = (key, label) => (
     <Field label={label}>
       <label className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-bold text-[var(--foreground)] hover:bg-[var(--surface-muted)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]">
@@ -260,10 +276,15 @@ export default function WorkflowActionPanel({
                   : 'This will move the manuscript into editorial review.',
                 confirmText: screenForm.decision === 'reject' ? 'Reject Manuscript' : 'Send to Review',
                 variant: screenForm.decision === 'reject' ? 'danger' : 'primary',
-                run: () => runAction('screen', () => api.post(`/admin/articles/${article.id}/screen`, buildFormData({
+                run: () => runAction('screen', async () => api.post(`/admin/articles/${article.id}/screen`, await buildDirectUploadFormData({
                   ...screenForm,
                   plagiarism_score: screenForm.plagiarism_score === '' ? null : Number(screenForm.plagiarism_score),
-                }, { plagiarism_report: files.plagiarism_report }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Screening result saved.'),
+                }, {
+                  plagiarism_report_upload_id: {
+                    file: files.plagiarism_report,
+                    purpose: 'article_plagiarism_report',
+                  },
+                }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Screening result saved.'),
               })}
             >
               Save Screening
@@ -354,7 +375,13 @@ export default function WorkflowActionPanel({
                 message: 'This will record your recommendation and return the manuscript to editorial review.',
                 confirmText: 'Submit Recommendation',
                 variant: 'primary',
-                run: () => runAction('sub-editor-recommendation', () => api.post(`/admin/sub-editor-assignments/${mySubEditorAssignment.id}/submit-recommendation`, buildFormData(subEditorForm, { annotated_manuscript: files.annotated_manuscript }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Recommendation submitted.'),
+                run: () => runAction('sub-editor-recommendation', async () => api.post(`/admin/sub-editor-assignments/${mySubEditorAssignment.id}/submit-recommendation`, await buildDirectUploadFormData(subEditorForm, {
+                  annotated_manuscript_upload_id: {
+                    file: files.annotated_manuscript,
+                    purpose: 'article_annotated_manuscript',
+                    extra: { assignment_type: 'sub_editor_assignment', assignment_id: mySubEditorAssignment.id },
+                  },
+                }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Recommendation submitted.'),
               })}
             >
               Submit Recommendation
@@ -414,7 +441,7 @@ export default function WorkflowActionPanel({
                     message: 'This will mark your review as completed and return the manuscript to editorial review.',
                     confirmText: 'Submit Review',
                     variant: 'primary',
-                    run: () => runAction('submit-review', () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/submit-review`, buildFormData({
+                    run: () => runAction('submit-review', async () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/submit-review`, await buildDirectUploadFormData({
                       recommendation: reviewForm.recommendation,
                       comments_for_author: reviewForm.comments_for_author,
                       confidential_comments: reviewForm.confidential_comments,
@@ -423,7 +450,13 @@ export default function WorkflowActionPanel({
                         methodology: reviewForm.methodology,
                         citation_accuracy: reviewForm.citation_accuracy,
                       },
-                    }, { reviewed_manuscript: files.reviewed_manuscript }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Review submitted.'),
+                    }, {
+                      reviewed_manuscript_upload_id: {
+                        file: files.reviewed_manuscript,
+                        purpose: 'article_reviewed_manuscript',
+                        extra: { assignment_type: 'reviewer_assignment', assignment_id: myReviewerAssignment.id },
+                      },
+                    }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Review submitted.'),
                   })}
                 >
                   Submit Review
@@ -539,7 +572,13 @@ export default function WorkflowActionPanel({
                 message: productionCompleteMessage,
                 confirmText: productionCompleteLabel,
                 variant: 'primary',
-                run: () => runAction('complete-production', () => api.post(`/admin/production-assignments/${myProductionAssignment.id}/complete`, buildFormData({}, { production_file: files.production_file }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Production task completed.'),
+                run: () => runAction('complete-production', async () => api.post(`/admin/production-assignments/${myProductionAssignment.id}/complete`, await buildDirectUploadFormData({}, {
+                  production_file_upload_id: {
+                    file: files.production_file,
+                    purpose: myProductionAssignment.role === 'proofreader' ? 'article_proof_file' : 'article_production_file',
+                    extra: { assignment_type: 'production_assignment', assignment_id: myProductionAssignment.id },
+                  },
+                }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Production task completed.'),
               })}
             >
               {productionCompleteLabel}

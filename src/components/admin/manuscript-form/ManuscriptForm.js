@@ -33,6 +33,7 @@ import { ConfirmationModal } from '../../ui/ConfirmationModal';
 import CoAuthorRepeater from '../../article/CoAuthorRepeater';
 import ArticleAssetBufferedDropzone from '../../article/ArticleAssetBufferedDropzone';
 import ArticleAssetDropzone from '../../article/ArticleAssetDropzone';
+import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
 import {
   appendAcademicMetadata,
   currentUserAuthor,
@@ -387,7 +388,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     return Object.keys(errors).length === 0;
   };
 
-  const buildFormData = (intent) => {
+  const buildFormData = (intent, uploadIds = {}) => {
     const formData = new FormData();
     const nextStatus = !isEdit
       ? (intent === 'submit' ? 'submitted' : 'draft')
@@ -398,8 +399,8 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     formData.append('full_text', fullText);
     formData.append('status', nextStatus);
     appendAcademicMetadata(formData, academicMetadata);
-    if (pdfFile) formData.append('pdf_file', pdfFile);
-    if (featuredImage) formData.append('featured_image', featuredImage);
+    if (uploadIds.pdf_upload_id) formData.append('pdf_upload_id', uploadIds.pdf_upload_id);
+    if (uploadIds.featured_image_upload_id) formData.append('featured_image_upload_id', uploadIds.featured_image_upload_id);
     if (deleteFeaturedImage) formData.append('delete_featured_image', 'true');
     if (revisionResponse.trim()) formData.append('revision_response', revisionResponse.trim());
     if (changeSummary.trim()) formData.append('change_summary', changeSummary.trim());
@@ -415,10 +416,10 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     let failed = 0;
     for (const file of supplementaryFiles) {
       try {
-        const assetForm = new FormData();
-        assetForm.append('file', file);
-        await api.post(`/articles/${nextArticleId}/assets`, assetForm, {
-          headers: { 'Content-Type': 'multipart/form-data' },
+        await uploadAndAwaitClean({
+          file,
+          purpose: 'article_supplementary',
+          attachableId: nextArticleId,
         });
       } catch (err) {
         logError('Failed to upload supplementary manuscript asset', err);
@@ -446,7 +447,26 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
       setSaving(true);
       setSubmittingIntent(intent);
       setSavingMessage(intent === 'submit' ? 'Submitting manuscript...' : 'Saving draft...');
-      const formData = buildFormData(intent);
+      const uploadIds = {};
+      if (pdfFile) {
+        setSavingMessage('Uploading manuscript PDF...');
+        const pdfUpload = await uploadAndAwaitClean({
+          file: pdfFile,
+          purpose: isRevision ? 'article_revision' : 'article_manuscript',
+          attachableId: isEdit ? articleId : undefined,
+        });
+        uploadIds.pdf_upload_id = pdfUpload.id;
+      }
+      if (featuredImage) {
+        setSavingMessage('Uploading featured image...');
+        const imageUpload = await uploadAndAwaitClean({
+          file: featuredImage,
+          purpose: 'article_featured_image',
+        });
+        uploadIds.featured_image_upload_id = imageUpload.id;
+      }
+      setSavingMessage(intent === 'submit' ? 'Submitting manuscript...' : 'Saving draft...');
+      const formData = buildFormData(intent, uploadIds);
       const response = isEdit
         ? await api.put(`/admin/articles/${articleId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
         : await api.post('/articles', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
