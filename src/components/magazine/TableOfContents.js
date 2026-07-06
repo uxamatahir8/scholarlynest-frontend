@@ -1,10 +1,10 @@
 import React from 'react';
 import YearArchiveBlock from './YearArchiveBlock';
 
-export default function TableOfContents({ groupedArticles, magazineSlug, onArticleClick }) {
+export default function TableOfContents({ archive, magazineSlug, onArticleClick }) {
   return (
     <YearArchiveBlock
-      groupedArticles={groupedArticles || {}}
+      archive={archive || {}}
       magazineSlug={magazineSlug}
       onArticleClick={onArticleClick}
     />

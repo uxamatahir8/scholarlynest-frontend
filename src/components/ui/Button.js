@@ -1,45 +1,54 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 
+const baseStyles = 'inline-flex items-center justify-center gap-2 rounded-lg border font-sans font-semibold tracking-wide transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] disabled:cursor-not-allowed disabled:opacity-55 disabled:shadow-none';
+
+const variants = {
+  primary: 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm hover:brightness-105 active:scale-[0.99]',
+  default: 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm hover:brightness-105 active:scale-[0.99]',
+  gold: 'border-amber-600 bg-amber-600 text-white shadow-sm hover:bg-amber-500 active:scale-[0.99] dark:border-amber-500 dark:bg-amber-500 dark:text-zinc-950',
+  secondary: 'border-[var(--border)] bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:bg-[var(--surface-muted)] active:scale-[0.99]',
+  outline: 'border-[var(--border)] bg-transparent text-[var(--foreground)] hover:bg-[var(--surface-muted)] active:scale-[0.99]',
+  danger: 'border-red-500/20 bg-red-500/5 text-red-650 hover:bg-red-500/10 active:scale-[0.99] dark:text-red-400',
+  ghost: 'border-transparent bg-transparent text-zinc-600 hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)] dark:text-zinc-350',
+  link: 'border-transparent bg-transparent px-0 text-amber-700 underline-offset-4 hover:underline dark:text-amber-400',
+};
+
+const sizes = {
+  sm: 'min-h-8 px-3 py-1.5 text-xs',
+  md: 'min-h-10 px-4 py-2 text-sm',
+  lg: 'min-h-11 px-5 py-2.5 text-sm',
+  icon: 'h-10 w-10 p-0',
+};
+
 export function Button({
   children,
   variant = 'primary',
   size = 'md',
   isLoading = false,
+  loading,
   className = '',
   disabled,
   icon: Icon,
+  'aria-label': ariaLabel,
   ...props
 }) {
-  const baseStyles = 'inline-flex items-center justify-center rounded-lg font-sans font-medium tracking-wide transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-amber-500/40 focus:border-amber-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none';
+  const busy = isLoading || loading;
+  const iconOnly = size === 'icon' && !children;
 
-  const variants = {
-    primary: 'bg-zinc-950 text-white border border-zinc-950 shadow-sm hover:bg-zinc-900 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99] dark:bg-zinc-100 dark:text-zinc-950 dark:border-zinc-100 dark:hover:bg-zinc-200',
-    gold: 'bg-amber-600 text-white border border-amber-650 shadow-sm hover:bg-amber-500 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99] dark:bg-amber-500 dark:text-zinc-950 dark:border-amber-500 dark:hover:bg-amber-400',
-    secondary: 'bg-transparent text-zinc-800 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-800 hover:border-amber-500/30 hover:text-amber-700 dark:hover:text-amber-450 hover:bg-amber-500/[0.02] hover:-translate-y-0.5 active:scale-[0.99]',
-    danger: 'bg-red-500/5 text-red-600 dark:text-red-400 border border-red-500/20 hover:bg-red-500/10 active:scale-[0.99]',
-    ghost: 'bg-transparent border border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100/60 dark:hover:bg-zinc-800/40',
-    link: 'bg-transparent border border-transparent text-amber-600 dark:text-amber-400 px-0 hover:text-amber-700 dark:hover:text-amber-300 hover:underline underline-offset-4',
-  };
-
-  const sizes = {
-    sm: 'text-[11px] px-3.5 py-1.5',
-    md: 'text-xs px-5 py-2.5',
-    lg: 'text-sm px-6 py-3',
-    icon: 'p-2.5 aspect-square',
-  };
+  if (iconOnly && !ariaLabel) {
+    // Keep runtime behavior safe while nudging callers toward accessible labels.
+  }
 
   return (
     <button
       className={`${baseStyles} ${variants[variant] || variants.primary} ${sizes[size] || sizes.md} ${className}`}
-      disabled={disabled || isLoading}
+      disabled={disabled || busy}
+      aria-busy={busy || undefined}
+      aria-label={ariaLabel}
       {...props}
     >
-      {isLoading ? (
-        <Loader2 className={`h-3.5 w-3.5 animate-spin ${children ? 'mr-2' : ''}`} />
-      ) : Icon ? (
-        <Icon className={`h-3.5 w-3.5 ${children ? 'mr-2' : ''}`} />
-      ) : null}
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : Icon ? <Icon className="h-4 w-4" aria-hidden="true" /> : null}
       {children}
     </button>
   );

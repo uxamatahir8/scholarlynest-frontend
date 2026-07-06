@@ -3,16 +3,20 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
+import DOMPurify from 'dompurify';
+import { ArrowLeft } from 'lucide-react';
 import api from '../../../../utils/api';
-import { logError } from '../../../../utils/safeLogger';
+import { logWarn } from '../../../../utils/safeLogger';
 import SeoHead from '../../../../components/SeoHead';
+import LoadingState from '../../../../components/ui/LoadingState';
+import ErrorState from '../../../../components/ui/ErrorState';
 
 export default function MagazineCustomPage() {
   const params = useParams();
   const slug = params?.slug;
   const pageSlug = params?.pageSlug;
   const [data, setData] = useState(null);
+  const [content, setContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -25,8 +29,9 @@ export default function MagazineCustomPage() {
         setError(null);
         const response = await api.get(`/magazines/${slug}/pages/${pageSlug}`);
         setData(response.data);
+        setContent(DOMPurify.sanitize(response.data?.page?.content || ''));
       } catch (err) {
-        logError('Failed to load custom magazine page', err);
+        logWarn('Custom magazine page unavailable', err.message);
         setError('The requested custom editorial page could not be found.');
       } finally {
         setLoading(false);
@@ -37,37 +42,29 @@ export default function MagazineCustomPage() {
   }, [slug, pageSlug]);
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
-        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono">Loading page...</span>
-      </div>
-    );
+    return <LoadingState label="Loading page..." className="min-h-[320px]" />;
   }
 
   if (error || !data?.page) {
     return (
-      <div className="max-w-md mx-auto space-y-6 text-center py-10">
-        <AlertCircle className="w-12 h-12 mx-auto text-red-500" />
-        <div className="space-y-2">
-          <h2 className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">Page Retrieval Error</h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">{error || 'Page could not be resolved.'}</p>
-        </div>
-        <Link href={`/magazines/${slug}/about-and-overview`} className="inline-flex items-center space-x-2 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-450 hover:underline">
+      <div className="space-y-6">
+        <ErrorState title="Page could not be loaded">{error || 'Page could not be resolved.'}</ErrorState>
+        <Link href={`/magazines/${slug}/about-and-overview`} className="inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300">
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Magazine Overview</span>
+          <span>Back to magazine overview</span>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <article className="space-y-8">
       <SeoHead title={data.seo?.title} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/magazines/${slug}/${pageSlug}`} />
-      <div className="border-b border-zinc-100 dark:border-zinc-900/80 pb-4">
-        <h2 className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">{data.page.title}</h2>
+      <div className="border-b border-[var(--border)] pb-6">
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Journal page</p>
+        <h2 className="mt-2 font-serif text-4xl font-bold leading-tight text-zinc-950 dark:text-white">{data.page.title}</h2>
       </div>
-      <div className="text-zinc-650 dark:text-zinc-350 text-sm leading-relaxed prose dark:prose-invert max-w-none font-serif tracking-normal" dangerouslySetInnerHTML={{ __html: data.page.content }} />
-    </div>
+      <div className="cms-content-prose max-w-none" dangerouslySetInnerHTML={{ __html: content }} />
+    </article>
   );
 }

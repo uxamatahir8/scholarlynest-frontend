@@ -1,282 +1,386 @@
 'use client';
 
-import { logError } from '../utils/safeLogger';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import {
-  BookOpen, Zap, Globe, ShieldCheck,
-  Check, GraduationCap, ChevronDown, Feather, ArrowRight, Sparkles, BookOpenText
-} from 'lucide-react';
-import { Button } from '../components/ui/Button';
+import { ArrowRight, BookOpen, ChevronDown } from 'lucide-react';
+import api from '../utils/api';
+import { logWarn } from '../utils/safeLogger';
+import { useAuth } from '../context/AuthContext';
+import SeoHead from '../components/SeoHead';
 import MagazineCarousel from '../components/ui/MagazineCarousel';
 import RecentArticles from '../components/ui/RecentArticles';
 import GlobalSearchInput from '../components/home/GlobalSearchInput';
-import api from '../utils/api';
-import SeoHead from '../components/SeoHead';
-import Pagination from '../components/ui/Pagination';
 
-export default function Home() {
-  const [activeFaq, setActiveFaq] = useState(null);
+const WORKFLOW_STEPS = [
+  ['Discover', 'Browse magazines and published research by topic, publication, or author.'],
+  ['Submit', 'Authors prepare their research and begin the supported submission path.'],
+  ['Review', 'Editors and reviewers continue their work inside the secure console.'],
+  ['Publish', 'Approved research becomes available in public magazine archives.'],
+];
 
-  const toggleFaq = (index) => {
-    setActiveFaq(activeFaq === index ? null : index);
-  };
+const getFullImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
+  if (path.startsWith('/images/') || path.startsWith('images/')) return path.startsWith('/') ? path : `/${path}`;
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  const domain = apiBase.replace(/\/api$/, '');
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${domain}${cleanPath}`;
+};
 
-  const defaultFaqs = [
-    {
-      question: "What is ScholarlyNest?",
-      answer: "ScholarlyNest is a trusted, open-access platform where researchers, institutions, and readers collaborate on scientific discovery and knowledge sharing."
-    },
-    {
-      question: "How secure is my data?",
-      answer: "We maintain complete data integrity. All information is secured with enterprise-grade encryption and access control protocols."
-    },
-    {
-      question: "Is there a charge for open-access publishing?",
-      answer: "No. In alignment with our Open Science Pledge, all publications are funded via institutional grants and community support. Access is free forever."
-    }
-  ];
+const issueLabel = (issue) => {
+  if (!issue) return '';
+  const parts = [];
+  if (issue.volume_number) parts.push(`Volume ${issue.volume_number}`);
+  if (issue.issue_number) parts.push(`Issue ${issue.issue_number}`);
+  if (issue.issue_month || issue.issue_year) parts.push([issue.issue_month, issue.issue_year].filter(Boolean).join(' '));
+  return parts.join(' - ');
+};
 
-  const [faqs, setFaqs] = useState(defaultFaqs);
-  const [faqPage, setFaqPage] = useState(1);
-  const faqItemsPerPage = 6;
-
-  useEffect(() => {
-    const fetchFaqs = async () => {
-      try {
-        const response = await api.get('/faqs');
-        if (response.data && response.data.length > 0) {
-          setFaqs(response.data);
-        }
-      } catch (err) {
-        logError('Failed to fetch FAQs from DB:', err);
-      }
-    };
-    fetchFaqs();
-  }, []);
+function FaqSection({ faqs = [], loading = false }) {
+  const [openIndex, setOpenIndex] = useState(0);
 
   return (
-    <div className="flex flex-col w-full min-h-screen">
+    <section className="border-t border-[var(--border)] bg-[var(--background)] py-16 lg:py-20">
+      <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 sm:px-6 lg:grid-cols-[0.36fr_0.64fr] lg:px-8">
+        <div>
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Questions</p>
+          <h2 className="mt-2 font-serif text-3xl font-bold text-zinc-950 dark:text-white sm:text-4xl">
+            Practical answers for public readers and contributors
+          </h2>
+        </div>
+        <div className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
+          {loading && (
+            <div className="py-8 text-sm text-zinc-500 dark:text-zinc-400">Loading questions...</div>
+          )}
+
+          {!loading && faqs.length === 0 && (
+            <div className="py-8 text-sm leading-7 text-zinc-600 dark:text-zinc-350">
+              No public FAQs are published right now.
+            </div>
+          )}
+
+          {!loading && faqs.map((faq, index) => {
+            const isOpen = openIndex === index;
+            const panelId = `homepage-faq-${index}`;
+            return (
+              <div key={faq.id || faq.question}>
+                <button
+                  type="button"
+                  aria-expanded={isOpen}
+                  aria-controls={panelId}
+                  onClick={() => setOpenIndex(isOpen ? -1 : index)}
+                  className={`flex w-full items-center justify-between gap-4 py-5 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${isOpen ? 'bg-[var(--surface-muted)]/45 px-3 sm:px-4' : ''}`}
+                >
+                  <span className="font-serif text-xl font-bold text-zinc-950 dark:text-white">{faq.question}</span>
+                  <ChevronDown className={`h-5 w-5 shrink-0 text-zinc-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                </button>
+                <div id={panelId} hidden={!isOpen} className="pb-5 text-sm leading-7 text-zinc-600 dark:text-zinc-350">
+                  {faq.answer}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export default function Home() {
+  const { user } = useAuth();
+  const [stats, setStats] = useState(null);
+  const [latestArticles, setLatestArticles] = useState([]);
+  const [latestMagazines, setLatestMagazines] = useState([]);
+  const [faqs, setFaqs] = useState([]);
+  const [faqsLoading, setFaqsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.allSettled([
+      api.get('/public/homepage-stats'),
+      api.get('/articles/latest', { params: { limit: 10 } }),
+      api.get('/public/magazines', { params: { per_page: 5 } }),
+      api.get('/public/faqs'),
+    ]).then(([statsResult, articlesResult, magazinesResult, faqResult]) => {
+      if (!active) return;
+
+      if (statsResult.status === 'fulfilled') {
+        setStats(statsResult.value.data);
+      } else {
+        logWarn('Homepage stats unavailable', statsResult.reason?.message);
+      }
+
+      if (articlesResult.status === 'fulfilled') {
+        const articles = articlesResult.value.data?.status === 'success'
+          ? articlesResult.value.data.data
+          : articlesResult.value.data?.data;
+        setLatestArticles(Array.isArray(articles) ? articles : []);
+      } else {
+        logWarn('Homepage latest articles unavailable', articlesResult.reason?.message);
+      }
+
+      if (magazinesResult.status === 'fulfilled') {
+        const magazines = magazinesResult.value.data?.data;
+        setLatestMagazines(Array.isArray(magazines) ? magazines : []);
+      } else {
+        logWarn('Homepage magazines unavailable', magazinesResult.reason?.message);
+      }
+
+      if (faqResult.status === 'fulfilled') {
+        setFaqs(Array.isArray(faqResult.value.data?.data) ? faqResult.value.data.data : []);
+      } else {
+        logWarn('Homepage FAQs unavailable', faqResult.reason?.message);
+      }
+      setFaqsLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const counters = useMemo(() => {
+    if (!stats) return [];
+
+    return [
+      ['Published Articles', stats.published_articles_count],
+      ['Academic Magazines', stats.active_magazines_count],
+      ['Research Contributors', stats.public_contributors_count],
+      ['Published Issues', stats.published_issues_count],
+    ].filter(([, value]) => Number.isFinite(Number(value)));
+  }, [stats]);
+
+  const currentIssueArticle = useMemo(() => (
+    latestArticles.find((article) => article.issue && article.magazine)
+  ), [latestArticles]);
+  const submitHref = user ? '/admin/articles/new' : '/login';
+
+  return (
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <SeoHead
-        title="ScholarlyNest — Academic Publishing Platform"
-        description="ScholarlyNest connects researchers, editors, and institutions in a high-velocity, open-access publication pipeline. Secure, pristine, and optimized for immediate global indexation."
+        title="Scholarly Nest - Academic Publishing Platform"
+        description="Discover academic magazines, published articles, and public research archives on Scholarly Nest."
         ogUrl="/"
       />
 
-      {/* 1. IMMERSIVE HERO WITH MESH GRADIENT */}
-      <section className="relative w-full min-h-screen pt-40 pb-24 flex items-center justify-center z-20">
-        {/* Background Image Banner */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          <Image
-            src="/main-banner.jpg"
-            alt="Main Banner Background"
-            fill
-            priority
-            className="object-cover object-center scale-105 filter brightness-[0.85] dark:brightness-[0.45] transition-all duration-700"
-          />
-          {/* Responsive contrast gradient mask and radial mesh overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[var(--background)]/85 via-[var(--background)]/75 to-[var(--background)] pointer-events-none" />
-          <div className="absolute inset-0 bg-mesh opacity-65 mix-blend-screen pointer-events-none" />
-          {/* Deep dark fade overlay at bottom */}
-          <div className="absolute bottom-0 left-0 w-full h-48 bg-gradient-to-t from-[var(--background)] to-transparent pointer-events-none" />
-        </div>
-
-        <div className="relative z-30 w-full px-4 sm:px-6 text-center animate-in fade-in zoom-in-95 duration-1000 mt-20">
-          <div className="inline-flex items-center space-x-2 px-4 py-2 glass-panel rounded-full text-[10px] font-bold uppercase tracking-widest text-[var(--foreground)] mb-8 shadow-sm hover:scale-105 transition-all duration-300 cursor-default border-amber-500/25 dark:border-blue-500/20">
-            {/* <span className="w-2 h-2 rounded-full bg-[var(--accent-gold)] animate-pulse" /> */}
-            <span className="flex items-center gap-1.5"><Sparkles className="w-3 h-3 text-[var(--accent-gold)]" /> The Open Science Standard</span>
+      <section className="relative isolate overflow-hidden bg-zinc-950">
+        <div
+          className="absolute inset-0 bg-cover bg-center sm:bg-[center_42%]"
+          style={{ backgroundImage: "url('/main-banner.jpg')" }}
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 bg-zinc-950/45 dark:bg-zinc-950/50" aria-hidden="true" />
+        <div className="relative mx-auto grid min-h-[520px] w-full max-w-[1440px] content-end gap-10 px-4 py-14 sm:min-h-[560px] sm:px-6 sm:py-16 lg:grid-cols-[0.95fr_0.65fr] lg:px-8 lg:py-20">
+          <div className="max-w-3xl">
+            <p className="text-base font-semibold text-amber-200">Academic publishing and discovery</p>
+            <h1 className="mt-4 font-serif text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
+              A quieter home for published research.
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-100">
+              Scholarly Nest helps readers explore academic magazines, authors submit research, and editorial teams maintain public publication archives.
+            </p>
+            <div className="mt-8 max-w-2xl">
+              <GlobalSearchInput placeholder="Search articles, authors, magazines..." />
+            </div>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/magazines" className="inline-flex min-h-11 items-center justify-center rounded-md bg-white px-5 text-sm font-bold text-zinc-950 transition-colors hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-300">
+                Explore Magazines
+              </Link>
+              <Link href={submitHref} className="inline-flex min-h-11 items-center justify-center rounded-md bg-zinc-950/60 px-5 text-sm font-bold text-white ring-1 ring-white/35 transition-colors hover:bg-zinc-950/80 focus:outline-none focus:ring-2 focus:ring-amber-300">
+                Submit Research
+              </Link>
+            </div>
           </div>
 
-          <h1 className="font-serif text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight text-[var(--foreground)] leading-[1.1] mb-6">
-            Accelerating the Frontier of <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-[var(--accent)] to-[var(--accent-gold)] dark:from-blue-400 dark:to-[var(--accent-gold)] italic font-serif">Scientific Discovery</span>
-          </h1>
-
-          <p className="text-sm sm:text-base text-[var(--muted)] leading-relaxed max-w-2xl mx-auto mb-10 font-medium">
-            ScholarlyNest connects researchers, editors, and institutions in a high-velocity, open-access publication pipeline. Secure, pristine, and optimized for immediate global indexation.
-          </p>
-
-          {/* Autocomplete Global Search Input */}
-          <div className="max-w-2xl mx-auto mb-10 relative z-[9999]">
-            <GlobalSearchInput />
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
-            <Link href="/magazines" className="w-full sm:flex-1">
-              <Button variant="primary" size="lg" className="w-full shadow-2xl flex items-center justify-center gap-2 group transition-all duration-300 hover:shadow-blue-500/10">
-                <BookOpenText className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                <span>Explore Catalog</span>
-              </Button>
-            </Link>
-            <Link href="/admin" className="w-full sm:flex-1">
-              <Button variant="secondary" size="lg" className="w-full shadow-xl flex items-center justify-center gap-2 group border-[var(--muted-border)] bg-[var(--background)]/30 backdrop-blur hover:bg-[var(--foreground)]/5 transition-all duration-300">
-                <Feather className="w-4 h-4 group-hover:rotate-12 transition-transform text-[var(--accent-gold)]" />
-                <span>Submit Manuscript</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce text-[var(--muted)]">
-          <ChevronDown className="w-6 h-6 opacity-75" />
+          <aside className="self-end pt-2 lg:pl-8">
+            <p className="font-serif text-2xl font-bold leading-snug text-white">
+              Research-first navigation for readers, contributors, editors, and reviewers.
+            </p>
+            <p className="mt-4 text-base leading-7 text-zinc-100">
+              Public discovery stays separate from secure workflow tools, so visitors see only published research and public magazine information.
+            </p>
+          </aside>
         </div>
       </section>
 
+      {counters.length > 0 && (
+        <section className="border-b border-[var(--border)] bg-[var(--surface)] py-8">
+          <div className="mx-auto grid w-full max-w-[1440px] grid-cols-2 gap-px px-4 sm:px-6 md:grid-cols-4 lg:px-8">
+            {counters.map(([label, value]) => (
+              <div key={label} className="py-4 md:py-5">
+                <p className="font-serif text-3xl font-bold text-zinc-950 dark:text-white">{Number(value).toLocaleString()}</p>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-350">{label}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
-
-      {/* RECENTLY PUBLISHED ARTICLES SECTION */}
+      <MagazineCarousel />
       <RecentArticles />
 
-      {/* MAGAZINE CAROUSEL SECTION */}
-      <MagazineCarousel />
-
-      {/* 2. PLATFORM METRICS (FLOATING BAR) */}
-      <section className="relative z-10 -mt-12 w-full px-4">
-        <div className="glass-panel rounded-2xl p-8 sm:p-10 shadow-2xl border border-[var(--accent)]/10 dark:border-white/5 bg-[var(--card-bg)]/90 backdrop-blur-xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-[var(--muted-border)]">
-            <div className="flex flex-col space-y-2 hover:scale-105 transition-transform duration-500 py-4 md:py-0">
-              <span className="text-5xl font-bold tracking-tight text-[var(--foreground)] drop-shadow-sm font-serif">100%</span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Open Access Archiving</span>
-            </div>
-            <div className="flex flex-col space-y-2 hover:scale-105 transition-transform duration-500 py-4 md:py-0">
-              <span className="text-5xl font-bold tracking-tight text-[var(--foreground)] drop-shadow-sm font-serif">30<span className="text-2xl text-[var(--accent)] dark:text-blue-400 font-sans">d</span></span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Avg. Editorial Turnaround</span>
-            </div>
-            <div className="flex flex-col space-y-2 hover:scale-105 transition-transform duration-500 py-4 md:py-0">
-              <span className="text-5xl font-bold tracking-tight text-[var(--foreground)] drop-shadow-sm font-serif">4.8<span className="text-2xl text-[var(--accent-gold)] font-sans">x</span></span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Citation Multiplier</span>
-            </div>
+      <section className="border-t border-[var(--border)] bg-[var(--surface)] py-16 lg:py-20">
+        <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 sm:px-6 lg:grid-cols-[0.34fr_0.66fr] lg:px-8">
+          <div>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Browse by subject</p>
+            <h2 className="mt-2 font-serif text-3xl font-bold text-zinc-950 dark:text-white sm:text-4xl">
+              Start with the publication that fits your field
+            </h2>
+            <p className="mt-3 text-base leading-7 text-zinc-600 dark:text-zinc-350">
+              Public subject taxonomies are not exposed as a separate homepage API, so this section points readers to magazine discovery instead of hardcoded disciplines.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {latestMagazines.slice(0, 4).map((magazine) => (
+              <Link
+                key={magazine.id || magazine.slug}
+                href={`/magazines/${magazine.slug}/about-and-overview`}
+                className="group border-t border-[var(--border)] pt-4 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                <span className="font-serif text-xl font-bold text-zinc-950 group-hover:text-amber-700 dark:text-white dark:group-hover:text-amber-300">{magazine.title}</span>
+                <span className="mt-2 block text-sm leading-6 text-zinc-600 dark:text-zinc-350">{magazine.description || 'Open the public overview and archive for this magazine.'}</span>
+              </Link>
+            ))}
+            <Link href="/magazines" className="group border-t border-[var(--border)] pt-4 focus:outline-none focus:ring-2 focus:ring-amber-500">
+              <span className="font-serif text-xl font-bold text-zinc-950 group-hover:text-amber-700 dark:text-white dark:group-hover:text-amber-300">All academic magazines</span>
+              <span className="mt-2 block text-sm leading-6 text-zinc-600 dark:text-zinc-350">Browse the complete public magazine directory.</span>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* 3. CORE PILLARS (BENTO BOX GRID) */}
-      <section className="py-32 w-full px-4">
-        <div className="text-center space-y-3 mb-16">
-          <span className="text-[10px] font-mono text-[var(--accent-gold)] uppercase tracking-widest font-bold">Platform Capabilities</span>
-          <h2 className="font-serif text-4xl font-bold tracking-tight text-[var(--foreground)]">Designed for Rigor</h2>
-          <p className="text-sm text-[var(--muted)] max-w-lg mx-auto font-medium">A modern architecture configured for maximum editorial performance and citation longevity.</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-[280px]">
-
-          {/* Feature 1 (Large Span) */}
-          <div className="glass-panel rounded-3xl p-8 md:col-span-8 flex flex-col justify-end relative overflow-hidden group hover-glow border-[var(--muted-border)] shadow-sm hover:-translate-y-1 transition-all duration-300">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20 group-hover:bg-blue-500/20 transition-colors duration-750" />
-            <div className="w-12 h-12 bg-[var(--background)] border border-[var(--muted-border)] rounded-2xl flex items-center justify-center mb-6 shadow-lg z-10">
-              <ShieldCheck className="w-6 h-6 text-blue-500 dark:text-blue-400" />
-            </div>
-            <div className="z-10 space-y-2">
-              <h3 className="text-xl font-bold text-[var(--foreground)] flex items-center gap-2">
-                Stringent Review Process
-              </h3>
-              <p className="text-sm font-medium leading-relaxed text-[var(--muted)] max-w-md">Rigid editorial workflows ensuring high-quality publications with transparent multi-state manuscript tracking and peer auditing.</p>
-            </div>
+      <section className="border-t border-[var(--border)] bg-[var(--background)] py-16 lg:py-20">
+        <div className="mx-auto grid w-full max-w-[1440px] gap-8 px-4 sm:px-6 lg:grid-cols-[0.42fr_0.58fr] lg:px-8">
+          <div>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Current issue spotlight</p>
+            <h2 className="mt-2 font-serif text-3xl font-bold text-zinc-950 dark:text-white sm:text-4xl">
+              Recently published issue context
+            </h2>
           </div>
-
-          {/* Feature 2 (Small Span) */}
-          <div className="glass-panel rounded-3xl p-8 md:col-span-4 flex flex-col justify-end relative overflow-hidden group hover-glow border-[var(--muted-border)] shadow-sm hover:-translate-y-1 transition-all duration-300">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-yellow-500/10 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-yellow-500/20 transition-colors duration-750" />
-            <div className="w-12 h-12 bg-[var(--background)] border border-[var(--muted-border)] rounded-2xl flex items-center justify-center mb-6 shadow-lg z-10">
-              <Zap className="w-6 h-6 text-[var(--accent-gold)]" />
-            </div>
-            <div className="z-10 space-y-2">
-              <h3 className="text-xl font-bold text-[var(--foreground)]">Direct Cloud Uploads</h3>
-              <p className="text-sm font-medium leading-relaxed text-[var(--muted)]">High-bandwidth media bypasses limitations via secure S3-compliant cloud pipelines.</p>
-            </div>
-          </div>
-
-          {/* Feature 3 (Small Span) */}
-          <div className="glass-panel rounded-3xl p-8 md:col-span-4 flex flex-col justify-end relative overflow-hidden group hover-glow border-[var(--muted-border)] shadow-sm hover:-translate-y-1 transition-all duration-300">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl -mr-10 -mt-10 group-hover:bg-emerald-500/20 transition-colors duration-750" />
-            <div className="w-12 h-12 bg-[var(--background)] border border-[var(--muted-border)] rounded-2xl flex items-center justify-center mb-6 shadow-lg z-10">
-              <Globe className="w-6 h-6 text-emerald-500" />
-            </div>
-            <div className="z-10 space-y-2">
-              <h3 className="text-xl font-bold text-[var(--foreground)]">Global Indexing</h3>
-              <p className="text-sm font-medium leading-relaxed text-[var(--muted)]">Automatic injection of semantic metadata guarantees immediate indexation.</p>
-            </div>
-          </div>
-
-          {/* Feature 4 (Large Span) */}
-          <div className="glass-panel rounded-3xl p-8 md:col-span-8 flex flex-col justify-end relative overflow-hidden group hover-glow border-[var(--muted-border)] shadow-sm hover:-translate-y-1 transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[var(--accent)]/5 pointer-events-none group-hover:to-[var(--accent)]/10 transition-colors duration-750" />
-            <div className="w-12 h-12 bg-[var(--background)] border border-[var(--muted-border)] rounded-2xl flex items-center justify-center mb-6 shadow-lg z-10">
-              <BookOpen className="w-6 h-6 text-blue-500 dark:text-blue-400" />
-            </div>
-            <div className="z-10 space-y-2">
-              <h3 className="text-xl font-bold text-[var(--foreground)]">Advanced Publishing Workflows</h3>
-              <p className="text-sm font-medium leading-relaxed text-[var(--muted)] max-w-lg">Our platform orchestrates a pristine publishing lifecycle. From draft submission to global distribution, authors and editors collaborate securely inside a modern workspace.</p>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* 5. FAQ */}
-      <section className="py-32 w-full px-4" id="faq-section">
-        <div className="text-center space-y-3 mb-16">
-          <span className="text-[10px] font-mono text-[var(--accent-gold)] uppercase tracking-widest font-bold">Inquiries</span>
-          <h2 className="font-serif text-4xl font-bold tracking-tight text-[var(--foreground)]">Frequently Asked Questions</h2>
-        </div>
-
-        <div className="w-full lg:max-w-[50%] mx-auto space-y-8">
-          <div className={faqs.length <= 3 ? "grid grid-cols-1 md:grid-cols-3 gap-6" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
-            {(faqs.length > 6 ? faqs.slice((faqPage - 1) * faqItemsPerPage, faqPage * faqItemsPerPage) : faqs).map((faq, index) => {
-              const absoluteIndex = faqs.length > 6 ? (faqPage - 1) * faqItemsPerPage + index : index;
-              return (
-                <div key={absoluteIndex} className="glass-panel rounded-2xl overflow-hidden transition-all duration-300 shadow-sm border-[var(--muted-border)] flex flex-col justify-start">
-                  <button
-                    onClick={() => toggleFaq(absoluteIndex)}
-                    className="w-full flex justify-between items-center text-left p-6 font-bold text-[var(--foreground)] hover:bg-[var(--foreground)]/5 transition-colors focus:outline-none cursor-pointer"
-                  >
-                    <span className="text-sm sm:text-base font-semibold">{faq.question}</span>
-                    <ChevronDown className={`w-4 h-4 text-[var(--muted)] shrink-0 transition-transform duration-300 ${activeFaq === absoluteIndex ? 'rotate-180 text-[var(--accent-gold)]' : ''}`} />
-                  </button>
-                  {activeFaq === absoluteIndex && (
-                    <div className="px-6 pb-6 text-xs sm:text-sm font-medium text-[var(--muted)] leading-relaxed animate-in fade-in slide-in-from-top-2 whitespace-pre-line border-t border-[var(--muted-border)] pt-4">
-                      {faq.answer}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {faqs.length > 6 && (
-            <div className="pt-4 flex justify-center">
-              <Pagination
-                currentPage={faqPage}
-                totalPages={Math.ceil(faqs.length / faqItemsPerPage)}
-                onPageChange={(page) => {
-                  setFaqPage(page);
-                  setActiveFaq(null);
-                }}
-              />
+          {currentIssueArticle ? (
+            <article className="grid gap-5 sm:grid-cols-[160px_1fr]">
+              <div className="aspect-[4/3] overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900">
+                {(currentIssueArticle.magazine?.cover_image_url || currentIssueArticle.magazine?.cover_image) ? (
+                  <img src={currentIssueArticle.magazine.cover_image_url || getFullImageUrl(currentIssueArticle.magazine.cover_image)} alt="" className="h-full w-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <BookOpen className="h-8 w-8 text-zinc-400" aria-hidden="true" />
+                  </div>
+                )}
+              </div>
+              <div>
+                <h3 className="font-serif text-2xl font-bold text-zinc-950 dark:text-white">{currentIssueArticle.magazine.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-350">
+                  {[issueLabel(currentIssueArticle.issue), currentIssueArticle.issue?.special_title].filter(Boolean).join(' - ') || 'Published issue'}
+                </p>
+                <p className="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-350">
+                  Highlighted from the latest public article assigned to a published issue: {currentIssueArticle.title}
+                </p>
+                <Link href={`/magazines/${currentIssueArticle.magazine.slug}/table-of-contents`} className="mt-5 inline-flex min-h-11 items-center justify-center rounded-md bg-zinc-950 px-5 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">
+                  Browse This Issue
+                </Link>
+              </div>
+            </article>
+          ) : (
+            <div className="border-y border-[var(--border)] py-6">
+              <p className="text-sm leading-7 text-zinc-600 dark:text-zinc-350">
+                No public issue assignment is available from the latest published articles right now. Magazine archives remain available from the public directory.
+              </p>
+              <Link href="/magazines" className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-amber-300">
+                Browse magazine archives <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
             </div>
           )}
         </div>
       </section>
 
-      {/* 6. PLEDGE */}
-      <section className="py-24 border-t border-[var(--muted-border)] bg-[var(--background)] relative">
-        <div className="absolute inset-0 bg-mesh opacity-20 pointer-events-none" />
-        <div className="w-full px-4 text-center space-y-6 relative z-10">
-          <div className="w-16 h-16 rounded-full glass-panel flex items-center justify-center mx-auto shadow-xl border border-[var(--accent-gold)]/20 hover:scale-110 transition-transform duration-300">
-            <GraduationCap className="w-8 h-8 text-[var(--accent-gold)]" />
+      <section className="border-t border-[var(--border)] bg-[var(--surface)] py-16 lg:py-20">
+        <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 sm:px-6 lg:grid-cols-[0.38fr_0.62fr] lg:px-8">
+          <div>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Editorial standards</p>
+            <h2 className="mt-2 font-serif text-3xl font-bold text-zinc-950 dark:text-white sm:text-4xl">
+              Public publishing values without private workflow details
+            </h2>
           </div>
-          <h3 className="font-serif text-3xl font-bold text-[var(--foreground)]">
-            Our Open Science Advocacy Pledge
-          </h3>
-          <p className="text-sm font-medium text-[var(--muted)] leading-relaxed max-w-2xl mx-auto">
-            We pledge to maintain our open-access values persistently. All scientific data, mathematical proofs, and computational models published inside ScholarlyNest remain permanently unrestricted by payroll systems or corporate access limits. Knowledge belongs to humanity.
-          </p>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent-gold)] block pt-6 font-mono">ScholarlyNest Advisory & Editorial Council</span>
+          <div className="grid gap-6 sm:grid-cols-3">
+            {[
+              ['Published-only discovery', 'Homepage research sections use public article and magazine endpoints.'],
+              ['Separated workflow', 'Editorial review and assignment tools remain inside the secure console.'],
+              ['Publication context', 'Article pages and magazine archives present public titles, authors, dates, and issue context where available.'],
+            ].map(([title, description]) => (
+              <div key={title} className="border-t border-[var(--border)] pt-4">
+                <h3 className="text-base font-bold text-zinc-950 dark:text-white">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-350">{description}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
+      <section className="border-t border-[var(--border)] bg-[var(--surface)] py-16 lg:py-20">
+        <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 sm:px-6 lg:grid-cols-[0.38fr_0.62fr] lg:px-8">
+          <div>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">How it works</p>
+            <h2 className="mt-2 font-serif text-3xl font-bold tracking-tight text-zinc-950 dark:text-white sm:text-4xl">
+              From discovery to publication
+            </h2>
+          </div>
+          <ol className="grid gap-6 sm:grid-cols-2">
+            {WORKFLOW_STEPS.map(([title, description], index) => (
+              <li key={title} className="border-t border-[var(--border)] pt-4">
+                <p className="text-sm font-semibold text-zinc-500">0{index + 1}</p>
+                <h3 className="mt-2 text-lg font-bold text-zinc-950 dark:text-white">{title}</h3>
+                <p className="mt-2 text-sm leading-7 text-zinc-600 dark:text-zinc-350">{description}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <FaqSection faqs={faqs} loading={faqsLoading} />
+
+      <section className="border-t border-[var(--border)] bg-[var(--background)] py-16 lg:py-20">
+        <div className="mx-auto grid w-full max-w-[1440px] gap-8 px-4 sm:px-6 lg:grid-cols-[0.7fr_0.3fr] lg:px-8">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Researcher and institution pathway</p>
+            <h2 className="mt-2 font-serif text-3xl font-bold tracking-tight text-zinc-950 dark:text-white sm:text-4xl">
+              Clear next steps for research groups and academic teams.
+            </h2>
+            <p className="mt-4 text-base leading-8 text-zinc-650 dark:text-zinc-300">
+              Universities, labs, and independent research groups can explore public journals, review published archives, or contact the editorial team through the public contact route.
+            </p>
+          </div>
+          <div className="flex flex-col justify-end gap-3 sm:flex-row lg:flex-col">
+            <Link href="/magazines" className="inline-flex min-h-11 items-center justify-center rounded-md bg-zinc-950 px-5 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">
+              Explore our journals
+            </Link>
+            <Link href="/contact" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-5 text-sm font-bold text-zinc-850 transition-colors hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-100 dark:hover:bg-zinc-900">
+              Contact the editorial team <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-[var(--border)] bg-[var(--surface)] py-14 lg:py-16">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Continue reading</p>
+            <h2 className="mt-2 font-serif text-3xl font-bold text-zinc-950 dark:text-white">
+              Explore the public research archive.
+            </h2>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link href="/search" className="inline-flex min-h-11 items-center justify-center rounded-md bg-zinc-950 px-5 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">
+              Explore Published Research
+            </Link>
+            <Link href={submitHref} className="inline-flex min-h-11 items-center justify-center rounded-md px-5 text-sm font-bold text-zinc-850 transition-colors hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-100 dark:hover:bg-zinc-900">
+              Submit Your Research
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

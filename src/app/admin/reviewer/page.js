@@ -1,14 +1,18 @@
 'use client';
 
-import AssignmentTaskDashboard from '../../../components/admin/AssignmentTaskDashboard';
+import DeskObserverContext from '../../../components/admin/desk-observer/DeskObserverContext';
+import ReviewerDeskList from '../../../components/admin/reviewer/ReviewerDeskList';
 
 export default function ReviewerDashboardPage() {
   return (
-    <AssignmentTaskDashboard
-      kind="reviewer"
-      title="Reviewer Desk"
-      description="Manage review invitations, pending reviews, completed history, manuscript files, and scorecard submissions."
-      endpoint="/admin/my-reviewer-assignments"
-    />
+    <DeskObserverContext fixedRole="reviewer">
+      {({ observerMode, observerUser, observerParams }) => (
+        <ReviewerDeskList
+          observerMode={observerMode}
+          observerUser={observerUser}
+          observerParams={observerParams}
+        />
+      )}
+    </DeskObserverContext>
   );
 }

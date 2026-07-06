@@ -1,14 +1,18 @@
 'use client';
 
-import AssignmentTaskDashboard from '../../../components/admin/AssignmentTaskDashboard';
+import DeskObserverContext from '../../../components/admin/desk-observer/DeskObserverContext';
+import SubEditorDeskList from '../../../components/admin/sub-editor/SubEditorDeskList';
 
 export default function SubEditorDashboardPage() {
   return (
-    <AssignmentTaskDashboard
-      kind="sub_editor"
-      title="Sub Editor Desk"
-      description="Review assigned manuscripts, submit recommendations, add editor-facing notes, and upload annotated files."
-      endpoint="/admin/my-sub-editor-assignments"
-    />
+    <DeskObserverContext fixedRole="sub_editor">
+      {({ observerMode, observerUser, observerParams }) => (
+        <SubEditorDeskList
+          observerMode={observerMode}
+          observerUser={observerUser}
+          observerParams={observerParams}
+        />
+      )}
+    </DeskObserverContext>
   );
 }
