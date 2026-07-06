@@ -83,11 +83,10 @@ export default function Header() {
               key={link.href}
               href={link.href}
               aria-current={isActive(link.href) ? 'page' : undefined}
-              className={`text-sm font-semibold underline-offset-8 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950 ${
-                isActive(link.href)
+              className={`text-sm font-semibold underline-offset-8 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950 ${isActive(link.href)
                   ? 'text-zinc-950 underline decoration-amber-600 decoration-2 dark:text-white dark:decoration-amber-400'
                   : 'text-zinc-600 hover:text-zinc-950 dark:text-zinc-350 dark:hover:text-white'
-              }`}
+                }`}
             >
               {link.label}
             </Link>
@@ -117,11 +116,10 @@ export default function Header() {
                     key={value}
                     type="button"
                     onClick={() => setNextTheme(value)}
-                    className={`flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                      theme === value
+                    className={`flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 ${theme === value
                         ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300'
                         : 'text-zinc-650 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900'
-                    }`}
+                      }`}
                   >
                     <Icon className="h-4 w-4" aria-hidden="true" />
                     {label}
@@ -203,11 +201,10 @@ export default function Header() {
                 key={link.href}
                 href={link.href}
                 aria-current={isActive(link.href) ? 'page' : undefined}
-                className={`rounded-md px-3 py-3 text-base font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                  isActive(link.href)
+                className={`rounded-md px-3 py-3 text-base font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 ${isActive(link.href)
                     ? 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-300'
                     : 'text-zinc-750 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900'
-                }`}
+                  }`}
               >
                 {link.label}
               </Link>
@@ -218,7 +215,7 @@ export default function Header() {
             <div className="space-y-3 pt-3">
               <div className="space-y-2 rounded-md bg-zinc-50 p-4 dark:bg-zinc-900">
                 <p className="text-base font-bold text-zinc-950 dark:text-white">{user.name || user.email}</p>
-                <p className="text-sm text-zinc-600 dark:text-zinc-350">Role: {roleLabel}</p>
+                <p className="text-sm text-zinc-600 dark:text-zinc-350">{roleLabel}</p>
               </div>
               <Link href="/admin" className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">
                 <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
