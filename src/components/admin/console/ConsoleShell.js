@@ -68,7 +68,7 @@ export default function ConsoleShell({ children, auth }) {
     () => getVisibleConsoleNavigation({ user, hasPermission, impersonationStatus }),
     [user, hasPermission, impersonationStatus],
   );
-  const useDocumentScroll = pathname === '/admin/articles/new' || /^\/admin\/articles\/[^/]+\/edit$/.test(pathname || '');
+  const useDocumentScroll = pathname === '/admin/articles/new' || /^\/admin\/articles\/[^/]+\/(edit|workflow)$/.test(pathname || '');
 
   if (authLoading || !user) {
     return (
