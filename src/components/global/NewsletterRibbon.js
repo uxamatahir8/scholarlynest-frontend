@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
+import { logError } from '../../utils/safeLogger';
 import React, { useState } from 'react';
 import { Mail, Check, Loader2, Send } from 'lucide-react';
 import api from '../../utils/api';
@@ -27,8 +29,8 @@ export default function NewsletterRibbon() {
         setSuccess(false);
       }, 4000);
     } catch (err) {
-      console.error('Failed to subscribe:', err);
-      const errorMsg = err.response?.data?.message || 'An error occurred while registering your email.';
+      logError('Failed to subscribe:', err);
+      const errorMsg = safeApiMessage(err, 'An error occurred while registering your email.');
       toast(errorMsg, 'error');
     } finally {
       setLoading(false);

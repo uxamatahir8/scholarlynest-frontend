@@ -1,18 +1,35 @@
 'use client';
 
+import { logError } from '../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { 
-  FileText, Check, X, AlertCircle, Loader2, Eye, Calendar, User, 
-  BookOpen, Download, ShieldAlert, ArrowRight, MessageSquare, Plus, Edit, Save,
-  Search, ChevronDown
+  FileText, Loader2, Eye, Calendar, User, AlertCircle,
+  BookOpen, Download, ShieldAlert, Plus, Edit,
+  Search, ChevronDown, X
 } from 'lucide-react';
 import api from '../../../utils/api';
 import { useToast } from '../../../context/ToastContext';
 import { Button } from '../../../components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 import { useAuth } from '../../../context/AuthContext';
 import Pagination from '../../../components/ui/Pagination';
+import PublishArticleModal from '../../../components/admin/PublishArticleModal';
+import DeskObserverContext from '../../../components/admin/desk-observer/DeskObserverContext';
+import {
+  PUBLISHABLE_STATUSES,
+  STATUS_META,
+  STATUS_TONE_CLASSES,
+} from '../../../components/admin/articleWorkflow';
+import {
+  ARTICLE_QUEUE_PARAM,
+  ARTICLE_QUEUE_TABS,
+  DEFAULT_ARTICLE_QUEUE_ID,
+  getArticleQueue,
+  isValidArticleQueue,
+} from '../../../utils/articleQueues';
+import { isArticleEditableStatus } from '../../../utils/status';
+import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -28,24 +45,276 @@ const getFullImageUrl = (path) => {
   return `${domain}${cleanPath}`;
 };
 
-export default function AdminArticlesBoard() {
-  const { toast } = useToast();
-  const { user, hasPermission, loading: authLoading } = useAuth();
+const AUTHOR_STATUS_LABELS = {
+  draft: 'Draft',
+  submitted: 'Submitted',
+  under_review: 'Under review',
+  assigned_to_sub_editor: 'Under review',
+  reviewer_assigned: 'Under review',
+  review_in_progress: 'Under review',
+  revision_required: 'Revision required',
+  minor_revision_required: 'Minor revision required',
+  major_revision_required: 'Major revision required',
+  resubmitted: 'Resubmitted',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  copy_editing: 'In production',
+  proofreading: 'In production',
+  ready_for_publication: 'Ready for publication',
+  published: 'Published',
+  withdrawn: 'Withdrawn',
+  archived: 'Archived',
+};
 
-  const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || hasPermission('articles.auto-approve')) : false;
+const REVISION_STATUSES = new Set(['revision_required', 'minor_revision_required', 'major_revision_required']);
+const AUTHOR_MANUSCRIPT_STATUSES = [
+  'draft',
+  'revision_required',
+  'minor_revision_required',
+  'major_revision_required',
+  'submitted',
+  'under_review',
+  'assigned_to_sub_editor',
+  'reviewer_assigned',
+  'review_in_progress',
+  'resubmitted',
+  'accepted',
+  'copy_editing',
+  'proofreading',
+  'ready_for_publication',
+  'published',
+];
+
+const groupStatusOptionsByLabel = (options) => {
+  const grouped = new Map();
+  options.forEach((option) => {
+    const label = option.label || AUTHOR_STATUS_LABELS[option.value] || option.value;
+    const existing = grouped.get(label) || {
+      label,
+      values: [],
+      count: 0,
+    };
+    existing.values.push(option.value);
+    existing.count += Number(option.count || 0);
+    grouped.set(label, existing);
+  });
+
+  return Array.from(grouped.values()).map((option) => ({
+    value: option.values.join(','),
+    label: option.label,
+    count: option.count,
+  }));
+};
+
+function AuthorManuscriptWorkspace({ articles, loading, error, getStatusBadge }) {
+  const groups = [
+    {
+      id: 'drafts',
+      title: 'Drafts',
+      emptyTitle: 'No drafts yet',
+      emptyDescription: 'Start a new submission and save it as a draft when you are not ready to submit.',
+      filter: (article) => article.status === 'draft',
+    },
+    {
+      id: 'revisions',
+      title: 'Revision Requests',
+      emptyTitle: 'No revision requests right now',
+      emptyDescription: 'Manuscripts needing author revision will appear here.',
+      filter: (article) => REVISION_STATUSES.has(article.status),
+    },
+    {
+      id: 'submitted',
+      title: 'Submitted Manuscripts',
+      emptyTitle: 'No submitted manuscripts yet',
+      emptyDescription: 'Submitted and in-review manuscripts will appear here after final submission.',
+      filter: (article) => ['submitted', 'under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted', 'accepted', 'copy_editing', 'proofreading', 'ready_for_publication'].includes(article.status),
+    },
+    {
+      id: 'published',
+      title: 'Published',
+      emptyTitle: 'No published manuscripts yet',
+      emptyDescription: 'Published manuscripts will appear here once they are available publicly.',
+      filter: (article) => article.status === 'published',
+    },
+  ];
+
+  const primaryAction = (article) => {
+    const canEdit = article.can_edit_article !== false && isArticleEditableStatus(article.status);
+    if (canEdit && article.status === 'draft') {
+      return { label: 'Continue Draft', href: `/admin/articles/${article.id}/edit`, icon: Edit };
+    }
+    if (canEdit && REVISION_STATUSES.has(article.status)) {
+      return { label: 'Respond to Revision Request', href: `/admin/articles/${article.id}/edit`, icon: Edit };
+    }
+    if (canEdit && article.status === 'ready_for_publication') {
+      return { label: 'Update Publication Details', href: `/admin/articles/${article.id}/edit`, icon: Edit };
+    }
+    if (canEdit) {
+      return { label: 'Edit Manuscript', href: `/admin/articles/${article.id}/edit`, icon: Edit };
+    }
+    if (article.status === 'published') {
+      return { label: 'View Published Article', href: `/admin/articles/${article.id}/workflow`, icon: Eye };
+    }
+    return { label: 'View Submission Status', href: `/admin/articles/${article.id}/workflow`, icon: Eye };
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 space-y-4 border border-zinc-200/80 rounded-2xl bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/20">
+        <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
+        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Loading My Manuscripts...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center space-x-3 p-4 bg-red-500/[0.04] border border-red-500/10 rounded-xl text-red-650 text-xs">
+        <AlertCircle className="w-5 h-5 shrink-0" />
+        <span className="font-semibold text-xs leading-none">{error}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {groups.map((group) => {
+        const items = articles.filter(group.filter);
+        return (
+          <section key={group.id} aria-labelledby={`author-manuscripts-${group.id}`} className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 id={`author-manuscripts-${group.id}`} className="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-100">
+                {group.title}
+              </h2>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{items.length} total</span>
+            </div>
+            {items.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-zinc-200 bg-white/70 p-6 text-center dark:border-zinc-800 dark:bg-zinc-900/20">
+                <FileText className="mx-auto mb-3 h-6 w-6 text-zinc-350" />
+                <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-150">{group.emptyTitle}</h3>
+                <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-zinc-500">{group.emptyDescription}</p>
+                {group.id === 'drafts' && (
+                  <Link href="/admin/articles/new" className="mt-4 inline-flex">
+                    <Button type="button" variant="secondary" size="sm" icon={Plus}>Start a New Submission</Button>
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {items.map((article) => {
+                  const action = primaryAction(article);
+                  const ActionIcon = action.icon;
+                  return (
+                    <article key={article.id} className="rounded-xl border border-zinc-200/80 bg-white/80 p-5 shadow-sm transition hover:border-amber-500/30 dark:border-zinc-850 dark:bg-zinc-900/30">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {getStatusBadge(article.status)}
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{AUTHOR_STATUS_LABELS[article.status] || 'Manuscript'}</span>
+                          </div>
+                          <h3 className="text-base font-bold leading-snug text-zinc-950 dark:text-white">{article.title}</h3>
+                          <div className="flex flex-wrap gap-3 text-[11px] font-semibold text-zinc-500">
+                            <span className="inline-flex items-center gap-1">
+                              <BookOpen className="h-3.5 w-3.5 text-amber-600" />
+                              {article.magazine?.title || 'Journal not selected'}
+                            </span>
+                            <span className="inline-flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5 text-zinc-400" />
+                              Updated {article.updated_at ? new Date(article.updated_at).toLocaleDateString() : 'recently'}
+                            </span>
+                          </div>
+                          {article.abstract && (
+                            <p className="line-clamp-2 max-w-3xl text-xs leading-relaxed text-zinc-500">
+                              {article.abstract.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ')}
+                            </p>
+                          )}
+                        </div>
+                        <Link
+                          href={action.href}
+                          className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-zinc-950 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-100 dark:text-zinc-950"
+                        >
+                          <ActionIcon className="h-4 w-4" />
+                          {action.label}
+                        </Link>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }) {
+  const { toast } = useToast();
+  const { user, hasPermission, hasRole, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+
+  const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || hasPermission('articles.auto-approve') || isEditor) : false;
+  const isAuthorWorkspace = !isAdminOrEditor;
 
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Status filter state: 'all' | 'pending' | 'approved' | 'rejected'
-  const [statusFilter, setStatusFilter] = useState('all');
+  const rawQueueParam = searchParams.get(ARTICLE_QUEUE_PARAM);
+  const queueId = rawQueueParam && isValidArticleQueue(rawQueueParam) ? rawQueueParam : DEFAULT_ARTICLE_QUEUE_ID;
+  const selectedQueue = getArticleQueue(queueId);
+
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [articleToPublish, setArticleToPublish] = useState(null);
+
+  const openPublishModal = (article) => {
+    setArticleToPublish(article);
+    setIsPublishModalOpen(true);
+  };
+
+  const handlePublishSubmit = async (publishData) => {
+    try {
+      const payload = new FormData();
+      payload.append('published_year', publishData.published_year);
+      payload.append('published_month', publishData.published_month);
+      if (publishData.magazine_issue_id) payload.append('magazine_issue_id', publishData.magazine_issue_id);
+      if (publishData.doi) payload.append('doi', publishData.doi);
+      if (publishData.page_start) payload.append('page_start', publishData.page_start);
+      if (publishData.page_end) payload.append('page_end', publishData.page_end);
+      if (publishData.publication_pdf) {
+        const pdfUpload = await uploadAndAwaitClean({
+          file: publishData.publication_pdf,
+          purpose: 'article_published_pdf',
+          attachableId: articleToPublish.id,
+        });
+        payload.append('publication_pdf_upload_id', pdfUpload.id);
+      }
+
+      await api.post(`/admin/articles/${articleToPublish.id}/publish`, payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      
+      toast(`Article published successfully for ${publishData.published_month} ${publishData.published_year}.`, 'success');
+      setIsPublishModalOpen(false);
+      fetchArticles();
+    } catch (err) {
+      logError(err);
+      toast('Failed to finalize article publication.', 'error');
+    }
+  };
 
   // Live search and magazine filter state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedMagazineId, setSelectedMagazineId] = useState('all');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+  const [selectedMagazineId, setSelectedMagazineId] = useState(searchParams.get('magazine_id') || 'all');
+  const [selectedStatus, setSelectedStatus] = useState(searchParams.get('status') || 'all');
   const [magazines, setMagazines] = useState([]);
   const [loadingMagazines, setLoadingMagazines] = useState(false);
+  const [statusOptions, setStatusOptions] = useState([]);
+  const [loadingStatusOptions, setLoadingStatusOptions] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,41 +323,98 @@ export default function AdminArticlesBoard() {
   const [totalPages, setTotalPages] = useState(1);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
+  const updateQuery = (updates) => {
+    const next = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value || value === 'all' || (key === ARTICLE_QUEUE_PARAM && value === DEFAULT_ARTICLE_QUEUE_ID)) {
+        next.delete(key);
+      } else {
+        next.set(key, String(value));
+      }
+    });
+    if (updates[ARTICLE_QUEUE_PARAM]) next.delete('status');
+    next.delete('page');
+    const queryString = next.toString();
+    const nextUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    const currentUrl = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
+    if (nextUrl !== currentUrl) router.push(nextUrl, { scroll: false });
+  };
+
+  const handleQueueChange = (nextQueueId) => {
+    updateQuery({ [ARTICLE_QUEUE_PARAM]: isValidArticleQueue(nextQueueId) ? nextQueueId : DEFAULT_ARTICLE_QUEUE_ID });
+  };
+
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
+      if ((searchParams.get('search') || '') !== searchQuery.trim()) {
+        updateQuery({ search: searchQuery.trim() });
+      }
     }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  useEffect(() => {
+    const nextSearch = searchParams.get('search') || '';
+    const nextMagazineId = searchParams.get('magazine_id') || 'all';
+    const nextStatus = searchParams.get('status') || 'all';
+    setSearchQuery(nextSearch);
+    setDebouncedSearchQuery(nextSearch);
+    setSelectedMagazineId(nextMagazineId);
+    setSelectedStatus(nextStatus);
+  }, [searchParams]);
 
   // Fetch magazines for the filter dropdown
   useEffect(() => {
     const fetchMagazines = async () => {
       try {
         setLoadingMagazines(true);
-        const response = await api.get('/magazines', { params: { all: true } });
-        setMagazines(response.data || []);
+        const endpoint = isAuthorWorkspace ? '/magazines' : '/admin/magazines';
+        const response = await api.get(endpoint, { params: { all: true } });
+        setMagazines(Array.isArray(response.data) ? response.data : (response.data?.data || []));
       } catch (err) {
-        console.error('Failed to fetch magazines for filter', err);
+        logError('Failed to fetch magazines for filter', err);
       } finally {
         setLoadingMagazines(false);
       }
     };
     fetchMagazines();
-  }, []);
+  }, [isAuthorWorkspace]);
+
+  useEffect(() => {
+    const fetchStatusOptions = async () => {
+      if (!isAuthorWorkspace || authLoading || !user) return;
+      try {
+        setLoadingStatusOptions(true);
+        const params = { ...observerParams };
+        if (selectedMagazineId !== 'all') {
+          params.magazine_id = selectedMagazineId;
+        }
+        if (debouncedSearchQuery.trim()) {
+          params.search = debouncedSearchQuery.trim();
+        }
+        const response = await api.get('/admin/articles/status-options', { params });
+        const options = groupStatusOptionsByLabel(response.data?.data || []);
+        setStatusOptions(options);
+        if (selectedStatus !== 'all' && !options.some((option) => option.value === selectedStatus)) {
+          setSelectedStatus('all');
+          updateQuery({ status: 'all' });
+        }
+      } catch (err) {
+        logError('Failed to fetch article status filter options', err);
+        setStatusOptions([]);
+      } finally {
+        setLoadingStatusOptions(false);
+      }
+    };
+    fetchStatusOptions();
+  }, [isAuthorWorkspace, authLoading, user, selectedMagazineId, debouncedSearchQuery, observerParams]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, selectedMagazineId, statusFilter]);
-
-  // Selected article for review modal
-  const [selectedArticle, setSelectedArticle] = useState(null);
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [activeReviewTab, setActiveReviewTab] = useState('abstract'); // 'abstract' | 'fulltext' | 'share_stats'
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [submittingReview, setSubmittingReview] = useState(false);
+  }, [debouncedSearchQuery, selectedMagazineId, selectedStatus, queueId]);
 
   // Fetch articles based on filter
   const fetchArticles = async () => {
@@ -100,11 +426,9 @@ export default function AdminArticlesBoard() {
       const params = {
         page: currentPage,
         per_page: itemsPerPage,
+        ...observerParams,
       };
 
-      if (statusFilter !== 'all') {
-        params.status = statusFilter;
-      }
       if (selectedMagazineId !== 'all') {
         params.magazine_id = selectedMagazineId;
       }
@@ -112,19 +436,34 @@ export default function AdminArticlesBoard() {
         params.search = debouncedSearchQuery.trim();
       }
 
-      const response = await api.get('/admin/articles', { params });
-      
-      if (response.data && response.data.data) {
-        setArticles(response.data.data);
-        setTotalArticles(response.data.total || 0);
-        setTotalPages(response.data.last_page || 1);
-      } else {
-        setArticles(Array.isArray(response.data) ? response.data : []);
-        setTotalArticles(Array.isArray(response.data) ? response.data.length : 0);
-        setTotalPages(1);
+      if (isAuthorWorkspace) {
+        if (selectedStatus !== 'all') {
+          params.status = selectedStatus;
+        }
+        const response = await api.get('/admin/articles', { params });
+        setArticles(response.data?.data || []);
+        setTotalArticles(response.data?.total || response.data?.data?.length || 0);
+        setTotalPages(response.data?.last_page || 1);
+        return;
       }
+
+      const statuses = selectedQueue.statuses.length ? selectedQueue.statuses : [null];
+      const perStatusPage = Math.max(1, Math.ceil(itemsPerPage / statuses.length));
+      const responses = await Promise.all(statuses.map((status) => {
+        const nextParams = { ...params, per_page: perStatusPage };
+        if (status) nextParams.status = status;
+        return api.get('/admin/articles', { params: nextParams });
+      }));
+      const combinedResults = responses.flatMap((response) => response.data?.data || []);
+      const combined = combinedResults.slice(0, itemsPerPage);
+      const total = responses.reduce((sum, response) => sum + (response.data?.total || response.data?.data?.length || 0), 0);
+      const pages = Math.max(...responses.map((response) => response.data?.last_page || 1));
+      
+      setArticles(combined);
+      setTotalArticles(total);
+      setTotalPages(pages);
     } catch (err) {
-      console.error(err);
+      logError(err);
       setError('Could not download the articles registry database.');
     } finally {
       setLoading(false);
@@ -135,66 +474,19 @@ export default function AdminArticlesBoard() {
     if (!authLoading && user) {
       fetchArticles();
     }
-  }, [currentPage, statusFilter, selectedMagazineId, debouncedSearchQuery, user, authLoading]);
-
-  const openReviewModal = (article) => {
-    setSelectedArticle(article);
-    setRejectionReason('');
-    setActiveReviewTab('abstract');
-    setIsReviewModalOpen(true);
-  };
-
-  const handleReviewAction = async (status) => {
-    if (status === 'rejected' && !rejectionReason.trim()) {
-      toast('Please supply a reason for rejecting this publication.', 'error');
-      return;
-    }
-
-    try {
-      setSubmittingReview(true);
-      const payload = {
-        status,
-        rejection_reason: status === 'rejected' ? rejectionReason : null
-      };
-
-      await api.patch(`/admin/articles/${selectedArticle.id}/review`, payload);
-      
-      toast(`Article review updated to: ${status}.`, 'success');
-      setIsReviewModalOpen(false);
-      fetchArticles();
-    } catch (err) {
-      console.error(err);
-      toast('Failed to record review determination.', 'error');
-    } finally {
-      setSubmittingReview(false);
-    }
-  };
+  }, [currentPage, queueId, selectedMagazineId, selectedStatus, debouncedSearchQuery, user, authLoading, observerParams]);
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'approved':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-emerald-500/[0.04] text-emerald-600 border border-emerald-500/10">
-            Approved
-          </span>
-        );
-      case 'rejected':
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-red-500/[0.04] text-red-500 border border-red-500/10">
-            Rejected
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase bg-amber-500/[0.04] text-amber-600 border border-amber-500/10">
-            Pending
-          </span>
-        );
-    }
+    const [label, tone = 'zinc'] = STATUS_META[status] || [(status || 'Unknown').replaceAll('_', ' '), 'zinc'];
+    return (
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-bold font-mono uppercase border ${STATUS_TONE_CLASSES[tone] || STATUS_TONE_CLASSES.zinc}`}>
+        {label}
+      </span>
+    );
   };
 
   const getAbsoluteFileUrl = (art) => {
-    if (!art?.pdf_path) return '';
+    if (!art?.has_pdf) return '';
     const baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
     return `${baseApiUrl}/articles/${art.id}/download-pdf`;
   };
@@ -230,15 +522,15 @@ export default function AdminArticlesBoard() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-900 pb-6">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white leading-none">
-            {isAdminOrEditor ? "Manuscripts Editorial Board" : "My Research Articles"}
+            {isAdminOrEditor ? selectedQueue.heading : "My Manuscripts"}
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-            {isAdminOrEditor 
-              ? "Oversee platform submissions, review papers, and download manuscript files." 
-              : "Manage drafts, track editorial review cycles, and publish new academic work."}
+            {isAdminOrEditor
+              ? selectedQueue.description
+              : "Filter your manuscript submissions by journal, workflow status, or search text."}
           </p>
         </div>
-        {hasPermission('articles.create') && (
+        {hasPermission('articles.create') && !observerMode && (
           <Link href="/admin/articles/new" className="self-start sm:self-auto">
             <Button
               variant="primary"
@@ -246,7 +538,7 @@ export default function AdminArticlesBoard() {
               className="inline-flex items-center justify-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white shadow-sm cursor-pointer shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Add Article</span>
+              <span>{isAuthorWorkspace ? "New Submission" : "Add Article"}</span>
             </Button>
           </Link>
         )}
@@ -254,25 +546,35 @@ export default function AdminArticlesBoard() {
 
       {/* Filter Tabs & Search row */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 font-sans">
-        {/* Status selection */}
-        <div className="flex rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/40 w-full lg:max-w-md">
-          {['all', 'pending', 'approved', 'rejected'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setStatusFilter(tab)}
-              className={`flex-1 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                statusFilter === tab
-                  ? 'bg-white shadow text-amber-600 dark:bg-zinc-950 dark:text-amber-400'
-                  : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+        {isAdminOrEditor && (
+          <div
+            role="tablist"
+            aria-label="Article queues"
+            className="flex flex-wrap gap-1 rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/40 w-full lg:max-w-5xl"
+          >
+            {ARTICLE_QUEUE_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`article-queue-tab-${tab.id}`}
+                aria-controls="article-queue-panel"
+                aria-selected={queueId === tab.id}
+                onClick={() => handleQueueChange(tab.id)}
+                className={`px-3 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-100 dark:focus-visible:ring-offset-zinc-900 ${
+                  queueId === tab.id
+                    ? 'bg-white shadow text-amber-600 dark:bg-zinc-950 dark:text-amber-400'
+                    : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Inputs */}
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full lg:w-auto">
+        <div className={`flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full ${isAuthorWorkspace ? 'lg:w-full lg:justify-start' : 'lg:w-auto'}`}>
           {/* Search box */}
           <div className="relative w-full sm:w-60">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-405" />
@@ -280,7 +582,7 @@ export default function AdminArticlesBoard() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search registry..."
+              placeholder={isAuthorWorkspace ? "Search my manuscripts..." : "Search registry..."}
               className="w-full text-xs font-semibold pl-9 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100"
             />
             {searchQuery && (
@@ -294,14 +596,39 @@ export default function AdminArticlesBoard() {
             )}
           </div>
 
+          {isAuthorWorkspace && (
+            <div className="relative w-full sm:w-56">
+              <select
+                value={selectedStatus}
+                onChange={(e) => {
+                  setSelectedStatus(e.target.value);
+                  updateQuery({ status: e.target.value });
+                }}
+                disabled={loadingStatusOptions}
+                className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100 cursor-pointer appearance-none disabled:cursor-wait disabled:text-zinc-400"
+              >
+                <option value="all">All Statuses</option>
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} ({option.count})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+            </div>
+          )}
+
           {/* Magazine selector */}
           <div className="relative w-full sm:w-56">
             <select
               value={selectedMagazineId}
-              onChange={(e) => setSelectedMagazineId(e.target.value)}
+              onChange={(e) => {
+                setSelectedMagazineId(e.target.value);
+                updateQuery({ magazine_id: e.target.value });
+              }}
               className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100 cursor-pointer appearance-none"
             >
-              <option value="all">All Magazines</option>
+              <option value="all">{isAuthorWorkspace ? "All Journals" : "All Magazines"}</option>
               {magazines.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.title}
@@ -313,30 +640,35 @@ export default function AdminArticlesBoard() {
         </div>
       </div>
 
-      {/* Main Table View */}
-      {loading && (
-        <div className="flex flex-col items-center justify-center py-24 space-y-4 border border-zinc-200/80 rounded-2xl bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/20 backdrop-blur-md">
-          <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
-          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Loading Publications Ledger...</span>
-        </div>
-      )}
+      <div
+        id="article-queue-panel"
+        role="tabpanel"
+        aria-labelledby={`article-queue-tab-${queueId}`}
+      >
+        {/* Main Table View */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-24 space-y-4 border border-zinc-200/80 rounded-2xl bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/20 backdrop-blur-md">
+            <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
+            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest font-mono">Loading Publications Ledger...</span>
+          </div>
+        )}
 
-      {error && (
-        <div className="flex items-center space-x-3 p-4 bg-red-500/[0.04] border border-red-500/10 rounded-xl text-red-650 text-xs">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span className="font-semibold text-xs leading-none">{error}</span>
-        </div>
-      )}
+        {error && (
+          <div className="flex items-center space-x-3 p-4 bg-red-500/[0.04] border border-red-500/10 rounded-xl text-red-650 text-xs">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span className="font-semibold text-xs leading-none">{error}</span>
+          </div>
+        )}
 
-      {!loading && !error && articles.length === 0 && (
-        <div className="text-center py-20 border border-zinc-200/80 rounded-2xl bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/20 backdrop-blur-md">
-          <FileText className="w-10 h-10 mx-auto text-zinc-350 mb-3 opacity-60" />
-          <p className="text-xs font-semibold text-zinc-450">No manuscripts match the selected search or filter criteria.</p>
-        </div>
-      )}
+        {!loading && !error && articles.length === 0 && (
+          <div className="text-center py-20 border border-zinc-200/80 rounded-2xl bg-white/70 dark:border-zinc-800 dark:bg-zinc-900/20 backdrop-blur-md">
+            <FileText className="w-10 h-10 mx-auto text-zinc-350 mb-3 opacity-60" />
+            <p className="text-xs font-semibold text-zinc-450">No manuscripts match the selected search or filter criteria.</p>
+          </div>
+        )}
 
-      {!loading && !error && articles.length > 0 && (
-        <div className="border border-zinc-200/80 dark:border-zinc-850 bg-white/70 dark:bg-zinc-900/20 backdrop-blur-md rounded-2xl shadow-sm overflow-hidden animate-in fade-in duration-300">
+        {!loading && !error && articles.length > 0 && (
+          <div className="border border-zinc-200/80 dark:border-zinc-850 bg-white/70 dark:bg-zinc-900/20 backdrop-blur-md rounded-2xl shadow-sm overflow-hidden animate-in fade-in duration-300">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[700px] font-sans">
               <thead>
@@ -349,15 +681,17 @@ export default function AdminArticlesBoard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-850/60 text-xs font-semibold text-zinc-700 dark:text-zinc-305">
-                {articles.map((art) => (
+                {articles.map((art) => {
+                  const canEditArticle = art.can_edit_article !== false && isArticleEditableStatus(art.status);
+                  return (
                   <tr key={art.id} className="hover:bg-amber-500/[0.01] transition-colors">
                     <td className="px-6 py-4 max-w-[340px]">
                       <div className="flex items-center space-x-3.5 text-left">
                         {/* Thumbnail */}
                         <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-zinc-200/80 dark:border-zinc-800/85 bg-zinc-50 flex items-center justify-center">
-                          {(art.featured_image || art.magazine?.cover_image) ? (
+                          {(art.featured_image_url || art.featured_image || art.magazine?.cover_image_url || art.magazine?.cover_image) ? (
                             <img 
-                              src={getFullImageUrl(art.featured_image || art.magazine?.cover_image)} 
+                              src={art.featured_image_url || art.magazine?.cover_image_url || getFullImageUrl(art.featured_image || art.magazine?.cover_image)}
                               alt="" 
                               className="w-full h-full object-cover" 
                             />
@@ -392,7 +726,7 @@ export default function AdminArticlesBoard() {
                     )}
                     <td className="px-6 py-4">{getStatusBadge(art.status)}</td>
                     <td className="px-6 py-4 text-right space-x-3.5">
-                      {hasPermission('articles.edit-own') && (
+                      {hasPermission('articles.edit-own') && canEditArticle && !observerMode && (
                         <Link
                           href={`/admin/articles/${art.id}/edit`}
                           className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-blue-605 hover:underline cursor-pointer"
@@ -402,15 +736,25 @@ export default function AdminArticlesBoard() {
                         </Link>
                       )}
 
-                      <button
-                        onClick={() => openReviewModal(art)}
+                      {isAdminOrEditor && !isEditor && !observerMode && PUBLISHABLE_STATUSES.has(art.status) && (
+                        <button
+                          onClick={() => openPublishModal(art)}
+                          className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-purple-650 hover:underline cursor-pointer"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>Publish</span>
+                        </button>
+                      )}
+
+                      <Link
+                        href={observerMode ? `/admin/articles/${art.id}/workflow?observer_readonly=1` : `/admin/articles/${art.id}/workflow`}
                         className="inline-flex items-center space-x-1.5 text-[10px] font-bold uppercase text-amber-600 hover:underline cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
-                        <span>{isAdminOrEditor ? "Review" : "View"}</span>
-                      </button>
+                        <span>{observerMode ? "View Record" : isAdminOrEditor ? "Manage Workflow" : "View Workflow"}</span>
+                      </Link>
 
-                      {art.pdf_path && (
+                      {art.has_pdf && (
                         <a
                           href={getAbsoluteFileUrl(art)}
                           target="_blank"
@@ -423,7 +767,8 @@ export default function AdminArticlesBoard() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -452,187 +797,31 @@ export default function AdminArticlesBoard() {
               onPageChange={setCurrentPage}
             />
           </div>
-        </div>
-      )}
-
-      {/* REVIEW DETAILS MODAL OVERLAY */}
-      {isReviewModalOpen && selectedArticle && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-          <div 
-            onClick={() => setIsReviewModalOpen(false)}
-            className="absolute inset-0 bg-zinc-950/40 backdrop-blur-md transition-opacity duration-300 animate-in fade-in"
-          />
-          <div className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh] font-sans">
-            
-            {/* Modal Header */}
-            <div className="px-6 py-4.5 border-b border-zinc-150 dark:border-zinc-850/80 flex items-center justify-between">
-              <div className="space-y-0.5 text-left">
-                <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 font-mono">Submission Review Center</span>
-                <p className="text-xs text-zinc-900 dark:text-white font-bold leading-none">Issue: {selectedArticle.magazine?.title}</p>
-              </div>
-              <button 
-                onClick={() => setIsReviewModalOpen(false)} 
-                className="p-1 rounded-lg text-zinc-400 hover:bg-zinc-105 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-6 overflow-y-auto flex-grow flex flex-col min-h-[350px]">
-              
-              {/* Title Section */}
-              <div className="space-y-1.5 pb-4 border-b border-zinc-100 dark:border-zinc-850 text-left">
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-white leading-snug font-serif">{selectedArticle.title}</h2>
-                <div className="flex items-center space-x-3 text-[10px] text-zinc-450 font-bold uppercase tracking-wider">
-                  <span className="flex items-center">
-                    <User className="w-3.5 h-3.5 mr-1 text-amber-500" />
-                    Author: {selectedArticle.user?.name}
-                  </span>
-                  <span>•</span>
-                  <span>Date: {new Date(selectedArticle.created_at).toLocaleDateString()}</span>
-                </div>
-              </div>
-
-              {/* Tabs controls */}
-              <div className="flex rounded-xl p-1 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-850 w-full max-w-sm self-start">
-                {['abstract', 'fulltext', 'share_stats'].map((tab) => {
-                  const label = tab === 'abstract' ? 'Abstract' : tab === 'fulltext' ? 'Full Text' : 'Share Metrics';
-                  return (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => setActiveReviewTab(tab)}
-                      className={`flex-1 py-1.5 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                        activeReviewTab === tab
-                          ? 'bg-white shadow text-amber-600 dark:bg-zinc-900 dark:text-amber-400'
-                          : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-250'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Reader Panel (using font-serif where appropriate) */}
-              <div className="flex-grow p-5 rounded-xl border border-zinc-150 dark:border-zinc-850/80 bg-zinc-50/30 dark:bg-zinc-950/20 text-left overflow-y-auto max-h-[300px]">
-                {activeReviewTab === 'abstract' ? (
-                  <div className="space-y-4 font-serif">
-                    {(selectedArticle.featured_image || selectedArticle.magazine?.cover_image) && (
-                      <div className="w-full max-w-sm h-40 rounded-xl overflow-hidden border border-zinc-200/50 bg-zinc-50/50 shadow-sm mb-4">
-                        <img 
-                          src={getFullImageUrl(selectedArticle.featured_image || selectedArticle.magazine?.cover_image)} 
-                          alt="Article Cover" 
-                          className="w-full h-full object-cover" 
-                        />
-                      </div>
-                    )}
-                    <div className="prose prose-sm max-w-none text-zinc-700 dark:text-zinc-300 italic leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: selectedArticle.abstract }} />
-                  </div>
-                ) : activeReviewTab === 'fulltext' ? (
-                  <div className="prose prose-sm max-w-none text-zinc-850 dark:text-zinc-350 leading-relaxed font-serif text-sm" dangerouslySetInnerHTML={{ __html: selectedArticle.full_text }} />
-                ) : (
-                  <div className="space-y-4 text-left font-sans">
-                    <div className="flex items-center justify-between border-b border-zinc-150 dark:border-zinc-800 pb-3">
-                      <div>
-                        <h4 className="text-xs font-bold text-zinc-800 dark:text-white uppercase tracking-wider">Sharing Metric Summary</h4>
-                        <p className="text-[9px] text-zinc-400 font-semibold">Real-time click engagement metrics for share anchors</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400">
-                          {selectedArticle.share_clicks?.reduce((acc, curr) => acc + curr.clicks, 0) || 0}
-                        </span>
-                        <p className="text-[8px] uppercase tracking-wider font-bold text-zinc-400">Total clicks</p>
-                      </div>
-                    </div>
-
-                    {!selectedArticle.share_clicks || selectedArticle.share_clicks.length === 0 ? (
-                      <p className="text-xs italic text-zinc-450 py-6 text-center">No sharing interactions logged yet.</p>
-                    ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {selectedArticle.share_clicks.map((item) => (
-                          <div key={item.id} className="p-3.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 flex items-center justify-between shadow-sm">
-                            <div className="text-left">
-                              <span className="text-[9px] uppercase font-bold tracking-wider text-zinc-450 block font-mono">{item.platform.replace('_', ' ')}</span>
-                              <span className="text-[11px] font-bold text-zinc-805 dark:text-zinc-250 mt-0.5 block">{item.clicks} clicks</span>
-                            </div>
-                            <span className="h-2 w-2 rounded-full bg-amber-500 opacity-40 shrink-0"></span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Review actions / comments */}
-              {selectedArticle.status === 'pending' ? (
-                isAdminOrEditor ? (
-                  <div className="pt-4 border-t border-zinc-150 dark:border-zinc-850 space-y-4 text-left font-sans">
-                    <div className="space-y-1">
-                      <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-450 font-mono">Editorial Verdict Form</h4>
-                      <p className="text-[10px] text-zinc-450 font-medium">Record verdict. A reason must be written if rejecting this submission.</p>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-405 font-mono block">Rejection Feedback / Justification</label>
-                      <textarea
-                        value={rejectionReason}
-                        onChange={(e) => setRejectionReason(e.target.value)}
-                        placeholder="Feedback written here is visible to authors..."
-                        rows={2}
-                        className="w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-end space-x-2.5">
-                      <button
-                        type="button"
-                        disabled={submittingReview}
-                        onClick={() => handleReviewAction('rejected')}
-                        className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-red-650 bg-red-500/[0.04] border border-red-500/20 hover:bg-red-500/[0.08] transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        <X className="w-4 h-4" />
-                        <span>Reject manuscript</span>
-                      </button>
-                      
-                      <button
-                        type="button"
-                        disabled={submittingReview}
-                        onClick={() => handleReviewAction('approved')}
-                        className="inline-flex items-center space-x-1.5 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 shadow-sm transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        {submittingReview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        <span>Approve & Compile PDF</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="pt-4 border-t border-zinc-150 dark:border-zinc-850 text-left font-sans">
-                    <h4 className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono">Review Status</h4>
-                    <div className="mt-2">
-                      {getStatusBadge(selectedArticle.status)}
-                    </div>
-                  </div>
-                )
-              ) : (
-                <div className="pt-4 border-t border-zinc-150 dark:border-zinc-850 text-left font-sans">
-                  <h4 className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 font-mono">Historical Record</h4>
-                  <div className="mt-2 flex items-center space-x-3">
-                    {getStatusBadge(selectedArticle.status)}
-                    {selectedArticle.status === 'rejected' && (
-                      <p className="text-xs text-zinc-500 font-medium">Rejection Reason: <strong className="text-zinc-900 dark:text-zinc-200">{selectedArticle.rejection_reason || 'None provided.'}</strong></p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      <PublishArticleModal
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        onSubmit={handlePublishSubmit}
+        articleTitle={articleToPublish?.title}
+        magazineId={articleToPublish?.magazine_id}
+      />
 
     </div>
+  );
+}
+
+export default function AdminArticlesBoard() {
+  return (
+    <DeskObserverContext roles={['editor', 'magazine_editor']}>
+      {({ observerMode, observerParams }) => (
+        <AdminArticlesBoardContent
+          observerMode={observerMode}
+          observerParams={observerParams}
+        />
+      )}
+    </DeskObserverContext>
   );
 }

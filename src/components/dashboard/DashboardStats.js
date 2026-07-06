@@ -23,8 +23,8 @@ export default function DashboardStats({ stats, loading, isAdmin }) {
 
   const renderAuthorStats = () => {
     const total = stats?.total ?? 0;
-    const approved = stats?.approved ?? 0;
-    const pending = stats?.pending ?? 0;
+    const approved = stats?.approved ?? stats?.accepted ?? 0;
+    const pending = stats?.pending ?? stats?.submitted ?? 0;
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border border-zinc-150 dark:border-zinc-850 bg-white/40 dark:bg-zinc-900/10 rounded-2xl p-6 sm:p-8 backdrop-blur-md shadow-sm font-sans text-left">
@@ -46,20 +46,20 @@ export default function DashboardStats({ stats, loading, isAdmin }) {
           </div>
         </div>
 
-        {/* Approved Publications */}
+        {/* Accepted Manuscripts */}
         <div className="flex items-start space-x-4 p-4 border-b md:border-b-0 md:border-r border-zinc-100 dark:border-zinc-800/60 last:border-none">
           <div className="p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div className="space-y-0.5">
             <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 font-mono block">
-              Approved Publications
+              Accepted Manuscripts
             </span>
             <div className="text-3xl font-extrabold text-zinc-900 dark:text-white font-mono leading-none tracking-tight">
               {approved}
             </div>
             <p className="text-[10px] text-zinc-455 dark:text-zinc-550 font-medium pt-1">
-              Articles successfully published
+              Manuscripts accepted for publication
             </p>
           </div>
         </div>
@@ -77,7 +77,7 @@ export default function DashboardStats({ stats, loading, isAdmin }) {
               {pending}
             </div>
             <p className="text-[10px] text-zinc-455 dark:text-zinc-550 font-medium pt-1">
-              Pending editorial evaluations
+              Submitted manuscripts awaiting review
             </p>
           </div>
         </div>
@@ -86,13 +86,13 @@ export default function DashboardStats({ stats, loading, isAdmin }) {
   };
 
   const renderAdminStats = () => {
-    const pending = stats?.articles_count?.pending ?? 0;
+    const pending = stats?.articles_count?.submitted ?? stats?.articles_count?.pending ?? 0;
     const users = stats?.users_count ?? 0;
     const magazines = stats?.magazines_count ?? 0;
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border border-zinc-150 dark:border-zinc-850 bg-white/40 dark:bg-zinc-900/10 rounded-2xl p-6 sm:p-8 backdrop-blur-md shadow-sm font-sans text-left">
-        {/* Pending Review */}
+        {/* Submitted Review */}
         <div className="flex items-start space-x-4 p-4 border-b md:border-b-0 md:border-r border-zinc-100 dark:border-zinc-800/60 last:border-none">
           <div
             className={`p-2.5 rounded-xl shrink-0 ${
@@ -105,7 +105,7 @@ export default function DashboardStats({ stats, loading, isAdmin }) {
           </div>
           <div className="space-y-0.5">
             <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 font-mono block">
-              Pending Review
+              Submitted Review
             </span>
             <div className={`text-3xl font-extrabold font-mono leading-none tracking-tight ${pending > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-white'}`}>
               {pending}

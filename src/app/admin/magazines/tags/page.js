@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../../utils/safeErrors';
+import { logError } from '../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { 
   Tag as TagIcon, Plus, Edit2, Trash2, Loader2, 
@@ -7,10 +9,14 @@ import {
 } from 'lucide-react';
 import api from '../../../../utils/api';
 import { useToast } from '../../../../context/ToastContext';
+import { useAuth } from '../../../../context/AuthContext';
 import Pagination from '../../../../components/ui/Pagination';
 
 export default function AdminMagazineTags() {
   const { toast } = useToast();
+  const { user, hasRole, loading: authLoading } = useAuth();
+  const canUseTagManager = hasRole('super_admin') || hasRole('admin');
+  const canDeleteRecords = hasRole('super_admin');
 
   const [magazines, setMagazines] = useState([]);
   const [tags, setTags] = useState([]);
@@ -46,6 +52,7 @@ export default function AdminMagazineTags() {
 
   // Fetch Magazines
   const fetchMagazines = async () => {
+    if (!canUseTagManager) return;
     try {
       setLoadingMagazines(true);
       const response = await api.get('/magazines', { params: { all: true } });
@@ -54,7 +61,7 @@ export default function AdminMagazineTags() {
         setNewTagMagazineId(response.data[0].id.toString());
       }
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to load magazines.', 'error');
     } finally {
       setLoadingMagazines(false);
@@ -63,6 +70,7 @@ export default function AdminMagazineTags() {
 
   // Fetch Tags
   const fetchTags = async () => {
+    if (!canUseTagManager) return;
     try {
       setLoadingTags(true);
       setError(null);
@@ -84,7 +92,7 @@ export default function AdminMagazineTags() {
       setTotalPages(response.data.last_page || 1);
       setTotalResults(response.data.total || 0);
     } catch (err) {
-      console.error(err);
+      logError(err);
       setError('Could not retrieve tags registry.');
     } finally {
       setLoadingTags(false);
@@ -137,8 +145,8 @@ export default function AdminMagazineTags() {
       setNewTagName('');
       fetchTags();
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Failed to create tag.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Failed to create tag.');
       toast(msg, 'error');
     } finally {
       setSubmittingAdd(false);
@@ -165,8 +173,8 @@ export default function AdminMagazineTags() {
       setEditingTagName('');
       fetchTags();
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Failed to update tag.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Failed to update tag.');
       toast(msg, 'error');
     } finally {
       setSubmittingEdit(false);
@@ -175,6 +183,7 @@ export default function AdminMagazineTags() {
 
   // Handle Delete Tag
   const handleDeleteTag = async () => {
+    if (!canDeleteRecords) return;
     try {
       setSubmittingDelete(true);
       await api.delete(`/admin/tags/${deletingTag.id}`);
@@ -184,7 +193,7 @@ export default function AdminMagazineTags() {
       setDeletingTag(null);
       fetchTags();
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to delete tag.', 'error');
     } finally {
       setSubmittingDelete(false);
@@ -198,6 +207,7 @@ export default function AdminMagazineTags() {
   };
 
   const openDeleteModal = (tag) => {
+    if (!canDeleteRecords) return;
     setDeletingTag(tag);
     setIsDeleteModalOpen(true);
   };
@@ -303,13 +313,15 @@ export default function AdminMagazineTags() {
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={() => openDeleteModal(tag)}
-                  className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                  title="Delete tag"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {canDeleteRecords && (
+                  <button
+                    onClick={() => openDeleteModal(tag)}
+                    className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                    title="Delete tag"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -450,7 +462,7 @@ export default function AdminMagazineTags() {
       )}
 
       {/* DELETE TAG MODAL */}
-      {isDeleteModalOpen && deletingTag && (
+      {canDeleteRecords && isDeleteModalOpen && deletingTag && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-250">
           <div className="bg-white rounded-2xl border border-zinc-250 shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 text-center space-y-4">

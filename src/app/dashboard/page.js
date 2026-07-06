@@ -1,5 +1,6 @@
 'use client';
 
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -48,8 +49,8 @@ export default function Dashboard() {
           // Author parallel pagination queries
           const [totalRes, approvedRes, pendingRes] = await Promise.all([
             api.get('/admin/articles', { params: { per_page: 1 } }),
-            api.get('/admin/articles', { params: { status: 'approved', per_page: 1 } }),
-            api.get('/admin/articles', { params: { status: 'pending', per_page: 1 } })
+            api.get('/admin/articles', { params: { status: 'accepted', per_page: 1 } }),
+            api.get('/admin/articles', { params: { status: 'submitted', per_page: 1 } })
           ]);
           setStats({
             total: totalRes.data.total || 0,
@@ -58,7 +59,7 @@ export default function Dashboard() {
           });
         }
       } catch (err) {
-        console.error('Failed to fetch dashboard metrics:', err);
+        logError('Failed to fetch dashboard metrics:', err);
         toast('Failed to download dashboard statistics.', 'error');
       } finally {
         setStatsLoading(false);
@@ -92,7 +93,7 @@ export default function Dashboard() {
             <Link href="/login" className="font-bold underline text-amber-600 dark:text-amber-400">
               sign in
             </Link>{' '}
-            to view your publisher dashboard.
+            to view your {isAdminOrEditor ? 'publisher' : 'author'} dashboard.
           </p>
         </div>
       </div>
@@ -115,7 +116,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300 text-left font-sans">
-      <title>Publisher Dashboard - ScholarlyNest</title>
+      <title>{isAdminOrEditor ? 'Publisher Dashboard' : 'Author Dashboard'} - ScholarlyNest</title>
       
       {/* Decorative top modal check */}
       <UniversityGateModal />

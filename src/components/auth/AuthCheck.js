@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
+import { logError } from '../../utils/safeLogger';
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -45,8 +47,8 @@ export default function AuthCheck({ children }) {
       // Refresh the authenticated user session context
       await refreshUser();
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Failed to update password.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Failed to update password.');
       const backendErrors = err.response?.data?.errors || {};
       setErrors(backendErrors);
       toast(msg, 'error');

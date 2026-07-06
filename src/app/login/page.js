@@ -1,19 +1,24 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { safeApiMessage } from '../../utils/safeErrors';
+import { logError } from '../../utils/safeLogger';
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { Lock, Mail, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import Breadcrumbs from '../../components/Breadcrumbs';
-import api from '../../utils/api';
+import { Lock, Mail, Loader2, AlertCircle, Eye, EyeOff, LayoutDashboard } from 'lucide-react';
 import SeoHead from '../../components/SeoHead';
+import api from '../../utils/api';
 
 export default function Login() {
   const { user, login, loginWithPayload, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const errorRef = useRef(null);
+  const emailInputRef = useRef(null);
+  const passwordInputRef = useRef(null);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,21 +42,26 @@ export default function Login() {
       toast('Authentication successful. Welcome to ScholarlyNest!', 'success');
       router.push('/admin');
     } catch (err) {
-      console.error(err);
-      if (err.response?.status === 404 && err.response?.data?.message === 'no_account_exists') {
+      logError(err);
+      if (err['response']?.status === 404 && err['response']?.data?.message === 'no_account_exists') {
         toast('No academic profile exists with this Google account. Redirecting to sign up...', 'warning');
-        // Store credential and info for pre-filling on sign up
         sessionStorage.setItem('google_signup_credential', response.credential);
-        if (err.response.data.google_info) {
-          sessionStorage.setItem('google_signup_info', JSON.stringify(err.response.data.google_info));
+        const googleInfo = err['response']?.data?.google_info;
+        if (googleInfo) {
+          sessionStorage.setItem('google_signup_info', JSON.stringify({
+            name: googleInfo.name || '',
+            email: googleInfo.email || '',
+          }));
         }
         setTimeout(() => {
           router.push('/register');
         }, 1500);
       } else {
-        const msg = err.response?.data?.message || 'Google Sign In failed.';
+        const msg = safeApiMessage(err, 'Google Sign In failed.');
         setError(msg);
         toast(msg, 'error');
+        // Shift focus to error banner
+        setTimeout(() => errorRef.current?.focus(), 100);
       }
     } finally {
       setLoading(false);
@@ -61,8 +71,9 @@ export default function Login() {
   useEffect(() => {
     const initGoogle = () => {
       if (window.google?.accounts?.id) {
+        if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) return;
         window.google.accounts.id.initialize({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '606295156376-526b5jjq2lbdc2i10v9l1phaa32sc7qd.apps.googleusercontent.com',
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
           callback: handleGoogleCallback
         });
         const isDark = document.documentElement.classList.contains('dark');
@@ -84,7 +95,6 @@ export default function Login() {
     };
 
     if (window.google?.accounts?.id) {
-      // Use requestAnimationFrame to ensure layout is fully computed
       requestAnimationFrame(() => {
         initGoogle();
       });
@@ -127,6 +137,13 @@ export default function Login() {
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       toast('Please correct the validation errors in your fields.', 'error');
+      
+      // Auto-focus first invalid field
+      if (errors.email) {
+        emailInputRef.current?.focus();
+      } else if (errors.password) {
+        passwordInputRef.current?.focus();
+      }
       return;
     }
 
@@ -148,6 +165,8 @@ export default function Login() {
       setError(result.message);
       toast(result.message || 'Invalid credentials provided.', 'error');
       setLoading(false);
+      // Auto-focus error summary for screen readers
+      setTimeout(() => errorRef.current?.focus(), 100);
     }
   };
 
@@ -158,38 +177,53 @@ export default function Login() {
         description="Sign in to your ScholarlyNest account to access your publishing workspace, write articles, or review submissions."
         ogUrl="/login"
       />
-      {/* <Breadcrumbs customLabels={{ login: 'Session Login' }} /> */}
 
-      <div className="bg-white dark:bg-[#1c1c1b] border border-zinc-200/80 dark:border-zinc-800/60 rounded-lg p-8 shadow-sm space-y-6">
+      <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md space-y-6">
         
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h2 className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">
-            Access Publishing Portal
-          </h2>
-          <p className="text-xs text-zinc-400 dark:text-zinc-500">
-            Log in to draft articles, manage posts, or sync roles.
-          </p>
+        {/* Platform Identity & Header */}
+        <div className="text-center space-y-3">
+          <div className="mx-auto w-10 h-10 rounded-xl bg-accent/5 dark:bg-accent-gold/10 border border-accent/10 dark:border-accent-gold/25 flex items-center justify-center text-accent dark:text-accent-gold">
+            <LayoutDashboard className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="font-serif text-2xl font-black text-foreground">
+              ScholarlyNest Portal
+            </h2>
+            <p className="text-xs text-muted font-medium max-w-xs mx-auto leading-relaxed">
+              Welcome back. Enter your credentials to manage publications, review submissions, or update your academic profile.
+            </p>
+          </div>
         </div>
 
-        {/* Error Notification */}
+        {/* Safe Error Notification */}
         {error && (
-          <div className="flex items-center space-x-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-md text-red-600 dark:text-red-400 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+          <div 
+            ref={errorRef}
+            tabIndex="-1"
+            aria-live="assertive"
+            className="flex items-start space-x-2.5 p-3.5 bg-danger/5 dark:bg-danger/10 border border-danger/25 dark:border-danger/30 rounded-xl text-danger text-xs focus:outline-none focus:ring-1 focus:ring-danger"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="font-medium">{error}</span>
           </div>
         )}
 
-        {/* Form */}
+        {/* Login Form */}
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           
+          {/* Email Address */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Scholar Email
+            <label 
+              htmlFor="login-email"
+              className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono"
+            >
+              Academic Email
             </label>
             <div className="relative flex items-center">
               <input
+                ref={emailInputRef}
                 type="email"
+                id="login-email"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -198,26 +232,35 @@ export default function Login() {
                   }
                 }}
                 placeholder="email@university.edu"
-                className={`w-full text-xs font-medium pl-8 pr-3 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border rounded-md focus:outline-none placeholder-zinc-400 transition-all ${fieldErrors.email ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-zinc-200 dark:border-zinc-800/80 focus:border-zinc-400 dark:focus:border-zinc-700'}`}
+                aria-invalid={!!fieldErrors.email}
+                aria-describedby={fieldErrors.email ? "email-error" : undefined}
+                className={`w-full text-xs font-semibold pl-9 pr-3 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-650 transition-all ${fieldErrors.email ? 'border-danger focus:border-danger' : 'border-border dark:border-zinc-800/80 focus:border-accent-gold dark:focus:border-accent-gold'}`}
               />
-              <Mail className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
+              <Mail className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
             </div>
             {fieldErrors.email && (
-              <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block animate-in fade-in duration-200">
+              <span 
+                id="email-error"
+                className="text-[10px] text-danger font-bold mt-1 block animate-in fade-in duration-200"
+              >
                 {fieldErrors.email}
               </span>
             )}
           </div>
 
+          {/* Password */}
           <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-                Password
-              </label>
-            </div>
+            <label 
+              htmlFor="login-password"
+              className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono"
+            >
+              Password
+            </label>
             <div className="relative flex items-center">
               <input
+                ref={passwordInputRef}
                 type={showPassword ? "text" : "password"}
+                id="login-password"
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -226,67 +269,76 @@ export default function Login() {
                   }
                 }}
                 placeholder="••••••••"
-                className={`w-full text-xs font-medium pl-8 pr-10 py-2.5 bg-zinc-50 dark:bg-zinc-900/50 border rounded-md focus:outline-none placeholder-zinc-400 transition-all ${fieldErrors.password ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-zinc-200 dark:border-zinc-800/80 focus:border-zinc-400 dark:focus:border-zinc-700'}`}
+                aria-invalid={!!fieldErrors.password}
+                aria-describedby={fieldErrors.password ? "password-error" : undefined}
+                className={`w-full text-xs font-semibold pl-9 pr-10 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-650 transition-all ${fieldErrors.password ? 'border-danger focus:border-danger' : 'border-border dark:border-zinc-800/80 focus:border-accent-gold dark:focus:border-accent-gold'}`}
               />
-              <Lock className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
+              <Lock className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2.5 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300 transition-colors p-0.5 focus:outline-none"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3 text-zinc-400 dark:text-zinc-600 hover:text-foreground transition-colors p-0.5 focus:outline-none focus:ring-1 focus:ring-accent-gold rounded"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
             {fieldErrors.password && (
-              <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block animate-in fade-in duration-200">
+              <span 
+                id="password-error"
+                className="text-[10px] text-danger font-bold mt-1 block animate-in fade-in duration-200"
+              >
                 {fieldErrors.password}
               </span>
             )}
           </div>
 
+          {/* Submit Action */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-zinc-800 hover:bg-zinc-950 text-white dark:bg-zinc-200 dark:hover:bg-white dark:text-zinc-950 py-2.5 rounded-md transition-premium disabled:opacity-50"
+            className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-950 py-2.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-sm"
           >
             {loading ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
-                Verifying...
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Verifying Credentials...
               </>
             ) : (
               'Sign In'
             )}
           </button>
 
+          {/* Divider */}
           <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800"></div>
-            <span className="flex-shrink mx-4 text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-bold">Or</span>
-            <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800"></div>
+            <div className="flex-grow border-t border-border dark:border-zinc-800/80"></div>
+            <span className="flex-shrink mx-4 text-[9px] text-muted uppercase tracking-widest font-bold">Or</span>
+            <div className="flex-grow border-t border-border dark:border-zinc-800/80"></div>
           </div>
 
+          {/* Google SSO Container */}
           <div className="space-y-3">
             <div id="googleSignInDiv" className="w-full min-h-[40px] block"></div>
           </div>
 
         </form>
 
-        {/* Redirect Footer */}
-        <div className="text-center pt-2 border-t border-zinc-100 dark:border-zinc-800/40 space-y-2">
-          <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+        {/* Footer Redirect Paths */}
+        <div className="text-center pt-4 border-t border-border dark:border-zinc-800/40 space-y-2">
+          <p className="text-[11px] font-semibold text-muted">
             Don't have an academic profile?{' '}
             <Link 
               href="/register" 
-              className="text-zinc-700 dark:text-zinc-300 hover:underline"
+              className="text-accent dark:text-accent-gold hover:underline"
             >
               Register here
             </Link>
           </p>
-          <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+          <p className="text-[11px] font-semibold text-muted">
             Forgot your password?{' '}
             <Link 
               href="/forgot-password" 
-              className="text-zinc-700 dark:text-zinc-300 hover:underline"
+              className="text-accent dark:text-accent-gold hover:underline"
             >
               Reset here
             </Link>

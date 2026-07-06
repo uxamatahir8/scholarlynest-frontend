@@ -18,6 +18,15 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      if (typeof config.headers?.delete === 'function') {
+        config.headers.delete('Content-Type');
+        config.headers.delete('content-type');
+      } else if (config.headers) {
+        delete config.headers['Content-Type'];
+        delete config.headers['content-type'];
+      }
+    }
     return config;
   },
   (error) => {
@@ -40,7 +49,8 @@ api.interceptors.response.use(
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('api-request-ended'));
     }
-    if (error.response && error.response.status === 401) {
+    const status = error?.response?.status;
+    if (status === 401) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');

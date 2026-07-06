@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../utils/safeErrors';
+import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -55,8 +57,8 @@ export default function UniversityGateModal() {
       // Refresh auth context to update user state and close the modal
       await refreshUser();
     } catch (err) {
-      console.error(err);
-      const msg = err.response?.data?.message || 'Failed to update academic profile.';
+      logError(err);
+      const msg = safeApiMessage(err, 'Failed to update academic profile.');
       setError(msg);
       toast(msg, 'error');
     } finally {
@@ -69,7 +71,7 @@ export default function UniversityGateModal() {
       await logout();
       router.push('/login');
     } catch (err) {
-      console.error(err);
+      logError(err);
     }
   };
 

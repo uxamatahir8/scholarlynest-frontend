@@ -28,7 +28,7 @@ import {
   Highlighter, Type, RotateCcw, Check, X, Plus,
   ChevronRight, Columns
 } from 'lucide-react';
-import api from '../../utils/api';
+import { uploadAndAwaitClean } from '../../lib/mediaUploads/DirectUploadClient';
 import { useToast } from '../../context/ToastContext';
 
 
@@ -124,7 +124,7 @@ function Divider() {
   return <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700 mx-0.5 shrink-0" />;
 }
 
-export default function RichEditor({ value, onChange, placeholder = 'Start writing...' }) {
+export default function RichEditor({ value, onChange, placeholder = 'Start writing...', minHeight = '320px', className = '' }) {
   const { toast } = useToast();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -172,7 +172,7 @@ export default function RichEditor({ value, onChange, placeholder = 'Start writi
     editorProps: {
       attributes: {
         class: 'prose dark:prose-invert max-w-none text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none p-5',
-        style: 'min-height: 320px;',
+        style: `min-height: ${minHeight};`,
       }
     },
   });
@@ -191,11 +191,11 @@ export default function RichEditor({ value, onChange, placeholder = 'Start writi
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      const formData = new FormData();
-      formData.append('file', file);
       try {
-        const res = await api.post('/media', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-        if (editor) editor.chain().focus().setImage({ src: res.data.url, alt: file.name }).run();
+        const upload = await uploadAndAwaitClean({ file, purpose: 'cms_image' });
+        const url = upload.record?.media_url;
+        if (!url) throw new Error('Uploaded image URL is unavailable.');
+        if (editor) editor.chain().focus().setImage({ src: url, alt: file.name }).run();
       } catch {
         toast('Image upload failed. Max 10MB.', 'error');
       }
@@ -250,7 +250,7 @@ export default function RichEditor({ value, onChange, placeholder = 'Start writi
   const activeFont = FONT_FAMILIES.find(f => f.value && editor.isActive('textStyle', { fontFamily: f.value }));
 
   return (
-    <div className={`rich-editor-root border border-zinc-200 dark:border-zinc-700 rounded-xl overflow-hidden bg-white dark:bg-[#181817] shadow-sm flex flex-col ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none m-0' : ''}`}>
+    <div className={`rich-editor-root border border-zinc-200 dark:border-zinc-700 rounded-xl overflow-hidden bg-white dark:bg-[#181817] shadow-sm flex flex-col ${className} ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none m-0' : ''}`}>
 
       {/* ── TOOLBAR ── */}
       <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-zinc-50 dark:bg-[#111110] border-b border-zinc-200 dark:border-zinc-700 select-none">

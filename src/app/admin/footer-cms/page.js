@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../utils/safeErrors';
+import { logError } from '../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../../context/AuthContext';
@@ -14,8 +16,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/Card';
 
 export default function FooterCmsAdmin() {
-  const { user: authUser, hasPermission, loading: authLoading } = useAuth();
+  const { user: authUser, hasRole, hasPermission, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const canDeleteRecords = hasRole('super_admin');
 
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
@@ -48,7 +51,7 @@ export default function FooterCmsAdmin() {
       setCategories(categoriesRes.data || []);
       setPages(pagesRes.data || []);
     } catch (err) {
-      console.error(err);
+      logError(err);
       toast('Failed to retrieve footer management data.', 'error');
     } finally {
       setLoading(false);
@@ -89,7 +92,7 @@ export default function FooterCmsAdmin() {
       setShowCategoryForm(false);
       await fetchData();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to save category.';
+      const msg = safeApiMessage(err, 'Failed to save category.');
       toast(msg, 'error');
     } finally {
       setIsCategorySubmitting(false);
@@ -112,6 +115,7 @@ export default function FooterCmsAdmin() {
 
   // DELETE TRIGGERS
   const triggerDelete = (type, id, name) => {
+    if (!canDeleteRecords) return;
     setDeleteType(type);
     setDeleteTargetId(id);
     setDeleteTargetName(name);
@@ -134,7 +138,7 @@ export default function FooterCmsAdmin() {
       setDeleteTargetName('');
       await fetchData();
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to delete target.';
+      const msg = safeApiMessage(err, 'Failed to delete target.');
       toast(msg, 'error');
     }
   };
@@ -333,12 +337,14 @@ export default function FooterCmsAdmin() {
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </button>
-                        <button
-                          onClick={() => triggerDelete('category', cat.id, cat.name)}
-                          className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {canDeleteRecords && (
+                          <button
+                            onClick={() => triggerDelete('category', cat.id, cat.name)}
+                            className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))
@@ -411,13 +417,15 @@ export default function FooterCmsAdmin() {
                               <Edit className="w-3 h-3 mr-1" />
                               Edit
                             </button>
-                            <button
-                              onClick={() => triggerDelete('page', page.id, page.title)}
-                              className="inline-flex items-center text-[10px] font-bold uppercase text-red-500 hover:underline cursor-pointer"
-                            >
-                              <Trash2 className="w-3 h-3 mr-1" />
-                              Delete
-                            </button>
+                            {canDeleteRecords && (
+                              <button
+                                onClick={() => triggerDelete('page', page.id, page.title)}
+                                className="inline-flex items-center text-[10px] font-bold uppercase text-red-500 hover:underline cursor-pointer"
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Delete
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -438,7 +446,7 @@ export default function FooterCmsAdmin() {
       )}
 
       {/* Delete confirmation modal */}
-      {isDeleteModalOpen && (
+      {canDeleteRecords && isDeleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div 
             onClick={() => setIsDeleteModalOpen(false)}

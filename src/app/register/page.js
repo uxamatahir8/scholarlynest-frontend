@@ -1,19 +1,32 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { safeApiMessage } from '../../utils/safeErrors';
+import { logError } from '../../utils/safeLogger';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { Lock, Mail, User as UserIcon, Loader2, AlertCircle, Eye, EyeOff, Check, X, School } from 'lucide-react';
-import Breadcrumbs from '../../components/Breadcrumbs';
-import api from '../../utils/api';
+import { Lock, Mail, User as UserIcon, Loader2, AlertCircle, Eye, EyeOff, Check, X, School, Info, ArrowRight, BookOpen, Contact } from 'lucide-react';
 import SeoHead from '../../components/SeoHead';
+import api from '../../utils/api';
 
 export default function Register() {
   const { user, register: registerUser, loginWithPayload, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const errorRef = useRef(null);
+  
+  // Field references for focus management
+  const nameRef = useRef(null);
+  const universityRef = useRef(null);
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+  const confirmPasswordRef = useRef(null);
+
+  // Flow State: 1 = Profile Info, 2 = Security Credentials
+  const [step, setStep] = useState(1);
+  const [isClosed, setIsClosed] = useState(false);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -46,7 +59,7 @@ export default function Register() {
         if (info.name) setName(info.name);
         if (info.email) setEmail(info.email);
       } catch (e) {
-        console.error('Failed to parse saved Google info:', e);
+        logError('Failed to parse saved Google info:', e);
       }
     }
   }, []);
@@ -64,21 +77,24 @@ export default function Register() {
       const { user: userData, access_token } = res.data;
       loginWithPayload(userData, access_token);
       toast('Profile successfully registered. Welcome to ScholarlyNest!', 'success');
-      // Clear session storage on success
       sessionStorage.removeItem('google_signup_credential');
       sessionStorage.removeItem('google_signup_info');
       router.push('/admin');
     } catch (err) {
-      console.error(err);
-      if (err.response?.status === 422 && err.response?.data?.message === 'account_already_exists') {
+      logError(err);
+      if (err['response']?.status === 403 && err['response']?.data?.message === 'Registration is currently closed.') {
+        setIsClosed(true);
+        toast('Registration is currently closed.', 'error');
+      } else if (err['response']?.status === 422 && err['response']?.data?.message === 'account_already_exists') {
         toast('An academic profile already exists with this Google account. Redirecting to login...', 'info');
         setTimeout(() => {
           router.push('/login');
         }, 1500);
       } else {
-        const msg = err.response?.data?.message || 'Google Sign Up failed.';
+        const msg = safeApiMessage(err, 'Google Sign Up failed.');
         setError(msg);
         toast(msg, 'error');
+        setTimeout(() => errorRef.current?.focus(), 100);
       }
     } finally {
       setLoading(false);
@@ -87,14 +103,16 @@ export default function Register() {
 
   useEffect(() => {
     const initGoogle = () => {
-      if (window.google?.accounts?.id) {
+      if (window.google?.accounts?.id && !isClosed) {
+        if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) return;
         window.google.accounts.id.initialize({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '606295156376-526b5jjq2lbdc2i10v9l1phaa32sc7qd.apps.googleusercontent.com',
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
           callback: handleGoogleCallback
         });
         const isDark = document.documentElement.classList.contains('dark');
         const googleDiv = document.getElementById("googleSignUpDiv");
-        const parentWidth = googleDiv ? Math.floor(googleDiv.getBoundingClientRect().width) : 382;
+        if (!googleDiv) return;
+        const parentWidth = Math.floor(googleDiv.getBoundingClientRect().width);
 
         window.google.accounts.id.renderButton(
           googleDiv,
@@ -110,21 +128,22 @@ export default function Register() {
       }
     };
 
-    if (window.google?.accounts?.id) {
-      // Use requestAnimationFrame to ensure layout is fully computed
-      requestAnimationFrame(() => {
-        initGoogle();
-      });
-    } else {
-      const interval = setInterval(() => {
-        if (window.google?.accounts?.id) {
+    if (!isClosed) {
+      if (window.google?.accounts?.id) {
+        requestAnimationFrame(() => {
           initGoogle();
-          clearInterval(interval);
-        }
-      }, 500);
-      return () => clearInterval(interval);
+        });
+      } else {
+        const interval = setInterval(() => {
+          if (window.google?.accounts?.id) {
+            initGoogle();
+            clearInterval(interval);
+          }
+        }, 500);
+        return () => clearInterval(interval);
+      }
     }
-  }, []);
+  }, [isClosed]);
 
   // Already authenticated user redirection
   useEffect(() => {
@@ -133,17 +152,17 @@ export default function Register() {
     }
   }, [user, authLoading, router]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setFieldErrors({});
-
-    // Client-side Custom Validation
+  // Validation logic for Step 1
+  const validateStep1 = () => {
     const errors = {};
     if (!name.trim()) {
       errors.name = 'Full Name or Academic Title is required.';
     } else if (name.trim().length < 2) {
       errors.name = 'Academic Title must be at least 2 characters.';
+    }
+
+    if (!universityName.trim()) {
+      errors.university_name = 'University or Institutional Affiliation is required.';
     }
 
     if (!email.trim()) {
@@ -152,10 +171,34 @@ export default function Register() {
       errors.email = 'Please enter a valid email address (e.g. fleming@university.edu).';
     }
 
-    if (!universityName.trim()) {
-      errors.university_name = 'University or Institutional Affiliation is required.';
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      toast('Please correct fields in Step 1 before continuing.', 'error');
+      if (errors.name) nameRef.current?.focus();
+      else if (errors.university_name) universityRef.current?.focus();
+      else if (errors.email) emailRef.current?.focus();
+      return false;
     }
 
+    setFieldErrors({});
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (validateStep1()) {
+      setStep(2);
+      // Wait to render step 2 inputs and focus password
+      setTimeout(() => passwordRef.current?.focus(), 100);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setFieldErrors({});
+
+    // Final Validation
+    const errors = {};
     if (!password) {
       errors.password = 'Password is required.';
     } else if (password.length < 8) {
@@ -170,10 +213,9 @@ export default function Register() {
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      if (errors.passwordConfirmation) {
-        setError('Passwords do not match.');
-      }
-      toast('Please correct the validation errors in your fields.', 'error');
+      toast('Please correct verification errors in Step 2.', 'error');
+      if (errors.password) passwordRef.current?.focus();
+      else if (errors.passwordConfirmation) confirmPasswordRef.current?.focus();
       return;
     }
 
@@ -188,14 +230,74 @@ export default function Register() {
       toast('Profile successfully registered. Welcome to ScholarlyNest!', 'success');
       router.push('/admin');
     } else {
-      setError(result.message);
-      toast(result.message || 'Registration failed.', 'error');
-      if (result.errors) {
-        setFieldErrors(result.errors);
+      if (result.message === 'Registration is currently closed.') {
+        setIsClosed(true);
+        toast('Registration is currently closed.', 'error');
+      } else {
+        setError(result.message);
+        toast(result.message || 'Registration failed.', 'error');
+        if (result.errors) {
+          setFieldErrors(result.errors);
+        }
+        setTimeout(() => errorRef.current?.focus(), 100);
       }
       setLoading(false);
     }
   };
+
+  // RENDER: Closed registration state fallback
+  if (isClosed) {
+    return (
+      <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
+        <SeoHead
+          title="Registration Closed — ScholarlyNest"
+          description="Scholar registration is currently closed. Learn how to establish institutional profiles."
+          ogUrl="/register"
+        />
+        <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md space-y-6 text-center">
+          <div className="mx-auto w-12 h-12 rounded-full bg-warning/10 border border-warning/20 flex items-center justify-center text-warning">
+            <Info className="w-6 h-6" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="font-serif text-2xl font-black text-foreground">
+              Registration Closed
+            </h2>
+            <p className="text-xs text-muted leading-relaxed max-w-sm mx-auto">
+              Public user registration is currently disabled by the ScholarlyNest administration. Access to submit manuscripts is restricted to authorized academic institutions and assigned researchers.
+            </p>
+          </div>
+
+          <div className="h-px bg-border dark:bg-zinc-800/50 my-4" />
+
+          <div className="flex flex-col space-y-2">
+            <Link 
+              href="/login" 
+              className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-950 py-2.5 rounded-xl transition-all shadow-sm"
+            >
+              Go to Login
+              <ArrowRight className="w-4 h-4 ml-1.5 shrink-0" />
+            </Link>
+            <div className="grid grid-cols-2 gap-2">
+              <Link 
+                href="/contact" 
+                className="flex items-center justify-center text-[10px] font-bold uppercase tracking-wider border border-border dark:border-zinc-800 hover:bg-surface-muted dark:hover:bg-zinc-900/40 text-foreground py-2.5 rounded-xl transition-colors"
+              >
+                <Contact className="w-3.5 h-3.5 mr-1 text-muted" />
+                Contact Desk
+              </Link>
+              <Link 
+                href="/magazines" 
+                className="flex items-center justify-center text-[10px] font-bold uppercase tracking-wider border border-border dark:border-zinc-800 hover:bg-surface-muted dark:hover:bg-zinc-900/40 text-foreground py-2.5 rounded-xl transition-colors"
+              >
+                <BookOpen className="w-3.5 h-3.5 mr-1 text-muted" />
+                Browse Issues
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
@@ -204,257 +306,308 @@ export default function Register() {
         description="Create your academic profile to write papers, submit manuscripts, and join the ScholarlyNest research community."
         ogUrl="/register"
       />
-      {/* <Breadcrumbs customLabels={{ register: 'Scholar Registration' }} /> */}
 
-      <div className="bg-white dark:bg-[#1c1c1b] border border-zinc-200/80 dark:border-zinc-800/60 rounded-lg p-8 shadow-sm space-y-6">
+      <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md space-y-6">
 
-        {/* Header */}
+        {/* Brand Header */}
         <div className="text-center space-y-2">
-          <h2 className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">
+          <span className="text-[9px] font-bold uppercase tracking-widest text-accent dark:text-accent-gold font-mono">
+            Step {step} of 2
+          </span>
+          <h2 className="font-serif text-2xl font-black text-foreground">
             Scholar Registration
           </h2>
-          <p className="text-xs text-zinc-400 dark:text-zinc-500">
-            Create your academic profile to write papers and submit manuscripts.
+          <p className="text-xs text-muted max-w-xs mx-auto leading-relaxed">
+            Create an academic profile to draft scientific papers, submit review worksheets, or collaborate.
           </p>
         </div>
 
-        {/* Global Error Notification */}
+        {/* Global Error Banner */}
         {error && (
-          <div className="flex items-center space-x-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-md text-red-600 dark:text-red-400 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
+          <div 
+            ref={errorRef}
+            tabIndex="-1"
+            aria-live="assertive"
+            className="flex items-start space-x-2.5 p-3.5 bg-danger/5 dark:bg-danger/10 border border-danger/25 dark:border-danger/30 rounded-xl text-danger text-xs focus:outline-none focus:ring-1 focus:ring-danger"
+          >
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="font-medium">{error}</span>
           </div>
         )}
 
-        {/* Form */}
+        {/* Registration Forms */}
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Full Name / Academic Title
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (fieldErrors.name) {
-                    setFieldErrors(prev => ({ ...prev, name: '' }));
-                  }
-                }}
-                placeholder="Dr. Alexander Fleming"
-                className={`w-full text-xs font-medium pl-8 pr-3 py-2 bg-zinc-50 dark:bg-zinc-900/50 border rounded-md focus:outline-none placeholder-zinc-400 transition-all ${fieldErrors.name ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-zinc-200 dark:border-zinc-800/80 focus:border-zinc-400 dark:focus:border-zinc-700'}`}
-              />
-              <UserIcon className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
-            </div>
-            {fieldErrors.name && (
-              <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block animate-in fade-in duration-200">
-                {Array.isArray(fieldErrors.name) ? fieldErrors.name[0] : fieldErrors.name}
-              </span>
-            )}
-          </div>
+          {step === 1 && (
+            <div className="space-y-4 animate-in fade-in duration-300">
+              
+              {/* Full Name */}
+              <div className="space-y-1.5">
+                <label htmlFor="reg-name" className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono">
+                  Full Name / Academic Title
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    ref={nameRef}
+                    type="text"
+                    id="reg-name"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: '' }));
+                    }}
+                    placeholder="Dr. Alexander Fleming"
+                    aria-invalid={!!fieldErrors.name}
+                    aria-describedby={fieldErrors.name ? "name-error" : undefined}
+                    className={`w-full text-xs font-semibold pl-9 pr-3 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-650 transition-all ${fieldErrors.name ? 'border-danger focus:border-danger' : 'border-border dark:border-zinc-800/80 focus:border-accent-gold dark:focus:border-accent-gold'}`}
+                  />
+                  <UserIcon className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
+                </div>
+                {fieldErrors.name && (
+                  <span id="name-error" className="text-[10px] text-danger font-bold mt-1 block">
+                    {Array.isArray(fieldErrors.name) ? fieldErrors.name[0] : fieldErrors.name}
+                  </span>
+                )}
+              </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              University / Institutional Affiliation
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type="text"
-                value={universityName}
-                onChange={(e) => {
-                  setUniversityName(e.target.value);
-                  if (fieldErrors.university_name) {
-                    setFieldErrors(prev => ({ ...prev, university_name: '' }));
-                  }
-                }}
-                placeholder="Harvard University"
-                required
-                className={`w-full text-xs font-medium pl-8 pr-3 py-2 bg-zinc-50 dark:bg-zinc-900/50 border rounded-md focus:outline-none placeholder-zinc-400 transition-all ${fieldErrors.university_name ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-zinc-200 dark:border-zinc-800/80 focus:border-zinc-400 dark:focus:border-zinc-700'}`}
-              />
-              <School className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
-            </div>
-            {fieldErrors.university_name && (
-              <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block animate-in fade-in duration-200">
-                {Array.isArray(fieldErrors.university_name) ? fieldErrors.university_name[0] : fieldErrors.university_name}
-              </span>
-            )}
-          </div>
+              {/* Institution */}
+              <div className="space-y-1.5">
+                <label htmlFor="reg-university" className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono">
+                  University / Affiliation
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    ref={universityRef}
+                    type="text"
+                    id="reg-university"
+                    value={universityName}
+                    onChange={(e) => {
+                      setUniversityName(e.target.value);
+                      if (fieldErrors.university_name) setFieldErrors(prev => ({ ...prev, university_name: '' }));
+                    }}
+                    placeholder="Harvard University"
+                    required
+                    aria-invalid={!!fieldErrors.university_name}
+                    aria-describedby={fieldErrors.university_name ? "university-error" : undefined}
+                    className={`w-full text-xs font-semibold pl-9 pr-3 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-650 transition-all ${fieldErrors.university_name ? 'border-danger focus:border-danger' : 'border-border dark:border-zinc-800/80 focus:border-accent-gold dark:focus:border-accent-gold'}`}
+                  />
+                  <School className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
+                </div>
+                {fieldErrors.university_name && (
+                  <span id="university-error" className="text-[10px] text-danger font-bold mt-1 block">
+                    {Array.isArray(fieldErrors.university_name) ? fieldErrors.university_name[0] : fieldErrors.university_name}
+                  </span>
+                )}
+              </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Scholar Email
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (fieldErrors.email) {
-                    setFieldErrors(prev => ({ ...prev, email: '' }));
-                  }
-                }}
-                placeholder="fleming@university.edu"
-                className={`w-full text-xs font-medium pl-8 pr-3 py-2 bg-zinc-50 dark:bg-zinc-900/50 border rounded-md focus:outline-none placeholder-zinc-400 transition-all ${fieldErrors.email ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-zinc-200 dark:border-zinc-800/80 focus:border-zinc-400 dark:focus:border-zinc-700'}`}
-              />
-              <Mail className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
-            </div>
-            {fieldErrors.email && (
-              <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block animate-in fade-in duration-200">
-                {Array.isArray(fieldErrors.email) ? fieldErrors.email[0] : fieldErrors.email}
-              </span>
-            )}
-          </div>
+              {/* Email Address */}
+              <div className="space-y-1.5">
+                <label htmlFor="reg-email" className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono">
+                  Scholar Email
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    ref={emailRef}
+                    type="email"
+                    id="reg-email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: '' }));
+                    }}
+                    placeholder="fleming@university.edu"
+                    aria-invalid={!!fieldErrors.email}
+                    aria-describedby={fieldErrors.email ? "email-error" : undefined}
+                    className={`w-full text-xs font-semibold pl-9 pr-3 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-650 transition-all ${fieldErrors.email ? 'border-danger focus:border-danger' : 'border-border dark:border-zinc-800/80 focus:border-accent-gold dark:focus:border-accent-gold'}`}
+                  />
+                  <Mail className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
+                </div>
+                {fieldErrors.email && (
+                  <span id="email-error" className="text-[10px] text-danger font-bold mt-1 block">
+                    {Array.isArray(fieldErrors.email) ? fieldErrors.email[0] : fieldErrors.email}
+                  </span>
+                )}
+              </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Password
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (fieldErrors.password) {
-                    setFieldErrors(prev => ({ ...prev, password: '' }));
-                  }
-                }}
-                placeholder="Minimum 8 characters"
-                className={`w-full text-xs font-medium pl-8 pr-10 py-2 bg-zinc-50 dark:bg-zinc-900/50 border rounded-md focus:outline-none placeholder-zinc-400 transition-all ${fieldErrors.password ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-zinc-200 dark:border-zinc-800/80 focus:border-zinc-400 dark:focus:border-zinc-700'}`}
-              />
-              <Lock className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2.5 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300 transition-colors p-0.5 focus:outline-none"
+                onClick={handleNextStep}
+                className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-950 py-2.5 rounded-xl transition-all cursor-pointer shadow-sm"
               >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                Continue to Credentials
+                <ArrowRight className="w-4 h-4 ml-1.5 shrink-0" />
               </button>
-            </div>
-            {fieldErrors.password && (
-              <span className="text-[10px] text-red-555 dark:text-red-400 font-semibold mt-1 block animate-in fade-in duration-200">
-                {Array.isArray(fieldErrors.password) ? fieldErrors.password[0] : fieldErrors.password}
-              </span>
-            )}
-          </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Confirm Password
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                value={passwordConfirmation}
-                onChange={(e) => {
-                  setPasswordConfirmation(e.target.value);
-                  if (fieldErrors.passwordConfirmation) {
-                    setFieldErrors(prev => ({ ...prev, passwordConfirmation: '' }));
-                  }
-                }}
-                placeholder="Confirm password"
-                className={`w-full text-xs font-medium pl-8 pr-10 py-2 bg-zinc-50 dark:bg-zinc-900/50 border rounded-md focus:outline-none placeholder-zinc-400 transition-all ${fieldErrors.passwordConfirmation ? 'border-red-500 focus:border-red-500 focus:ring-1 focus:ring-red-500' : 'border-zinc-200 dark:border-zinc-800/80 focus:border-zinc-400 dark:focus:border-zinc-700'}`}
-              />
-              <Lock className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5" />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-2.5 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300 transition-colors p-0.5 focus:outline-none"
-              >
-                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {fieldErrors.passwordConfirmation && (
-              <span className="text-[10px] text-red-550 dark:text-red-400 font-semibold mt-1 block animate-in fade-in duration-200">
-                {Array.isArray(fieldErrors.passwordConfirmation) ? fieldErrors.passwordConfirmation[0] : fieldErrors.passwordConfirmation}
-              </span>
-            )}
-          </div>
+              {/* Step 1 SSO Option */}
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-border dark:border-zinc-800/80"></div>
+                <span className="flex-shrink mx-4 text-[9px] text-muted uppercase tracking-widest font-bold">Or</span>
+                <div className="flex-grow border-t border-border dark:border-zinc-800/80"></div>
+              </div>
 
-          {/* Password Strength Validation Helper Checklist */}
-          {password && (
-            <div className="p-4 bg-zinc-50 dark:bg-zinc-900/30 border border-zinc-150 dark:border-zinc-800/60 rounded-lg space-y-2 animate-in fade-in duration-300">
-              <h4 className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Password Complexity Checklist</h4>
-              <div className="grid grid-cols-2 gap-2 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-                <div className="flex items-center space-x-2">
-                  {hasMinLength ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                  <span>At least 8 characters</span>
+              <div id="googleSignUpDiv" className="w-full min-h-[40px] block"></div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-4 animate-in slide-in-from-right duration-350">
+              
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label htmlFor="reg-password" className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono">
+                  Password
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    ref={passwordRef}
+                    type={showPassword ? "text" : "password"}
+                    id="reg-password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: '' }));
+                    }}
+                    placeholder="Minimum 8 characters"
+                    aria-invalid={!!fieldErrors.password}
+                    aria-describedby={fieldErrors.password ? "password-error" : undefined}
+                    className={`w-full text-xs font-semibold pl-9 pr-10 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-655 transition-all ${fieldErrors.password ? 'border-danger focus:border-danger' : 'border-border dark:border-zinc-800/80 focus:border-accent-gold dark:focus:border-accent-gold'}`}
+                  />
+                  <Lock className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 text-zinc-400 dark:text-zinc-600 hover:text-foreground transition-colors p-0.5 focus:outline-none focus:ring-1 focus:ring-accent-gold rounded"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-                <div className="flex items-center space-x-2">
-                  {hasUppercase ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                  <span>One uppercase letter</span>
+                {fieldErrors.password && (
+                  <span id="password-error" className="text-[10px] text-danger font-bold mt-1 block">
+                    {Array.isArray(fieldErrors.password) ? fieldErrors.password[0] : fieldErrors.password}
+                  </span>
+                )}
+              </div>
+
+              {/* Confirm Password */}
+              <div className="space-y-1.5">
+                <label htmlFor="reg-confirm" className="text-[10px] font-bold uppercase tracking-wider text-muted font-mono">
+                  Confirm Password
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    ref={confirmPasswordRef}
+                    type={showConfirmPassword ? "text" : "password"}
+                    id="reg-confirm"
+                    value={passwordConfirmation}
+                    onChange={(e) => {
+                      setPasswordConfirmation(e.target.value);
+                      if (fieldErrors.passwordConfirmation) setFieldErrors(prev => ({ ...prev, passwordConfirmation: '' }));
+                    }}
+                    placeholder="Confirm password"
+                    aria-invalid={!!fieldErrors.passwordConfirmation}
+                    aria-describedby={fieldErrors.passwordConfirmation ? "confirm-error" : undefined}
+                    className={`w-full text-xs font-semibold pl-9 pr-10 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-655 transition-all ${fieldErrors.passwordConfirmation ? 'border-danger focus:border-danger' : 'border-border dark:border-zinc-800/80 focus:border-accent-gold dark:focus:border-accent-gold'}`}
+                  />
+                  <Lock className="w-4 h-4 text-zinc-400 dark:text-zinc-600 absolute left-3" />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? "Hide password confirmation" : "Show password confirmation"}
+                    className="absolute right-3 text-zinc-400 dark:text-zinc-600 hover:text-foreground transition-colors p-0.5 focus:outline-none focus:ring-1 focus:ring-accent-gold rounded"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-                <div className="flex items-center space-x-2">
-                  {hasLowercase ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                  <span>One lowercase letter</span>
+                {fieldErrors.passwordConfirmation && (
+                  <span id="confirm-error" className="text-[10px] text-danger font-bold mt-1 block">
+                    {Array.isArray(fieldErrors.passwordConfirmation) ? fieldErrors.passwordConfirmation[0] : fieldErrors.passwordConfirmation}
+                  </span>
+                )}
+              </div>
+
+              {/* Password Complexity Validation Checklist */}
+              {password && (
+                <div className="p-4 bg-surface-muted dark:bg-zinc-900/30 border border-border dark:border-zinc-800/60 rounded-xl space-y-2 animate-in fade-in duration-300 text-left">
+                  <h4 className="text-[9px] font-bold uppercase tracking-widest text-muted">Password Security Guidance</h4>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] font-semibold text-zinc-550 dark:text-zinc-400">
+                    <div className="flex items-center space-x-1.5">
+                      {hasMinLength ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <X className="w-3.5 h-3.5 text-danger shrink-0" />}
+                      <span>8+ Characters</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      {hasUppercase ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <X className="w-3.5 h-3.5 text-danger shrink-0" />}
+                      <span>Uppercase letter</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      {hasLowercase ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <X className="w-3.5 h-3.5 text-danger shrink-0" />}
+                      <span>Lowercase letter</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      {hasNumber ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <X className="w-3.5 h-3.5 text-danger shrink-0" />}
+                      <span>Number digit</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      {hasSymbol ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <X className="w-3.5 h-3.5 text-danger shrink-0" />}
+                      <span>Special Symbol</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5 col-span-2">
+                      {passwordsMatch ? <Check className="w-3.5 h-3.5 text-success shrink-0" /> : <X className="w-3.5 h-3.5 text-danger shrink-0" />}
+                      <span>Passwords match</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  {hasNumber ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                  <span>One number</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {hasSymbol ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                  <span>One symbol (@$!%*?&)</span>
-                </div>
-                <div className="flex items-center space-x-2 col-span-2">
-                  {passwordsMatch ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <X className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                  <span>Passwords match</span>
-                </div>
+              )}
+
+              {/* Newsletter subscription */}
+              <div className="flex items-start space-x-2.5 pt-1 pb-2">
+                <input
+                  type="checkbox"
+                  id="subscribeNewsletter"
+                  checked={subscribeNewsletter}
+                  onChange={(e) => setSubscribeNewsletter(e.target.checked)}
+                  className="h-4 w-4 shrink-0 rounded border-border dark:border-zinc-800 bg-surface dark:bg-zinc-950 text-accent dark:text-accent-gold focus:ring-accent-gold cursor-pointer mt-0.5"
+                />
+                <label htmlFor="subscribeNewsletter" className="text-xs font-semibold text-muted cursor-pointer select-none leading-tight">
+                  I wish to subscribe to academic announcements and magazine issue release alerts.
+                </label>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="w-1/3 text-xs font-bold uppercase tracking-wider border border-border dark:border-zinc-800 text-foreground py-2.5 rounded-xl hover:bg-surface-muted dark:hover:bg-zinc-900/40 transition-colors cursor-pointer"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-2/3 flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-accent dark:bg-accent-gold hover:opacity-90 text-white dark:text-zinc-955 py-2.5 rounded-xl transition-all disabled:opacity-50 cursor-pointer shadow-sm"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Registering...
+                    </>
+                  ) : (
+                    'Register Profile'
+                  )}
+                </button>
               </div>
             </div>
           )}
 
-          {/* Newsletter Subscription Option */}
-          <div className="flex items-start space-x-2.5 pt-1 pb-2">
-            <input
-              type="checkbox"
-              id="subscribeNewsletter"
-              checked={subscribeNewsletter}
-              onChange={(e) => setSubscribeNewsletter(e.target.checked)}
-              className="h-4 w-4 shrink-0 rounded border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 focus:ring-zinc-500 cursor-pointer"
-            />
-            <label htmlFor="subscribeNewsletter" className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 cursor-pointer select-none leading-tight">
-              I would like to subscribe to the ScholarlyNest newsletter to receive scientific announcements and updates on new magazine issues.
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center text-xs font-bold uppercase tracking-wider bg-zinc-800 hover:bg-zinc-950 text-white dark:bg-zinc-200 dark:hover:bg-white dark:text-zinc-950 py-2.5 rounded-md transition-premium disabled:opacity-50"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
-                Registering Profile...
-              </>
-            ) : (
-              'Register Profile'
-            )}
-          </button>
-
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800"></div>
-            <span className="flex-shrink mx-4 text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-bold">Or</span>
-            <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800"></div>
-          </div>
-
-          <div className="space-y-3">
-            <div id="googleSignUpDiv" className="w-full min-h-[40px] block"></div>
-          </div>
-
         </form>
 
         {/* Redirect Footer */}
-        <div className="text-center pt-2 border-t border-zinc-100 dark:border-zinc-800/40">
-          <p className="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500">
+        <div className="text-center pt-4 border-t border-border dark:border-zinc-800/40">
+          <p className="text-[11px] font-semibold text-muted">
             Already have an academic profile?{' '}
             <Link
               href="/login"
-              className="text-zinc-700 dark:text-zinc-300 hover:underline"
+              className="text-accent dark:text-accent-gold hover:underline"
             >
               Login here
             </Link>

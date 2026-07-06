@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Plus, FolderOpen, Users, UserPlus, BookOpen, ClipboardCheck, LayoutGrid, ArrowRight } from 'lucide-react';
+import { articleQueueHref } from '../../utils/articleQueues';
 
 export default function QuickActions({ isAdmin }) {
   const authorActions = [
@@ -46,8 +47,8 @@ export default function QuickActions({ isAdmin }) {
     },
     {
       title: 'Moderate Manuscripts',
-      description: 'Approve, reject, or request revisions for pending submissions.',
-      href: '/admin/articles?status=pending',
+      description: 'Accept, reject, or request revisions for submitted manuscripts.',
+      href: articleQueueHref('submitted'),
       icon: <ClipboardCheck className="w-5 h-5" />,
       color: 'text-amber-600 dark:text-amber-400 bg-amber-500/5 border-amber-500/10'
     },

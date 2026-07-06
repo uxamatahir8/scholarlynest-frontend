@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../../../utils/safeErrors';
+import { logError } from '../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { 
   MessageSquare, 
@@ -73,8 +75,8 @@ function MessageRow({ msg, isExpanded, onToggle, onStatusUpdate, formatDate }) {
       setReplyBody('');
       setShowComposer(false);
     } catch (err) {
-      console.error(err);
-      toast(err.response?.data?.message || 'Failed to send response.', 'error');
+      logError(err);
+      toast(safeApiMessage(err, 'Failed to send response.'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -389,7 +391,7 @@ export default function ContactMessagesAdmin() {
         const res = await api.get('/admin/contact-messages');
         setMessages(res.data || []);
       } catch (err) {
-        console.error('Failed to load contact messages:', err);
+        logError('Failed to load contact messages:', err);
         toast('Failed to load contact messages.', 'error');
       } finally {
         setLoading(false);

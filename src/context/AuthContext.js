@@ -1,5 +1,7 @@
 'use client';
 
+import { safeApiMessage } from '../utils/safeErrors';
+import { logError } from '../utils/safeLogger';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../utils/api';
 
@@ -11,11 +13,31 @@ const AuthContext = createContext({
   logout: async () => { },
   hasRole: () => false,
   hasPermission: () => false,
+  impersonationStatus: { active: false, impersonated_user: null },
+  checkImpersonationStatus: async () => { },
+  startImpersonationSession: () => { },
+  stopImpersonationSession: () => { },
 });
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [impersonationStatus, setImpersonationStatus] = useState({ active: false, impersonated_user: null });
+
+  // Fetch current impersonation status from API
+  const checkImpersonationStatus = async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setImpersonationStatus({ active: false, impersonated_user: null });
+      return;
+    }
+    try {
+      const res = await api.get('/admin/impersonation/status');
+      setImpersonationStatus(res.data);
+    } catch (err) {
+      setImpersonationStatus({ active: false, impersonated_user: null });
+    }
+  };
 
   // Initialize and check current authentication state
   useEffect(() => {
@@ -27,11 +49,13 @@ export const AuthProvider = ({ children }) => {
             const res = await api.get('/me');
             setUser(res.data.user);
             localStorage.setItem('user', JSON.stringify(res.data.user));
+            await checkImpersonationStatus();
           } catch (err) {
-            console.error('Failed to restore session:', err);
+            logError('Failed to restore session:', err);
             localStorage.removeItem('auth_token');
             localStorage.removeItem('user');
             setUser(null);
+            setImpersonationStatus({ active: false, impersonated_user: null });
           }
         }
       }
@@ -58,7 +82,7 @@ export const AuthProvider = ({ children }) => {
       if (err.response?.status === 403 && err.response?.data?.message === 'verification_required') {
         return { success: false, verificationRequired: true, email };
       }
-      const message = err.response?.data?.message || 'Login failed. Please check your credentials.';
+      const message = safeApiMessage(err, 'Login failed. Please check your credentials.');
       const errors = err.response?.data?.errors || null;
       return { success: false, message, errors };
     }
@@ -77,7 +101,7 @@ export const AuthProvider = ({ children }) => {
       });
       return { success: true, verificationRequired: true, email };
     } catch (err) {
-      const message = err.response?.data?.message || 'Registration failed.';
+      const message = safeApiMessage(err, 'Registration failed.');
       const errors = err.response?.data?.errors || null;
       return { success: false, message, errors };
     }
@@ -88,11 +112,12 @@ export const AuthProvider = ({ children }) => {
     try {
       await api.post('/logout');
     } catch (err) {
-      console.error('Failed to revoke session on API:', err);
+      logError('Failed to revoke session on API:', err);
     } finally {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
       setUser(null);
+      setImpersonationStatus({ active: false, impersonated_user: null });
     }
   };
 
@@ -118,15 +143,11 @@ export const AuthProvider = ({ children }) => {
       : null;
 
     const check = (pName) => {
-      // Check direct permissions
-      if (user.permissions && user.permissions.some((p) => p.name === pName)) {
+      if (user.capabilities && user.capabilities[pName]) {
         return true;
       }
-      // Check inherited role permissions
-      if (user.roles) {
-        return user.roles.some((role) =>
-          role.permissions && role.permissions.some((p) => p.name === pName)
-        );
+      if (user.permissions && user.permissions.some((p) => p.name === pName)) {
+        return true;
       }
       return false;
     };
@@ -135,6 +156,27 @@ export const AuthProvider = ({ children }) => {
     if (anyPermission && check(anyPermission)) return true;
 
     return false;
+  };
+
+  // Impersonation helpers
+  const startImpersonationSession = (userData, token) => {
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+    setImpersonationStatus({
+      active: true,
+      impersonated_user: {
+        id: userData.id,
+        name: userData.name
+      }
+    });
+  };
+
+  const stopImpersonationSession = (superAdminData, token) => {
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('user', JSON.stringify(superAdminData));
+    setUser(superAdminData);
+    setImpersonationStatus({ active: false, impersonated_user: null });
   };
 
   // Set session payload directly (e.g. for Social Logins)
@@ -151,12 +193,26 @@ export const AuthProvider = ({ children }) => {
       setUser(res.data.user);
       localStorage.setItem('user', JSON.stringify(res.data.user));
     } catch (err) {
-      console.error('Failed to refresh user profile:', err);
+      logError('Failed to refresh user profile:', err);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, hasRole, hasPermission, loginWithPayload, refreshUser }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      register,
+      logout,
+      hasRole,
+      hasPermission,
+      loginWithPayload,
+      refreshUser,
+      impersonationStatus,
+      checkImpersonationStatus,
+      startImpersonationSession,
+      stopImpersonationSession
+    }}>
       {children}
     </AuthContext.Provider>
   );
