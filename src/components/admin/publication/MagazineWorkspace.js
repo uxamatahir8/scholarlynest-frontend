@@ -16,6 +16,17 @@ import LoadingState from '../../ui/LoadingState';
 import Pagination from '../../ui/Pagination';
 import MagazineFormDialog from './MagazineFormDialog';
 import { compactText } from './publicationUtils';
+import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
+
+const getFullImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
+  if (path.startsWith('/images/') || path.startsWith('images/')) return path.startsWith('/') ? path : `/${path}`;
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+  const domain = apiBase.replace(/\/api$/, '');
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${domain}${cleanPath}`;
+};
 
 export default function MagazineWorkspace() {
   const { user, loading: authLoading, hasPermission, hasRole } = useAuth();
@@ -86,7 +97,10 @@ export default function MagazineWorkspace() {
       payload.append('description', form.description || '');
       payload.append('about_text', form.about_text || '');
       payload.append('editor_id', form.editor_id || '');
-      if (form.cover_image_file) payload.append('cover_image', form.cover_image_file);
+      if (form.cover_image_file) {
+        const coverUpload = await uploadAndAwaitClean({ file: form.cover_image_file, purpose: 'magazine_cover' });
+        payload.append('cover_image_upload_id', coverUpload.id);
+      }
       if (canEditSeo) {
         payload.append('seo_title', form.seo_title || '');
         payload.append('seo_description', form.seo_description || '');
@@ -94,11 +108,11 @@ export default function MagazineWorkspace() {
       }
 
       if (dialogState.mode === 'create') {
-        await api.post('/admin/magazines', payload, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.post('/admin/magazines', payload);
         toast('Journal created.', 'success');
       } else {
         payload.append('_method', 'PUT');
-        await api.post(`/admin/magazines/${dialogState.magazine.id}`, payload, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await api.post(`/admin/magazines/${dialogState.magazine.id}`, payload);
         toast('Journal updated.', 'success');
       }
 
@@ -181,7 +195,7 @@ export default function MagazineWorkspace() {
               <article key={magazine.id} className="grid gap-4 p-5 md:grid-cols-[96px_minmax(0,1fr)_auto] md:items-center">
                 <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]">
                   {magazine.cover_image ? (
-                    <img src={magazine.cover_image} alt="" className="h-full w-full object-cover" />
+                    <img src={magazine.cover_image_url || getFullImageUrl(magazine.cover_image)} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <ImageIcon className="h-7 w-7 text-[var(--muted)]" aria-hidden="true" />
                   )}

@@ -87,10 +87,10 @@ function SearchResultsContent() {
             key={`mag-${item.id}`} 
             className="group flex flex-col md:flex-row gap-6 py-6 border-b border-zinc-100 dark:border-zinc-900/60 transition-colors text-left"
           >
-            {item.additional?.cover_image && (
+            {(item.additional?.cover_image_url || item.additional?.cover_image) && (
               <div className="w-20 h-28 rounded-xl overflow-hidden shrink-0 border border-zinc-200/60 dark:border-zinc-800 shadow-sm">
                 <img 
-                  src={getFullImageUrl(item.additional.cover_image)} 
+                  src={item.additional.cover_image_url || getFullImageUrl(item.additional.cover_image)}
                   alt={item.title} 
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                 />

@@ -28,7 +28,7 @@ import {
   Highlighter, Type, RotateCcw, Check, X, Plus,
   ChevronRight, Columns
 } from 'lucide-react';
-import api from '../../utils/api';
+import { uploadAndAwaitClean } from '../../lib/mediaUploads/DirectUploadClient';
 import { useToast } from '../../context/ToastContext';
 
 
@@ -191,11 +191,11 @@ export default function RichEditor({ value, onChange, placeholder = 'Start writi
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-      const formData = new FormData();
-      formData.append('file', file);
       try {
-        const res = await api.post('/media', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-        if (editor) editor.chain().focus().setImage({ src: res.data.url, alt: file.name }).run();
+        const upload = await uploadAndAwaitClean({ file, purpose: 'cms_image' });
+        const url = upload.record?.media_url;
+        if (!url) throw new Error('Uploaded image URL is unavailable.');
+        if (editor) editor.chain().focus().setImage({ src: url, alt: file.name }).run();
       } catch {
         toast('Image upload failed. Max 10MB.', 'error');
       }

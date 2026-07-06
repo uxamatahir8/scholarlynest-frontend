@@ -21,6 +21,7 @@ import ArticleFilesPanel from '../../../../../components/admin/workflow/ArticleF
 import ReviewRecommendationPanel from '../../../../../components/admin/workflow/ReviewRecommendationPanel';
 import WorkflowTimeline from '../../../../../components/admin/workflow/WorkflowTimeline';
 import { canViewReviewerIdentity } from '../../../../../components/admin/workflow/workflowDisplay';
+import { uploadAndAwaitClean } from '../../../../../lib/mediaUploads/DirectUploadClient';
 
 export default function ArticleWorkflowPage() {
   const params = useParams();
@@ -74,7 +75,14 @@ export default function ArticleWorkflowPage() {
     if (publishData.doi) payload.append('doi', publishData.doi);
     if (publishData.page_start) payload.append('page_start', publishData.page_start);
     if (publishData.page_end) payload.append('page_end', publishData.page_end);
-    if (publishData.publication_pdf) payload.append('publication_pdf', publishData.publication_pdf);
+    if (publishData.publication_pdf) {
+      const pdfUpload = await uploadAndAwaitClean({
+        file: publishData.publication_pdf,
+        purpose: 'article_published_pdf',
+        attachableId: article.id,
+      });
+      payload.append('publication_pdf_upload_id', pdfUpload.id);
+    }
 
     await api.post(`/admin/articles/${article.id}/publish`, payload, { headers: { 'Content-Type': 'multipart/form-data' } });
     toast('Manuscript published successfully.', 'success');

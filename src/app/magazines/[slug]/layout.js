@@ -77,7 +77,7 @@ export default function MagazinePublicLayout({ children }) {
       label: page.title,
     })),
   ];
-  const coverImage = getFullImageUrl(magazine.cover_image);
+  const coverImage = magazine.cover_image_url || getFullImageUrl(magazine.cover_image);
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">

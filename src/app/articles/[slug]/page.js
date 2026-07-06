@@ -328,10 +328,10 @@ export default function ArticleDetail() {
           {article.magazine && (
             <div className="bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-150 dark:border-zinc-800/80 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center space-x-4 min-w-0">
-                {article.magazine.cover_image && (
+                {(article.magazine.cover_image_url || article.magazine.cover_image) && (
                   <div className="w-10 h-14 rounded-lg overflow-hidden border border-zinc-200/80 dark:border-zinc-800 shrink-0">
                     <img 
-                      src={getFullImageUrl(article.magazine.cover_image)} 
+                      src={article.magazine.cover_image_url || getFullImageUrl(article.magazine.cover_image)}
                       alt={article.magazine.title} 
                       className="w-full h-full object-cover"
                     />
@@ -362,10 +362,10 @@ export default function ArticleDetail() {
           )}
 
           {/* Featured Header Cover (Optional) */}
-          {article.featured_image && (
+          {(article.featured_image_url || article.featured_image) && (
             <div className="w-full h-64 sm:h-96 rounded-2xl overflow-hidden border border-zinc-200/40 dark:border-zinc-850 bg-zinc-50 shadow-sm relative group">
               <img 
-                src={getFullImageUrl(article.featured_image)} 
+                src={article.featured_image_url || getFullImageUrl(article.featured_image)}
                 alt={article.title} 
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.01]" 
               />

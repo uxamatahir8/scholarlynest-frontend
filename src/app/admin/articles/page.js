@@ -29,6 +29,7 @@ import {
   isValidArticleQueue,
 } from '../../../utils/articleQueues';
 import { isArticleEditableStatus } from '../../../utils/status';
+import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -284,7 +285,14 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
       if (publishData.doi) payload.append('doi', publishData.doi);
       if (publishData.page_start) payload.append('page_start', publishData.page_start);
       if (publishData.page_end) payload.append('page_end', publishData.page_end);
-      if (publishData.publication_pdf) payload.append('publication_pdf', publishData.publication_pdf);
+      if (publishData.publication_pdf) {
+        const pdfUpload = await uploadAndAwaitClean({
+          file: publishData.publication_pdf,
+          purpose: 'article_published_pdf',
+          attachableId: articleToPublish.id,
+        });
+        payload.append('publication_pdf_upload_id', pdfUpload.id);
+      }
 
       await api.post(`/admin/articles/${articleToPublish.id}/publish`, payload, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -681,9 +689,9 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
                       <div className="flex items-center space-x-3.5 text-left">
                         {/* Thumbnail */}
                         <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-zinc-200/80 dark:border-zinc-800/85 bg-zinc-50 flex items-center justify-center">
-                          {(art.featured_image || art.magazine?.cover_image) ? (
+                          {(art.featured_image_url || art.featured_image || art.magazine?.cover_image_url || art.magazine?.cover_image) ? (
                             <img 
-                              src={getFullImageUrl(art.featured_image || art.magazine?.cover_image)} 
+                              src={art.featured_image_url || art.magazine?.cover_image_url || getFullImageUrl(art.featured_image || art.magazine?.cover_image)}
                               alt="" 
                               className="w-full h-full object-cover" 
                             />

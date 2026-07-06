@@ -7,6 +7,7 @@ import api from '../../utils/api';
 import { logError } from '../../utils/safeLogger';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
+import { pollUploadUntilSettled, uploadDirectToS3 } from '../../lib/mediaUploads/DirectUploadClient';
 
 export default function ArticleAssetDropzone({ articleId, assets, onAssetsChanged }) {
   const { toast } = useToast();
@@ -65,24 +66,60 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
     const tempId = file.name + '-' + Date.now();
     setUploadingFiles(prev => ({
       ...prev,
-      [tempId]: { name: file.name, size: file.size, error: null }
+      [tempId]: { name: file.name, size: file.size, error: null, progress: 0, state: 'Uploading' }
     }));
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const response = await api.post(`/articles/${articleId}/assets`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
+      const upload = await uploadDirectToS3({
+        file,
+        purpose: 'article_supplementary',
+        attachableId: articleId,
+        onProgress: (progress) => {
+          setUploadingFiles(prev => ({
+            ...prev,
+            [tempId]: { ...prev[tempId], progress, state: 'Uploading' }
+          }));
+        },
+        onState: (state) => {
+          const label = state === 'awaiting_scan' ? 'Awaiting security scan' : state === 'initiating' ? 'Preparing upload' : 'Uploading';
+          setUploadingFiles(prev => ({
+            ...prev,
+            [tempId]: { ...prev[tempId], state: label }
+          }));
         },
       });
 
-      if (response.data && response.data.asset) {
-        onAssetsChanged([...assets, response.data.asset]);
-        toast(`File "${file.name}" uploaded successfully!`, 'success');
+      setUploadingFiles(prev => ({
+        ...prev,
+        [tempId]: { ...prev[tempId], progress: 100, state: 'Awaiting security scan' }
+      }));
+
+      const settled = await pollUploadUntilSettled(upload.id, (latest) => {
+        const statusLabel = latest.status === 'scanning' ? 'Scanning' : latest.status === 'uploaded_pending_scan' ? 'Awaiting security scan' : latest.status;
+        setUploadingFiles(prev => ({
+          ...prev,
+          [tempId]: { ...prev[tempId], state: statusLabel }
+        }));
+      });
+
+      if (settled?.status === 'clean') {
+        const assetId = settled.record?.article_asset_id;
+        onAssetsChanged([...assets, {
+          id: assetId,
+          article_id: articleId,
+          original_filename: file.name,
+          file_size: file.size,
+          mime_type: file.type,
+          scan_status: 'clean',
+          available: true,
+        }]);
+        toast(`File "${file.name}" is available after security scan.`, 'success');
+      } else if (settled?.status) {
+        throw new Error(settled.status === 'rejected' ? 'File rejected during security scan.' : 'File could not be processed.');
+      } else {
+        toast(`File "${file.name}" is awaiting security scan.`, 'info');
       }
-      // Remove from uploading list
+
       setUploadingFiles(prev => {
         const next = { ...prev };
         delete next[tempId];
@@ -90,7 +127,7 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
       });
     } catch (err) {
       logError('File upload error:', err);
-      const errMsg = safeApiMessage(err, `Failed to upload "${file.name}"`);
+      const errMsg = err?.message || safeApiMessage(err, `Failed to upload "${file.name}"`);
       toast(errMsg, 'error');
       
       setUploadingFiles(prev => ({
@@ -200,7 +237,7 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
                   <div className="min-w-0 text-left">
                     <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 truncate">{info.name}</p>
                     <p className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest">
-                      {info.error ? <span className="text-red-550 font-bold">Failed to upload</span> : <span>Uploading ({formatBytes(info.size)})</span>}
+                      {info.error ? <span className="text-red-550 font-bold">Failed to upload</span> : <span>{info.state || 'Uploading'} ({info.progress || 0}%)</span>}
                     </p>
                   </div>
                 </div>
@@ -231,7 +268,7 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
                   <div className="min-w-0 text-left">
                     <p className="text-xs font-semibold text-zinc-850 dark:text-zinc-200 truncate">{asset.original_filename}</p>
                     <p className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest">
-                      Size: {formatBytes(asset.file_size)} • {asset.mime_type || 'Unknown Type'}
+                      Size: {formatBytes(asset.file_size)} • {asset.scan_status && asset.scan_status !== 'clean' ? 'Awaiting security scan' : (asset.mime_type || 'Unknown Type')}
                     </p>
                   </div>
                 </div>

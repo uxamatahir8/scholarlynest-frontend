@@ -14,6 +14,7 @@ import ErrorState from '../../ui/ErrorState';
 import Field from '../../ui/Field';
 import { Input } from '../../ui/Input';
 import LoadingState from '../../ui/LoadingState';
+import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
 
 const passwordRuleText = 'Use at least 8 characters with uppercase, lowercase, number, and symbol.';
 
@@ -149,12 +150,10 @@ export default function AccountWorkspace() {
       return;
     }
 
-    const payload = new FormData();
-    payload.append('file', file);
     try {
       setUploadingImage(true);
-      const response = await api.post('/media', payload, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setProfile((current) => ({ ...current, profile_image: response.data?.url || '' }));
+      const upload = await uploadAndAwaitClean({ file, purpose: 'profile_image' });
+      setProfile((current) => ({ ...current, profile_image: upload.record?.media_url || '' }));
       toast('Profile image uploaded. Save profile to apply it.', 'success');
     } catch (err) {
       logError('Failed to upload profile image:', err);
