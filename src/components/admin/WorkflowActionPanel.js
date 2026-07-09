@@ -369,7 +369,6 @@ export default function WorkflowActionPanel({
                               <div>
                                 <p className="text-sm font-bold text-[var(--foreground)]">{reviewer.name}</p>
                                 <p className="text-xs text-[var(--muted)]">{reviewer.email}{reviewer.affiliation ? ` · ${reviewer.affiliation}` : ''}</p>
-                                {reviewer.reason && <p className="mt-1 text-xs text-[var(--muted)]">{reviewer.reason}</p>}
                               </div>
                               <Button
                                 type="button"

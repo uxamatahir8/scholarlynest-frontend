@@ -1,28 +1,41 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import api from '../../../../utils/api';
 import { safeApiMessage } from '../../../../utils/safeErrors';
+import { useAuth } from '../../../../context/AuthContext';
 import { Button } from '../../../../components/ui/Button';
 import Field from '../../../../components/ui/Field';
 import { Input, Select } from '../../../../components/ui/Input';
 import { Textarea } from '../../../../components/ui/Textarea';
 import Alert from '../../../../components/ui/Alert';
 import LoadingState from '../../../../components/ui/LoadingState';
+import ErrorState from '../../../../components/ui/ErrorState';
 
 const emptyQuestion = () => ({ prompt: '', response_type: 'radio', is_required: true, options: ['Yes', 'No'] });
 const optionTypes = new Set(['radio', 'checkbox', 'dropdown']);
 
 export default function ReviewQuestionnaireSettingsPage() {
+  const searchParams = useSearchParams();
+  const { user, hasRole, loading: authLoading } = useAuth();
   const [name, setName] = useState('General Reviewer Questionnaire');
   const [questions, setQuestions] = useState([emptyQuestion()]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const observerReadonly = searchParams.get('observer_readonly') === '1'
+    || searchParams.has('observer_user')
+    || searchParams.has('observer_user_id');
+  const canManage = hasRole('super_admin') && !observerReadonly;
 
   useEffect(() => {
+    if (authLoading || !canManage) {
+      setLoading(false);
+      return;
+    }
     api.get('/admin/review-questionnaire')
       .then((response) => {
         const questionnaire = response.data?.questionnaire;
@@ -41,13 +54,14 @@ export default function ReviewQuestionnaireSettingsPage() {
       })
       .catch((err) => setError(safeApiMessage(err, 'Unable to load reviewer questionnaire.')))
       .finally(() => setLoading(false));
-  }, []);
+  }, [authLoading, canManage]);
 
   const updateQuestion = (index, field, value) => {
     setQuestions(questions.map((question, idx) => (idx === index ? { ...question, [field]: value } : question)));
   };
 
   const save = async () => {
+    if (!canManage) return;
     setSaving(true);
     setError('');
     setMessage('');
@@ -61,7 +75,10 @@ export default function ReviewQuestionnaireSettingsPage() {
     }
   };
 
-  if (loading) return <LoadingState label="Loading reviewer questionnaire..." className="min-h-[320px]" />;
+  if (authLoading || loading) return <LoadingState label="Loading reviewer questionnaire..." className="min-h-[320px]" />;
+  if (!user || !canManage) {
+    return <ErrorState title={observerReadonly ? 'Observer mode is read-only' : 'Super Admin access required'}>Reviewer questionnaire settings are restricted to Super Admins.</ErrorState>;
+  }
 
   return (
     <main className="space-y-6">

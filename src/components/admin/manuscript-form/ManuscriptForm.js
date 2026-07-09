@@ -170,7 +170,6 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [magazineId, setMagazineId] = useState('');
   const [title, setTitle] = useState('');
   const [abstract, setAbstract] = useState('');
-  const [fullText, setFullText] = useState('');
   const [authors, setAuthors] = useState([]);
   const [suggestedReviewers, setSuggestedReviewers] = useState([]);
   const [opposedReviewers, setOpposedReviewers] = useState([]);
@@ -178,8 +177,6 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [selectedTags, setSelectedTags] = useState([]);
   const [keywordInput, setKeywordInput] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
-  const [featuredImage, setFeaturedImage] = useState(null);
-  const [deleteFeaturedImage, setDeleteFeaturedImage] = useState(false);
   const [supplementaryFiles, setSupplementaryFiles] = useState([]);
   const [articleImages, setArticleImages] = useState([]);
   const [queuedArticleImages, setQueuedArticleImages] = useState([]);
@@ -191,6 +188,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savingMessage, setSavingMessage] = useState('');
+  const [currentStep, setCurrentStep] = useState(0);
 
   const status = normalizeStatus(article?.status || 'draft');
   const isRevision = REVISION_STATUSES.has(status);
@@ -214,15 +212,14 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     const missing = [];
     if (!title.trim()) missing.push({ key: 'title', label: 'Add a manuscript title', target: '#manuscript-basics' });
     if (!cleanRichText(abstract)) missing.push({ key: 'abstract', label: 'Add an abstract', target: '#manuscript-basics' });
-    if (!cleanRichText(fullText)) missing.push({ key: 'fullText', label: 'Add the manuscript text', target: '#manuscript-basics' });
     if (!magazineId) missing.push({ key: 'magazineId', label: 'Choose a magazine', target: '#magazine-selection' });
     if (visibleAuthors.length === 0) missing.push({ key: 'authors', label: 'Add at least one author', target: '#authors-affiliations' });
     if (!owner) missing.push({ key: 'owner', label: 'Choose one article owner', target: '#authors-affiliations' });
     if (correspondingAuthors.length === 0) missing.push({ key: 'corresponding', label: 'Choose a corresponding author', target: '#authors-affiliations' });
     if (isRevision && !revisionResponse.trim()) missing.push({ key: 'revisionResponse', label: 'Add a response to the revision request', target: '#revision-response' });
     return missing;
-  }, [abstract, correspondingAuthors.length, fullText, isRevision, magazineId, owner, revisionResponse, title, visibleAuthors.length]);
-  const totalReadinessItems = isRevision ? 8 : 7;
+  }, [abstract, correspondingAuthors.length, isRevision, magazineId, owner, revisionResponse, title, visibleAuthors.length]);
+  const totalReadinessItems = isRevision ? 7 : 6;
   const completeReadinessItems = Math.max(0, totalReadinessItems - readiness.length);
   const readinessPercent = Math.round((completeReadinessItems / totalReadinessItems) * 100);
 
@@ -272,7 +269,6 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
           setMagazineId(String(nextArticle.magazine_id || ''));
           setTitle(nextArticle.title || '');
           setAbstract(nextArticle.abstract || '');
-          setFullText(nextArticle.full_text || '');
           setAssets(nextArticle.assets || []);
           setArticleImages(nextArticle.article_images || (nextArticle.assets || []).filter((asset) => asset.asset_type === 'image'));
           setSuggestedReviewers(nextArticle.reviewer_preferences?.suggested || []);
@@ -368,29 +364,27 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     setPdfFile(file);
   };
 
-  const handleFeaturedImageChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast('Please upload a valid image file.', 'error');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast('Image file size must be less than 5MB.', 'error');
-      return;
-    }
-    setFeaturedImage(file);
-    setDeleteFeaturedImage(false);
+  const stepForError = (key) => {
+    if (['title', 'abstract', 'magazineId'].includes(key)) return 0;
+    if (['authors', 'coAuthors', 'owner', 'corresponding'].includes(key)) return 1;
+    if (['suggestedReviewers', 'opposedReviewers'].includes(key)) return 2;
+    if (['revisionResponse'].includes(key)) return 4;
+    return 3;
   };
 
-  const validateForm = () => {
+  const firstInvalidStep = (errors) => Math.min(...Object.keys(errors).map(stepForError));
+
+  const validateForm = ({ scope = 'submit' } = {}) => {
     const errors = {};
     if (!magazineId) errors.magazineId = 'Please choose a magazine.';
     if (!title.trim()) errors.title = 'Please add a manuscript title.';
     if (!cleanRichText(abstract)) errors.abstract = 'Please add an abstract.';
-    if (!cleanRichText(fullText)) errors.fullText = 'Please add the manuscript text.';
     if (isRevision && !revisionResponse.trim()) errors.revisionResponse = 'Please add a response to the revision request.';
-    Object.assign(errors, validateAuthors(isSuperAdmin ? authors : visibleAuthors, { isSuperAdmin: true, user }));
+    if (isSuperAdmin) {
+      Object.assign(errors, validateAuthors(authors, { isSuperAdmin: true, user }));
+    } else if (visibleAuthors.find((author) => author.is_owner)?.email !== user?.email?.trim().toLowerCase()) {
+      errors.coAuthors = 'The submitting author must remain the article owner.';
+    }
     const suggested = normalizeReviewerPreferences(suggestedReviewers);
     const opposed = normalizeReviewerPreferences(opposedReviewers);
     const suggestedEmails = suggested.map((item) => item.email).filter(Boolean);
@@ -400,12 +394,17 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (opposedEmails.length !== new Set(opposedEmails).size) errors.opposedReviewers = 'Opposing reviewer emails must be unique.';
     if (suggestedEmails.some((email) => opposedEmails.includes(email))) errors.suggestedReviewers = 'A reviewer cannot be both suggested and opposed.';
     if (suggestedEmails.some((email) => authorEmails.includes(email))) errors.suggestedReviewers = 'Authors cannot be suggested as reviewers.';
-    if (!isSuperAdmin && visibleAuthors.find((author) => author.is_owner)?.email !== user?.email?.trim().toLowerCase()) {
-      errors.coAuthors = 'The submitting author must remain the article owner.';
+    const scopedErrors = scope === 'current'
+      ? Object.fromEntries(Object.entries(errors).filter(([key]) => stepForError(key) === currentStep))
+      : errors;
+    setValidationErrors(scopedErrors);
+    if (Object.keys(errors).length > 0 && scope === 'submit') {
+      setCurrentStep(firstInvalidStep(errors));
     }
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
+    return Object.keys(scopedErrors).length === 0;
   };
+
+  const validateCurrentStep = () => validateForm({ scope: 'current' });
 
   const buildFormData = (intent, uploadIds = {}) => {
     const formData = new FormData();
@@ -415,12 +414,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     formData.append('magazine_id', magazineId);
     formData.append('title', title);
     formData.append('abstract', abstract);
-    formData.append('full_text', fullText);
     formData.append('status', nextStatus);
     appendAcademicMetadata(formData, academicMetadata);
     if (uploadIds.pdf_upload_id) formData.append('pdf_upload_id', uploadIds.pdf_upload_id);
-    if (uploadIds.featured_image_upload_id) formData.append('featured_image_upload_id', uploadIds.featured_image_upload_id);
-    if (deleteFeaturedImage) formData.append('delete_featured_image', 'true');
     if (revisionResponse.trim()) formData.append('revision_response', revisionResponse.trim());
     if (changeSummary.trim()) formData.append('change_summary', changeSummary.trim());
     formData.append('tags', JSON.stringify(selectedTags));
@@ -474,7 +470,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   };
 
   const persistManuscript = async (intent) => {
-    if (!validateForm()) {
+    if (!validateForm({ scope: intent === 'submit' ? 'submit' : 'current' })) {
       toast('Please review the highlighted manuscript requirements.', 'error');
       return;
     }
@@ -496,14 +492,6 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
           attachableId: isEdit ? articleId : undefined,
         });
         uploadIds.pdf_upload_id = pdfUpload.id;
-      }
-      if (featuredImage) {
-        setSavingMessage('Uploading featured image...');
-        const imageUpload = await uploadAndAwaitClean({
-          file: featuredImage,
-          purpose: 'article_featured_image',
-        });
-        uploadIds.featured_image_upload_id = imageUpload.id;
       }
       setSavingMessage(intent === 'submit' ? 'Submitting manuscript...' : 'Saving draft...');
       const formData = buildFormData(intent, uploadIds);
@@ -576,6 +564,22 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     );
   }
 
+  const steps = [
+    'Article Basics',
+    'Article Collaborators',
+    'Suggested and Opposing Reviewers',
+    'Keywords, Classification and Declaration',
+    'Uploads',
+  ];
+  const goNext = () => {
+    if (!validateCurrentStep()) {
+      toast('Please review the highlighted fields on this step.', 'error');
+      return;
+    }
+    setCurrentStep((step) => Math.min(step + 1, steps.length - 1));
+  };
+  const goBack = () => setCurrentStep((step) => Math.max(step - 1, 0));
+
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-8 text-left">
       <div className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
@@ -597,11 +601,38 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_390px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
         <form className="min-w-0 space-y-8" onSubmit={(event) => event.preventDefault()}>
+          <nav aria-label="Submission steps" className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <ol className="grid gap-3 md:grid-cols-5">
+              {steps.map((step, index) => {
+                const isCurrent = index === currentStep;
+                const isComplete = index < currentStep;
+                return (
+                  <li key={step}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (index <= currentStep) setCurrentStep(index);
+                      }}
+                      disabled={index > currentStep}
+                      className={`flex min-h-16 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${isCurrent ? 'border-amber-500 bg-amber-500/10 text-amber-800 dark:text-amber-200' : isComplete ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'border-[var(--border)] bg-[var(--surface-muted)] text-[var(--muted)]'}`}
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--surface)] text-sm font-bold ring-1 ring-current/15">
+                        {isComplete ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : index + 1}
+                      </span>
+                      <span className="text-sm font-bold leading-tight">{step}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
+
+          {currentStep === 0 && (
           <Section
             id="manuscript-basics"
             eyebrow="Step 1"
-            title="Manuscript Basics"
-            description="Start with the core scholarly record. The title, abstract, and manuscript text are required before submission."
+            title="Article Basics"
+            description="Start with the core article record. Title, magazine, and abstract are required before submission."
           >
             <div className="space-y-7">
               <div>
@@ -626,63 +657,51 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                 <FieldError id="manuscript-abstract-error">{validationErrors.abstract}</FieldError>
               </div>
 
-              <div>
-                <label className={labelClass}>Manuscript text <span className="text-amber-700">*</span></label>
-                <p className="mb-3 mt-1 text-sm leading-relaxed text-[var(--muted)]">Use the structured editor for the submission text. A PDF or Word file may also be attached in the files section.</p>
-                <RichEditor value={fullText} onChange={setFullText} placeholder="Write or paste the manuscript text..." minHeight="360px" />
-                <FieldError id="manuscript-text-error">{validationErrors.fullText}</FieldError>
-              </div>
-            </div>
-          </Section>
-
-          <Section
-            id="magazine-selection"
-            eyebrow="Step 2"
-            title="Magazine Selection"
-            description="Choose the magazine where this manuscript should enter editorial review."
-          >
-            <div className="grid gap-5 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
-              <div>
-                <label htmlFor="magazine-select" className={labelClass}>Magazine <span className="text-amber-700">*</span></label>
-                <select
-                  id="magazine-select"
-                  value={magazineId}
-                  onChange={(event) => {
-                    setMagazineId(event.target.value);
-                    setSelectedTags([]);
-                  }}
-                  aria-invalid={!!validationErrors.magazineId}
-                  aria-describedby={validationErrors.magazineId ? 'magazine-select-error' : undefined}
-                  className={selectClass}
-                >
-                  <option value="">Choose a magazine</option>
-                  {magazines.map((magazine) => (
-                    <option key={magazine.id} value={magazine.id}>{magazine.title}</option>
-                  ))}
-                </select>
-                <FieldError id="magazine-select-error">{validationErrors.magazineId}</FieldError>
-              </div>
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-amber-700 shadow-sm ring-1 ring-amber-500/20 dark:bg-zinc-950 dark:text-amber-300">
-                    <BookOpen className="h-5 w-5" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Selected magazine</p>
-                    <h3 className="mt-1 text-lg font-bold text-[var(--foreground)]">{selectedMagazine?.title || 'No magazine selected'}</h3>
-                    <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-[var(--muted)]">
-                      {selectedMagazine?.description || 'Choose the magazine where this manuscript should enter editorial review.'}
-                    </p>
+              <div className="grid gap-5 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
+                <div>
+                  <label htmlFor="magazine-select" className={labelClass}>Magazine <span className="text-amber-700">*</span></label>
+                  <select
+                    id="magazine-select"
+                    value={magazineId}
+                    onChange={(event) => {
+                      setMagazineId(event.target.value);
+                      setSelectedTags([]);
+                    }}
+                    aria-invalid={!!validationErrors.magazineId}
+                    aria-describedby={validationErrors.magazineId ? 'magazine-select-error' : undefined}
+                    className={selectClass}
+                  >
+                    <option value="">Choose a magazine</option>
+                    {magazines.map((magazine) => (
+                      <option key={magazine.id} value={magazine.id}>{magazine.title}</option>
+                    ))}
+                  </select>
+                  <FieldError id="magazine-select-error">{validationErrors.magazineId}</FieldError>
+                </div>
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white text-amber-700 shadow-sm ring-1 ring-amber-500/20 dark:bg-zinc-950 dark:text-amber-300">
+                      <BookOpen className="h-5 w-5" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Selected magazine</p>
+                      <h3 className="mt-1 text-lg font-bold text-[var(--foreground)]">{selectedMagazine?.title || 'No magazine selected'}</h3>
+                      <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-[var(--muted)]">
+                        {selectedMagazine?.description || 'Choose the magazine where this article should enter editorial review.'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </Section>
+          )}
 
+          {currentStep === 1 && (
           <Section
             id="authors-affiliations"
-            eyebrow="Step 3"
-            title="Authors and Affiliates"
+            eyebrow="Step 2"
+            title="Article Collaborators"
             description="List contributors, affiliations, corresponding authors, and editor access where supported."
           >
             {!isSuperAdmin && (
@@ -707,10 +726,13 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
             />
             <FieldError id="authors-error">{validationErrors.coAuthors}</FieldError>
           </Section>
+          )}
 
+          {currentStep === 2 && (
+            <div className="space-y-8">
           <Section
             id="suggested-reviewers"
-            eyebrow="Step 4"
+            eyebrow="Step 3"
             title="Suggested Reviewers"
             description="Suggest qualified reviewers for editorial consideration. No reviewer accounts are created from this list."
           >
@@ -726,7 +748,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
 
           <Section
             id="opposing-reviewers"
-            eyebrow="Step 5"
+            eyebrow="Step 3"
             title="Opposing Reviewers"
             description="List reviewers who should not be assigned because of conflicts or other concerns."
           >
@@ -739,10 +761,14 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
             />
             <FieldError id="opposed-reviewers-error">{validationErrors.opposedReviewers}</FieldError>
           </Section>
+            </div>
+          )}
 
+          {currentStep === 3 && (
+            <div className="space-y-8">
           <Section
             id="academic-classification"
-            eyebrow="Step 6"
+            eyebrow="Step 4"
             title="Classification and Declarations"
             description="Classify the manuscript and add optional statements when they apply to the submission."
           >
@@ -799,7 +825,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
 
           <Section
             id="keywords"
-            eyebrow="Step 7"
+            eyebrow="Step 4"
             title="Keywords"
             description="Select magazine tags or add keywords that help editors and readers understand the manuscript topic."
           >
@@ -857,15 +883,18 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                 )}
               </div>
           </Section>
+            </div>
+          )}
 
+          {currentStep === 4 && (
           <Section
             id="manuscript-files"
-            eyebrow="Step 8"
-            title="Manuscript Files"
+            eyebrow="Step 5"
+            title="Uploads"
             description="Attach the article file and supporting materials using the existing secure upload endpoints."
           >
             <div className="space-y-6">
-              <div className="grid gap-5 md:grid-cols-2">
+              <div>
                 <FilePicker
                   id="main-manuscript-file"
                   label="Article PDF/Word file"
@@ -875,19 +904,6 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                   onChange={handlePdfChange}
                   onClear={() => setPdfFile(null)}
                   help="Only one PDF, DOC, or DOCX file is allowed."
-                />
-                <FilePicker
-                  id="featured-image-file"
-                  label="Featured image"
-                  accept="image/*"
-                  fileName={featuredImage?.name || ''}
-                  existingLabel={article?.featured_image && !deleteFeaturedImage ? 'Existing image attached' : ''}
-                  onChange={handleFeaturedImageChange}
-                  onClear={() => {
-                    setFeaturedImage(null);
-                    setDeleteFeaturedImage(true);
-                  }}
-                  help="Optional image used where the manuscript is displayed."
                 />
               </div>
 
@@ -909,8 +925,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               </div>
             </div>
           </Section>
+          )}
 
-          {isRevision && (
+          {currentStep === 4 && isRevision && (
             <Section id="revision-response" eyebrow="Revision" title="Revision Response">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
@@ -938,6 +955,52 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               </div>
             </Section>
           )}
+
+          <div className="flex flex-col-reverse gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              {currentStep > 0 && (
+                <Button type="button" variant="secondary" size="lg" icon={ArrowLeft} onClick={goBack} disabled={saving}>
+                  Back
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                icon={Save}
+                onClick={() => persistManuscript('draft')}
+                disabled={saving || isRevision}
+                isLoading={saving && submittingIntent === 'draft'}
+              >
+                Save as Draft
+              </Button>
+              {currentStep < steps.length - 1 ? (
+                <Button type="button" variant="primary" size="lg" icon={ChevronRight} onClick={goNext} disabled={saving}>
+                  {currentStep === 1 && !isSuperAdmin ? 'Skip / Next' : 'Next'}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="lg"
+                  icon={Send}
+                  onClick={() => {
+                    if (!validateForm({ scope: 'submit' }) || readiness.length > 0) {
+                      toast('Complete the readiness items before final submission.', 'error');
+                      return;
+                    }
+                    setShowSubmitConfirm(true);
+                  }}
+                  disabled={saving}
+                  isLoading={saving && submittingIntent === 'submit'}
+                >
+                  {isRevision ? 'Submit Revision' : 'Submit Article'}
+                </Button>
+              )}
+            </div>
+          </div>
         </form>
 
         <aside className="lg:sticky lg:top-[calc(var(--console-topbar-height)+1.5rem)] lg:self-start">
@@ -988,7 +1051,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               </div>
               <div>
                 <span className="block text-sm font-bold text-[var(--muted)]">Files</span>
-                <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{pdfFile || hasExistingPdf ? 'Article file attached' : 'Text manuscript only'}</p>
+                <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{pdfFile || hasExistingPdf ? 'Article file attached' : 'No manuscript file attached yet'}</p>
                 <p className="mt-1 text-sm text-[var(--muted)]">{isEdit ? `${assets.length} supplementary file${assets.length === 1 ? '' : 's'}` : `${supplementaryFiles.length} supplementary file${supplementaryFiles.length === 1 ? '' : 's'} queued`} · {isEdit ? articleImages.length : queuedArticleImages.length} article image{(isEdit ? articleImages.length : queuedArticleImages.length) === 1 ? '' : 's'}</p>
               </div>
             </div>
@@ -1020,42 +1083,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               )}
             </div>
 
-            <div className="flex flex-col gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                icon={Save}
-                onClick={() => persistManuscript('draft')}
-                disabled={saving || isRevision}
-                isLoading={saving && submittingIntent === 'draft'}
-              >
-                Save Draft
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="lg"
-                icon={Send}
-                onClick={() => {
-                  if (!validateForm() || readiness.length > 0) {
-                    toast('Complete the readiness items before final submission.', 'error');
-                    return;
-                  }
-                  setShowSubmitConfirm(true);
-                }}
-                disabled={saving}
-                isLoading={saving && submittingIntent === 'submit'}
-              >
-                {isRevision ? 'Submit Revision' : 'Submit Manuscript'}
-              </Button>
-              {readiness.length > 0 && (
-                <p className="text-sm leading-relaxed text-[var(--muted)]">
-                  Submit remains available for validation, but final confirmation requires the missing items above.
-                </p>
-              )}
-              {savingMessage && <p className="text-center text-xs font-semibold text-[var(--muted)]">{savingMessage}</p>}
-            </div>
+            {savingMessage && <p className="text-center text-xs font-semibold text-[var(--muted)]">{savingMessage}</p>}
           </div>
         </aside>
       </div>

@@ -8,7 +8,6 @@ export const createEmptyReviewerPreference = () => ({
   email: '',
   affiliation: '',
   designation: '',
-  reason: '',
 });
 
 export function normalizeReviewerPreferences(rows = []) {
@@ -18,7 +17,8 @@ export function normalizeReviewerPreferences(rows = []) {
       ...row,
       email: (row.email || '').trim().toLowerCase(),
     }))
-    .filter((row) => row.name.trim() || row.email.trim() || row.affiliation.trim() || row.reason.trim());
+    .map(({ name, email, affiliation, designation }) => ({ name, email, affiliation, designation }))
+    .filter((row) => row.name.trim() || row.email.trim() || row.affiliation.trim() || row.designation.trim());
 }
 
 export default function ReviewerPreferenceRepeater({ title, description, rows, setRows, tone = 'suggested' }) {
@@ -86,15 +86,6 @@ export default function ReviewerPreferenceRepeater({ title, description, rows, s
                     />
                   </div>
                 ))}
-              </div>
-              <div className="mt-4 space-y-2">
-                <label className="block text-sm font-bold text-[var(--foreground)]">Reason / note</label>
-                <textarea
-                  value={row.reason || ''}
-                  onChange={(event) => updateRow(index, 'reason', event.target.value)}
-                  rows={2}
-                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm font-semibold text-[var(--foreground)] outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                />
               </div>
             </div>
           ))}

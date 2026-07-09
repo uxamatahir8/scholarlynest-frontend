@@ -189,6 +189,12 @@ export const consoleNavigation = [
         isVisible: ({ user, hasPermission }) => hasAnyRole(user, ['super_admin', 'admin']) || can(hasPermission, 'settings.manage'),
       },
       {
+        label: 'Reviewer Questionnaire',
+        href: '/admin/settings/review-questionnaire',
+        icon: ClipboardCheck,
+        isVisible: ({ user, impersonationStatus }) => userHasRole(user, 'super_admin') && !impersonationStatus?.active,
+      },
+      {
         label: 'Categories',
         href: '/admin/settings/categories',
         icon: Settings,
