@@ -219,10 +219,6 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (isRevision && !revisionResponse.trim()) missing.push({ key: 'revisionResponse', label: 'Add a response to the revision request', target: '#revision-response' });
     return missing;
   }, [abstract, correspondingAuthors.length, isRevision, magazineId, owner, revisionResponse, title, visibleAuthors.length]);
-  const totalReadinessItems = isRevision ? 7 : 6;
-  const completeReadinessItems = Math.max(0, totalReadinessItems - readiness.length);
-  const readinessPercent = Math.round((completeReadinessItems / totalReadinessItems) * 100);
-
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -581,7 +577,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const goBack = () => setCurrentStep((step) => Math.max(step - 1, 0));
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-8 text-left">
+    <div className="w-full space-y-8 text-left">
       <div className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <Link href="/admin/articles" className="mb-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--foreground)]">
@@ -599,8 +595,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
         {isEdit && article?.status && <StatusBadge status={article.status} />}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_390px] 2xl:grid-cols-[minmax(0,1fr)_420px]">
-        <form className="min-w-0 space-y-8" onSubmit={(event) => event.preventDefault()}>
+      <form className="min-w-0 space-y-8" onSubmit={(event) => event.preventDefault()}>
           <nav aria-label="Submission steps" className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
             <ol className="grid gap-3 md:grid-cols-5">
               {steps.map((step, index) => {
@@ -635,28 +630,6 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
             description="Start with the core article record. Title, magazine, and abstract are required before submission."
           >
             <div className="space-y-7">
-              <div>
-                <label htmlFor="manuscript-title" className={labelClass}>Article title <span className="text-amber-700">*</span></label>
-                <p className={helpClass}>Use the final or working academic title for this manuscript.</p>
-                <input
-                  id="manuscript-title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  aria-invalid={!!validationErrors.title}
-                  aria-describedby={validationErrors.title ? 'manuscript-title-error' : undefined}
-                  className={`${fieldClass} text-lg`}
-                  placeholder="Enter the full manuscript title"
-                />
-                <FieldError id="manuscript-title-error">{validationErrors.title}</FieldError>
-              </div>
-
-              <div>
-                <label className={labelClass}>Abstract <span className="text-amber-700">*</span></label>
-                <p className="mb-3 mt-1 text-sm leading-relaxed text-[var(--muted)]">Summarize the research question, method, and main contribution.</p>
-                <RichEditor value={abstract} onChange={setAbstract} placeholder="Write the manuscript abstract..." minHeight="220px" />
-                <FieldError id="manuscript-abstract-error">{validationErrors.abstract}</FieldError>
-              </div>
-
               <div className="grid gap-5 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
                 <div>
                   <label htmlFor="magazine-select" className={labelClass}>Magazine <span className="text-amber-700">*</span></label>
@@ -692,6 +665,28 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label htmlFor="manuscript-title" className={labelClass}>Article title <span className="text-amber-700">*</span></label>
+                <p className={helpClass}>Use the final or working academic title for this manuscript.</p>
+                <input
+                  id="manuscript-title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  aria-invalid={!!validationErrors.title}
+                  aria-describedby={validationErrors.title ? 'manuscript-title-error' : undefined}
+                  className={`${fieldClass} text-lg`}
+                  placeholder="Enter the full manuscript title"
+                />
+                <FieldError id="manuscript-title-error">{validationErrors.title}</FieldError>
+              </div>
+
+              <div>
+                <label className={labelClass}>Abstract <span className="text-amber-700">*</span></label>
+                <p className="mb-3 mt-1 text-sm leading-relaxed text-[var(--muted)]">Summarize the research question, method, and main contribution.</p>
+                <RichEditor value={abstract} onChange={setAbstract} placeholder="Write the manuscript abstract..." minHeight="220px" />
+                <FieldError id="manuscript-abstract-error">{validationErrors.abstract}</FieldError>
               </div>
             </div>
           </Section>
@@ -1001,92 +996,8 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               )}
             </div>
           </div>
-        </form>
-
-        <aside className="lg:sticky lg:top-[calc(var(--console-topbar-height)+1.5rem)] lg:self-start">
-          <div className="space-y-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
-            <div>
-              <p className="text-sm font-bold text-amber-700 dark:text-amber-400">Review and Submit</p>
-              <h2 className="mt-1 text-xl font-bold text-[var(--foreground)]">Submission Readiness</h2>
-              <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-                Use this guide to finish required information before sending the manuscript for editorial review.
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-bold text-[var(--foreground)]">{completeReadinessItems} of {totalReadinessItems} required items complete</p>
-                  <p className="mt-1 text-sm text-[var(--muted)]">{readiness.length === 0 ? 'Ready for final confirmation.' : `${readiness.length} item${readiness.length === 1 ? '' : 's'} still need attention.`}</p>
-                </div>
-                <span className="text-2xl font-bold text-[var(--foreground)]">{readinessPercent}%</span>
-              </div>
-              <div className="mt-4 h-2 rounded-full bg-zinc-200 dark:bg-zinc-800">
-                <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${readinessPercent}%` }} />
-              </div>
-            </div>
-
-            <div className="space-y-4 text-sm">
-              <div>
-                <span className="block text-sm font-bold text-[var(--muted)]">Title</span>
-                <p className="mt-1 line-clamp-2 text-base font-semibold text-[var(--foreground)]">{title || 'Not added yet'}</p>
-              </div>
-              <div>
-                <span className="block text-sm font-bold text-[var(--muted)]">Magazine</span>
-                <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{selectedMagazine?.title || 'Not selected'}</p>
-              </div>
-              {article?.tracking_code && (
-                <div>
-                  <span className="block text-sm font-bold text-[var(--muted)]">Tracking code</span>
-                  <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{article.tracking_code}</p>
-                </div>
-              )}
-              <div>
-                <span className="block text-sm font-bold text-[var(--muted)]">Authors</span>
-                <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{visibleAuthors.length || 0} listed</p>
-                {owner && <p className="mt-1 text-sm text-[var(--muted)]">Owner: {owner.name || owner.email}</p>}
-                {correspondingAuthors.length > 0 && (
-                  <p className="mt-1 text-sm text-[var(--muted)]">Corresponding: {correspondingAuthors.map((author) => author.name || author.email).join(', ')}</p>
-                )}
-              </div>
-              <div>
-                <span className="block text-sm font-bold text-[var(--muted)]">Files</span>
-                <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{pdfFile || hasExistingPdf ? 'Article file attached' : 'No manuscript file attached yet'}</p>
-                <p className="mt-1 text-sm text-[var(--muted)]">{isEdit ? `${assets.length} supplementary file${assets.length === 1 ? '' : 's'}` : `${supplementaryFiles.length} supplementary file${supplementaryFiles.length === 1 ? '' : 's'} queued`} · {isEdit ? articleImages.length : queuedArticleImages.length} article image{(isEdit ? articleImages.length : queuedArticleImages.length) === 1 ? '' : 's'}</p>
-              </div>
-            </div>
-
-            <div className={`rounded-xl border p-4 ${readiness.length === 0 ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-amber-500/20 bg-amber-500/[0.04]'}`}>
-              {readiness.length === 0 ? (
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
-                  <div>
-                    <h3 className="text-base font-bold text-[var(--foreground)]">Ready to submit</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">Server validation will make the final decision when you submit.</p>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <h3 className="text-base font-bold text-[var(--foreground)]">Missing requirements</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">Complete these items before final submission. Draft saving remains available.</p>
-                  <ul className="mt-4 space-y-2.5">
-                    {readiness.map((item) => (
-                      <li key={item.key}>
-                        <a href={item.target} className="inline-flex min-h-9 items-center gap-2 rounded-lg px-2 text-sm font-bold text-amber-800 hover:bg-amber-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] dark:text-amber-300">
-                          <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                          {item.label}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {savingMessage && <p className="text-center text-xs font-semibold text-[var(--muted)]">{savingMessage}</p>}
-          </div>
-        </aside>
-      </div>
+        {savingMessage && <p className="text-center text-xs font-semibold text-[var(--muted)]">{savingMessage}</p>}
+      </form>
 
       <ConfirmationModal
         isOpen={showSubmitConfirm}
