@@ -180,7 +180,7 @@ export default function CopyEditorTaskList({
                     </div>
                     <h2 className="truncate text-base font-bold text-[var(--foreground)]">{article.title || 'Untitled manuscript'}</h2>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--muted)]">
-                      <span>{article.magazine?.title || 'Journal not recorded'}</span>
+                      <span>{article.magazine?.title || 'Magazine not recorded'}</span>
                       <span>Assigned {formatDate(task.created_at)}</span>
                       <span>Due {formatDate(task.due_date)}</span>
                       {task.completed_at && <span>Completed {formatDate(task.completed_at)}</span>}

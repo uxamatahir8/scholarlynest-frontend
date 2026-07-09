@@ -9,7 +9,7 @@ export default function ArticleMetadataPanel({ article }) {
     : article.user?.name;
 
   const items = [
-    ['Journal', article.magazine?.title || 'Not assigned'],
+    ['Magazine', article.magazine?.title || 'Not assigned'],
     ['Article type', article.article_type ? labelize(article.article_type) : 'Not recorded'],
     ['Subject area', article.subject_area || 'Not recorded'],
     ['Language', article.language || 'Not recorded'],

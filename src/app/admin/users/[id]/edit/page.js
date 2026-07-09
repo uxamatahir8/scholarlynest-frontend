@@ -101,7 +101,7 @@ export default function EditUserPage() {
       errors.editor_ids = 'At least one Editor must be assigned to a Sub Editor.';
     }
     if (isMagazineAssignmentRole(selectedRole) && values.magazine_ids.length === 0) {
-      errors.magazine_ids = 'Select at least one journal for this role.';
+      errors.magazine_ids = 'Select at least one magazine for this role.';
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -191,7 +191,7 @@ export default function EditUserPage() {
       {roleChanged && (
         <Alert tone="warning" title="Role change pending">
           Saving this form will change this user&apos;s access role. If the user is no longer a Sub Editor, existing Editor links will be detached by backend rules.
-          If the selected role uses journal access, submitted journal assignments become the backend authorization scope for that role.
+          If the selected role uses magazine access, submitted magazine assignments become the backend authorization scope for that role.
         </Alert>
       )}
 

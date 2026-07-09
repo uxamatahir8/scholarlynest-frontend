@@ -25,7 +25,7 @@ function ArticleQueueRow({ article, label }) {
         </div>
         <p className="mt-1 text-sm text-[var(--muted)]">{authorsLine(article)}</p>
         <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
-          {article.magazine?.title || 'Journal not listed'}{article.issue ? ` · ${issueLabel(article.issue)}` : ' · Issue not assigned'}
+          {article.magazine?.title || 'Magazine not listed'}{article.issue ? ` · ${issueLabel(article.issue)}` : ' · Issue not assigned'}
         </p>
       </div>
       <div className="flex flex-wrap gap-2 md:justify-end">
@@ -138,7 +138,7 @@ export default function PublisherOperationsWorkspace({
         </div>
         <dl className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: 'Assigned Journals', value: dashboard.counts.magazines, icon: BookOpen },
+            { label: 'Assigned Magazines', value: dashboard.counts.magazines, icon: BookOpen },
             { label: 'Ready Manuscripts', value: dashboard.counts.ready_articles, icon: FileCheck2 },
             { label: 'Published Articles', value: dashboard.counts.published_articles, icon: CheckCircle2 },
             { label: 'Issues', value: dashboard.counts.issues, icon: Newspaper },

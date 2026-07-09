@@ -73,12 +73,12 @@ export default function MagazineFormDialog({
       >
         <header className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-6 py-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Journal Setup</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Magazine Setup</p>
             <h2 id="magazine-form-title" className="mt-1 text-xl font-bold text-[var(--foreground)]">
-              {mode === 'create' ? 'Create Journal' : readOnly ? 'Journal Settings' : 'Edit Journal'}
+              {mode === 'create' ? 'Create Magazine' : readOnly ? 'Magazine Settings' : 'Edit Magazine'}
             </h2>
           </div>
-          <Button type="button" variant="ghost" size="icon" aria-label="Close journal form" onClick={onClose}>
+          <Button type="button" variant="ghost" size="icon" aria-label="Close magazine form" onClick={onClose}>
             <X className="h-4 w-4" aria-hidden="true" />
           </Button>
         </header>
@@ -88,11 +88,11 @@ export default function MagazineFormDialog({
             <div className="space-y-6">
               <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-bold text-[var(--foreground)]">Journal Identity</h3>
-                  <p className="mt-1 text-sm text-[var(--muted)]">Name the journal and assign its editorial owner where supported.</p>
+                  <h3 className="text-sm font-bold text-[var(--foreground)]">Magazine Identity</h3>
+                  <p className="mt-1 text-sm text-[var(--muted)]">Name the magazine and assign its editorial owner where supported.</p>
                 </div>
                 <label className="block">
-                  <span className="text-sm font-semibold text-[var(--foreground)]">Journal title</span>
+                  <span className="text-sm font-semibold text-[var(--foreground)]">Magazine title</span>
                   <input
                     required
                     value={form.title}
@@ -107,7 +107,7 @@ export default function MagazineFormDialog({
               <section className="space-y-4">
                 <div>
                   <h3 className="text-sm font-bold text-[var(--foreground)]">Public Description and Scope</h3>
-                  <p className="mt-1 text-sm text-[var(--muted)]">This content appears in public journal discovery and overview areas.</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">This content appears in public magazine discovery and overview areas.</p>
                 </div>
                 <label className="block">
                   <span className="text-sm font-semibold text-[var(--foreground)]">Short description</span>
@@ -126,7 +126,7 @@ export default function MagazineFormDialog({
                       value={form.about_text}
                       onChange={(value) => update('about_text', value)}
                       readOnly={readOnly}
-                      placeholder="Describe journal scope, editorial context, and publication focus."
+                      placeholder="Describe magazine scope, editorial context, and publication focus."
                     />
                   </div>
                 </label>
@@ -179,7 +179,7 @@ export default function MagazineFormDialog({
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             {!readOnly && (
               <Button type="submit" disabled={saving} icon={saving ? Loader2 : Save}>
-                {saving ? 'Saving...' : mode === 'create' ? 'Create Journal' : 'Save Changes'}
+                {saving ? 'Saving...' : mode === 'create' ? 'Create Magazine' : 'Save Changes'}
               </Button>
             )}
           </footer>

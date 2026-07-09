@@ -61,7 +61,7 @@ export default function MagazineCustomPage() {
     <article className="space-y-8">
       <SeoHead title={data.seo?.title} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/magazines/${slug}/${pageSlug}`} />
       <div className="border-b border-[var(--border)] pb-6">
-        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Journal page</p>
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Magazine page</p>
         <h2 className="mt-2 font-serif text-4xl font-bold leading-tight text-zinc-950 dark:text-white">{data.page.title}</h2>
       </div>
       <div className="cms-content-prose max-w-none" dangerouslySetInnerHTML={{ __html: content }} />

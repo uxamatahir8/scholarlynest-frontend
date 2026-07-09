@@ -30,7 +30,7 @@ export default function ManuscriptHeader({ article, user, hasRole, onPublish, ca
             <div className="flex flex-wrap gap-3 text-sm text-[var(--muted)]">
               <span className="inline-flex items-center gap-2">
                 <BookOpen className="h-4 w-4" aria-hidden="true" />
-                {article.magazine?.title || 'Journal not assigned'}
+                {article.magazine?.title || 'Magazine not assigned'}
               </span>
               <span className="inline-flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" aria-hidden="true" />

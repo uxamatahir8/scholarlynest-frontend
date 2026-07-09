@@ -349,12 +349,12 @@ export default function Home() {
               Clear next steps for research groups and academic teams.
             </h2>
             <p className="mt-4 text-base leading-8 text-zinc-650 dark:text-zinc-300">
-              Universities, labs, and independent research groups can explore public journals, review published archives, or contact the editorial team through the public contact route.
+              Universities, labs, and independent research groups can explore public magazines, review published archives, or contact the editorial team through the public contact route.
             </p>
           </div>
           <div className="flex flex-col justify-end gap-3 sm:flex-row lg:flex-col">
             <Link href="/magazines" className="inline-flex min-h-11 items-center justify-center rounded-md bg-zinc-950 px-5 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">
-              Explore our journals
+              Explore our magazines
             </Link>
             <Link href="/contact" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-5 text-sm font-bold text-zinc-850 transition-colors hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-100 dark:hover:bg-zinc-900">
               Contact the editorial team <ArrowRight className="h-4 w-4" aria-hidden="true" />

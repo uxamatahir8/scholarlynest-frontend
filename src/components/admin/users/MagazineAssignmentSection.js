@@ -57,20 +57,20 @@ export default function MagazineAssignmentSection({
           <BookOpenCheck className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
           <CardTitle>Magazine Access</CardTitle>
         </div>
-        <CardDescription>Select the journals this user may manage or work on.</CardDescription>
+        <CardDescription>Select the magazines this user may manage or work on.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {magazines.length === 0 ? (
-          <Alert tone="warning" title="No journals available">
-            Create a journal before assigning this role.
+          <Alert tone="warning" title="No magazines available">
+            Create a magazine before assigning this role.
           </Alert>
         ) : (
           <>
             <Field
-              label="Assigned Journal(s)"
+              label="Assigned Magazine(s)"
               required
               error={error}
-              helperText="Select at least one journal. Backend authorization uses these role-aware assignments."
+              helperText="Select at least one magazine. Backend authorization uses these role-aware assignments."
             >
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" aria-hidden="true" />
@@ -78,7 +78,7 @@ export default function MagazineAssignmentSection({
                   type="search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search journals by title"
+                  placeholder="Search magazines by title"
                   className="pl-9"
                 />
               </div>
@@ -86,7 +86,7 @@ export default function MagazineAssignmentSection({
 
             <div className="grid max-h-[28rem] gap-3 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-2">
               {filteredMagazines.length === 0 ? (
-                <p className="p-3 text-sm text-[var(--muted)]">No matching journals are available.</p>
+                <p className="p-3 text-sm text-[var(--muted)]">No matching magazines are available.</p>
               ) : filteredMagazines.map((magazine) => {
                 const isSelected = selectedIds.includes(Number(magazine.id));
                 const isExpanded = expandedIds.includes(Number(magazine.id));
@@ -151,7 +151,7 @@ export default function MagazineAssignmentSection({
 
             {selectedIds.length === 0 && (
               <Alert tone="warning" title="Magazine access required">
-                This role cannot be saved without at least one journal assignment.
+                This role cannot be saved without at least one magazine assignment.
               </Alert>
             )}
           </>

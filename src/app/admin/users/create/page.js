@@ -80,7 +80,7 @@ export default function CreateUserPage() {
       errors.editor_ids = 'At least one Editor must be assigned to a Sub Editor.';
     }
     if (isMagazineAssignmentRole(selectedRole) && values.magazine_ids.length === 0) {
-      errors.magazine_ids = 'Select at least one journal for this role.';
+      errors.magazine_ids = 'Select at least one magazine for this role.';
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;

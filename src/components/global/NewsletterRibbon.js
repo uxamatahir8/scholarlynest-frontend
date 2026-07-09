@@ -56,7 +56,7 @@ export default function NewsletterRibbon() {
                 Stay Ahead in Research
               </h2>
               <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium">
-                Join our newsletter to receive the latest academic journals, monthly magazine highlights, and trending scholarly breakthroughs directly in your inbox.
+                Join our newsletter to receive the latest academic magazines, monthly magazine highlights, and trending scholarly breakthroughs directly in your inbox.
               </p>
             </div>
           </div>
