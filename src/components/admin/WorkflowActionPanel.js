@@ -78,9 +78,11 @@ export default function WorkflowActionPanel({
   const [screenForm, setScreenForm] = useState({ decision: 'send_to_review', plagiarism_status: '', plagiarism_score: '', comments: '' });
   const [subEditorId, setSubEditorId] = useState('');
   const [reviewerId, setReviewerId] = useState('');
+  const [manualReviewer, setManualReviewer] = useState({ name: '', email: '', affiliation: '' });
   const [productionForm, setProductionForm] = useState({ user_id: '', role: 'copy_editor', due_date: '' });
   const [subEditorForm, setSubEditorForm] = useState({ recommendation: 'minor_revision', comments: '', internal_notes: '' });
   const [reviewForm, setReviewForm] = useState({ recommendation: 'minor_revision', comments_for_author: '', confidential_comments: '', originality: 3, methodology: 3, citation_accuracy: 3 });
+  const [questionnaireResponses, setQuestionnaireResponses] = useState({});
   const [decisionForm, setDecisionForm] = useState({ decision: 'accepted', decision_source: 'mixed_editorial_decision', comments_for_author: '', internal_notes: '' });
   const [postForm, setPostForm] = useState({ action_type: 'correction', reason: '', notice_text: '' });
   const [files, setFiles] = useState({
@@ -202,6 +204,15 @@ export default function WorkflowActionPanel({
     </Field>
   );
 
+  const updateQuestionnaireAnswer = (question, value) => {
+    setQuestionnaireResponses((prev) => ({ ...prev, [question.id]: value }));
+  };
+
+  const questionnairePayload = () => Object.entries(questionnaireResponses).map(([questionId, answer]) => ({
+    question_id: Number(questionId),
+    answer,
+  }));
+
   const status = article.status;
   const canScreen = canEditorial && ['submitted', 'pending'].includes(status);
   const canAssignSubEditor = canEditorial && ['under_review', 'resubmitted'].includes(status);
@@ -322,8 +333,9 @@ export default function WorkflowActionPanel({
                 </div>
               )}
               {canShowReviewerAssignment && (
-                <div className="space-y-2">
-                  <Field label="Reviewer">
+                <div className="space-y-4 md:col-span-2">
+                  <div className="grid gap-3 md:grid-cols-2">
+                  <Field label="Existing Reviewer">
                     <Select value={reviewerId} onChange={(event) => setReviewerId(event.target.value)}>
                       <option value="">Select Reviewer</option>
                       {(assignees.reviewer || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
@@ -345,6 +357,83 @@ export default function WorkflowActionPanel({
                   >
                     Assign Reviewer
                   </Button>
+                  </div>
+
+                  {(article.reviewer_preferences?.suggested || []).length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Suggested Reviewers</p>
+                      <div className="grid gap-2">
+                        {article.reviewer_preferences.suggested.map((reviewer) => (
+                          <div key={reviewer.id || reviewer.email} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="text-sm font-bold text-[var(--foreground)]">{reviewer.name}</p>
+                                <p className="text-xs text-[var(--muted)]">{reviewer.email}{reviewer.affiliation ? ` · ${reviewer.affiliation}` : ''}</p>
+                                {reviewer.reason && <p className="mt-1 text-xs text-[var(--muted)]">{reviewer.reason}</p>}
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                icon={UserPlus}
+                                isLoading={busyAction === `suggested-${reviewer.id}`}
+                                onClick={() => askConfirmation({
+                                  key: `suggested-${reviewer.id}`,
+                                  title: 'Invite suggested reviewer?',
+                                  message: 'This will send a secure review invitation to the suggested reviewer.',
+                                  confirmText: 'Send Invitation',
+                                  variant: 'primary',
+                                  run: () => runAction(`suggested-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { suggested_preference_id: reviewer.id }), 'Reviewer invitation sent.'),
+                                })}
+                              >
+                                Invite
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(article.reviewer_preferences?.opposed || []).length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Opposing Reviewers</p>
+                      <div className="grid gap-2">
+                        {article.reviewer_preferences.opposed.map((reviewer) => (
+                          <div key={reviewer.id || reviewer.email} className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
+                            <p className="text-sm font-bold text-[var(--foreground)]">{reviewer.name}</p>
+                            <p className="text-xs text-[var(--muted)]">{reviewer.email}{reviewer.affiliation ? ` · ${reviewer.affiliation}` : ''}</p>
+                            <p className="mt-1 text-xs font-semibold text-rose-700 dark:text-rose-300">Blocked from assignment</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                    <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Manual Reviewer Invitation</p>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <Field label="Name"><Input value={manualReviewer.name} onChange={(event) => setManualReviewer({ ...manualReviewer, name: event.target.value })} /></Field>
+                      <Field label="Email"><Input type="email" value={manualReviewer.email} onChange={(event) => setManualReviewer({ ...manualReviewer, email: event.target.value })} /></Field>
+                      <Field label="Affiliation"><Input value={manualReviewer.affiliation} onChange={(event) => setManualReviewer({ ...manualReviewer, affiliation: event.target.value })} /></Field>
+                    </div>
+                    <Button
+                      type="button"
+                      className="mt-3"
+                      icon={UserPlus}
+                      isLoading={busyAction === 'manual-reviewer'}
+                      disabled={!manualReviewer.email.trim()}
+                      onClick={() => askConfirmation({
+                        key: 'manual-reviewer',
+                        title: 'Invite manual reviewer?',
+                        message: 'This will send a secure review invitation if backend conflict checks pass.',
+                        confirmText: 'Send Invitation',
+                        variant: 'primary',
+                        run: () => runAction('manual-reviewer', () => api.post(`/admin/articles/${article.id}/assign-reviewer`, manualReviewer), 'Reviewer invitation sent.'),
+                      })}
+                    >
+                      Send Manual Invitation
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -430,6 +519,46 @@ export default function WorkflowActionPanel({
                 <Field label="Confidential Comments for Editor">
                   <Textarea value={reviewForm.confidential_comments} onChange={(event) => setReviewForm({ ...reviewForm, confidential_comments: event.target.value })} rows={3} />
                 </Field>
+                {myReviewerAssignment.questionnaire_instance?.questions?.length > 0 && (
+                  <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+                    <p className="text-sm font-bold text-[var(--foreground)]">Reviewer Questionnaire</p>
+                    {myReviewerAssignment.questionnaire_instance.questions.map((question) => (
+                      <Field key={question.id} label={question.prompt} required={question.is_required}>
+                        {question.response_type === 'textarea' ? (
+                          <Textarea value={questionnaireResponses[question.id] || question.answer || ''} onChange={(event) => updateQuestionnaireAnswer(question, event.target.value)} rows={3} />
+                        ) : question.response_type === 'single_line' ? (
+                          <Input value={questionnaireResponses[question.id] || question.answer || ''} onChange={(event) => updateQuestionnaireAnswer(question, event.target.value)} />
+                        ) : question.response_type === 'checkbox' ? (
+                          <div className="flex flex-wrap gap-2">
+                            {(question.options || []).map((option) => {
+                              const rawCurrent = questionnaireResponses[question.id] ?? question.answer ?? [];
+                              const current = Array.isArray(rawCurrent) ? rawCurrent : [];
+                              const checked = current.includes(option.value);
+                              return (
+                                <label key={option.value} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={(event) => {
+                                      const next = event.target.checked ? [...current, option.value] : current.filter((item) => item !== option.value);
+                                      updateQuestionnaireAnswer(question, next);
+                                    }}
+                                  />
+                                  {option.label}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <Select value={questionnaireResponses[question.id] || question.answer || ''} onChange={(event) => updateQuestionnaireAnswer(question, event.target.value)}>
+                            <option value="">Select</option>
+                            {(question.options || []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                          </Select>
+                        )}
+                      </Field>
+                    ))}
+                  </div>
+                )}
                 {fileInput('reviewed_manuscript', 'Reviewed Manuscript')}
                 <Button
                   type="button"
@@ -445,6 +574,7 @@ export default function WorkflowActionPanel({
                       recommendation: reviewForm.recommendation,
                       comments_for_author: reviewForm.comments_for_author,
                       confidential_comments: reviewForm.confidential_comments,
+                      questionnaire_responses: questionnairePayload(),
                       scorecard: {
                         originality: reviewForm.originality,
                         methodology: reviewForm.methodology,
