@@ -4,6 +4,7 @@ import { logError } from '../../utils/safeLogger';
 import React, { useEffect, useState } from 'react';
 import { Calendar, CheckCircle2, Loader2, Upload, X } from 'lucide-react';
 import api from '../../utils/api';
+import RichEditor from '../ui/RichEditor';
 
 export default function PublishArticleModal({ isOpen, onClose, onSubmit, articleTitle, magazineId }) {
   const [selectedYear, setSelectedYear] = useState('2026');
@@ -14,6 +15,30 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
   const [pageStart, setPageStart] = useState('');
   const [pageEnd, setPageEnd] = useState('');
   const [publicationPdf, setPublicationPdf] = useState(null);
+  const [metadata, setMetadata] = useState({
+    article_type: '',
+    article_category: '',
+    open_access_label: 'Open Access',
+    is_peer_reviewed: true,
+    academic_editor: '',
+    received_at: '',
+    accepted_at: '',
+    published_at: '',
+    license_statement: '',
+    data_availability_statement: '',
+    funding_statement: '',
+    competing_interests_statement: '',
+    abbreviations: '',
+    citation_text: '',
+  });
+  const [sections, setSections] = useState({
+    introduction: '',
+    materials_and_methods: '',
+    discussion: '',
+    supporting_information: '',
+    acknowledgements: '',
+    references: '',
+  });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -57,6 +82,8 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
         page_start: pageStart ? parseInt(pageStart, 10) : null,
         page_end: pageEnd ? parseInt(pageEnd, 10) : null,
         publication_pdf: publicationPdf,
+        ...metadata,
+        publication_sections: Object.entries(sections).map(([section_key, content_html]) => ({ section_key, content_html })),
       });
     } catch (err) {
       logError(err);
@@ -74,7 +101,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
       />
       
       {/* Modal Container */}
-      <div className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col font-sans">
+      <div className="relative bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col font-sans">
         
         {/* Header */}
         <div className="px-6 py-5 border-b border-zinc-100 dark:border-zinc-850 flex items-center justify-between">
@@ -96,7 +123,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="overflow-y-auto">
           <div className="p-6 space-y-5 text-left">
             <div className="space-y-1">
               <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-mono block">
@@ -167,6 +194,54 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
                   <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
                 </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">Academic Editor</label>
+                <input value={metadata.academic_editor} onChange={(e) => setMetadata({ ...metadata, academic_editor: e.target.value })} className="w-full text-xs font-semibold px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">Received Date</label>
+                <input type="date" value={metadata.received_at} onChange={(e) => setMetadata({ ...metadata, received_at: e.target.value })} className="w-full text-xs font-semibold px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">Accepted Date</label>
+                <input type="date" value={metadata.accepted_at} onChange={(e) => setMetadata({ ...metadata, accepted_at: e.target.value })} className="w-full text-xs font-semibold px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {[
+                ['license_statement', 'Copyright / License'],
+                ['data_availability_statement', 'Data Availability'],
+                ['funding_statement', 'Funding'],
+                ['competing_interests_statement', 'Competing Interests'],
+                ['abbreviations', 'Abbreviations'],
+                ['citation_text', 'Citation Text'],
+              ].map(([key, label]) => (
+                <div key={key} className="space-y-1.5">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">{label}</label>
+                  <textarea value={metadata[key]} onChange={(e) => setMetadata({ ...metadata, [key]: e.target.value })} rows={2} className="w-full text-xs font-semibold px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100" />
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-5 border-t border-zinc-100 pt-5 dark:border-zinc-850">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white">Publication Sections</h4>
+              {[
+                ['introduction', 'Introduction'],
+                ['materials_and_methods', 'Materials and methods'],
+                ['discussion', 'Discussion'],
+                ['supporting_information', 'Supporting information'],
+                ['acknowledgements', 'Acknowledgements'],
+                ['references', 'References'],
+              ].map(([key, label]) => (
+                <div key={key} className="space-y-2">
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">{label}</label>
+                  <RichEditor value={sections[key]} onChange={(value) => setSections({ ...sections, [key]: value })} minHeight="180px" />
+                </div>
+              ))}
             </div>
 
             <div className="space-y-1.5">

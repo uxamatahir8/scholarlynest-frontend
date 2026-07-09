@@ -75,6 +75,31 @@ export default function ArticleWorkflowPage() {
     if (publishData.doi) payload.append('doi', publishData.doi);
     if (publishData.page_start) payload.append('page_start', publishData.page_start);
     if (publishData.page_end) payload.append('page_end', publishData.page_end);
+    [
+      'article_type',
+      'article_category',
+      'open_access_label',
+      'academic_editor',
+      'received_at',
+      'accepted_at',
+      'published_at',
+      'license_statement',
+      'data_availability_statement',
+      'funding_statement',
+      'competing_interests_statement',
+      'abbreviations',
+      'citation_text',
+    ].forEach((key) => {
+      if (publishData[key] !== undefined && publishData[key] !== null && String(publishData[key]).trim() !== '') {
+        payload.append(key, publishData[key]);
+      }
+    });
+    if (publishData.is_peer_reviewed !== undefined) {
+      payload.append('is_peer_reviewed', publishData.is_peer_reviewed ? '1' : '0');
+    }
+    if (publishData.publication_sections) {
+      payload.append('publication_sections', JSON.stringify(publishData.publication_sections));
+    }
     if (publishData.publication_pdf) {
       const pdfUpload = await uploadAndAwaitClean({
         file: publishData.publication_pdf,

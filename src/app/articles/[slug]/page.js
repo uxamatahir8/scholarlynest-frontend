@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
   ArrowLeft, FileText, Download, Share2, Clipboard, 
-  Loader2, AlertCircle, Calendar, User, Award, CheckCircle2, Info, X, Code, Archive,
-  ChevronRight, FileSpreadsheet, File, Image, FileQuestion, Link as LinkIcon, Mail
+  Loader2, AlertCircle, Calendar, CheckCircle2, Info, X, Code,
+  ChevronRight, FileSpreadsheet, File, Image, FileQuestion, Mail
 } from 'lucide-react';
 import api from '../../../utils/api';
 import { logError } from '../../../utils/safeLogger';
@@ -47,10 +47,21 @@ const getFileIcon = (mimeType, filename) => {
   if (mime.includes('image') || ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) {
     return <Image className="w-4 h-4 text-indigo-500" />;
   }
-  if (mime.includes('zip') || mime.includes('compressed') || ['zip', 'rar', 'tar', 'gz'].includes(ext)) {
-    return <Archive className="w-4 h-4 text-amber-600" />;
-  }
   return <FileQuestion className="w-4 h-4 text-zinc-500" />;
+};
+
+const sectionLabels = {
+  introduction: 'Introduction',
+  materials_and_methods: 'Materials and Methods',
+  discussion: 'Discussion',
+  supporting_information: 'Supporting Information',
+  acknowledgements: 'Acknowledgements',
+  references: 'References',
+};
+
+const compactDate = (value) => {
+  if (!value) return '';
+  return new Date(value).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
 export default function ArticleDetail() {
@@ -200,7 +211,7 @@ export default function ArticleDetail() {
 
   const handleCopyCitation = () => {
     if (!article) return;
-    navigator.clipboard.writeText(getCitationText());
+    navigator.clipboard.writeText(article.citation_text || getCitationText());
     setCitationCopied(true);
     toast('Citation copied to clipboard!', 'success');
     setTimeout(() => setCitationCopied(false), 2000);
@@ -288,6 +299,26 @@ export default function ArticleDetail() {
     );
   }
 
+  const articleImages = article.article_images || [];
+  const publicationSections = (article.publication_sections || []).filter((section) => section.content_html);
+  const details = [
+    article.open_access_label && { label: 'Access', value: article.open_access_label },
+    article.is_peer_reviewed && { label: 'Review', value: 'Peer-reviewed' },
+    article.academic_editor && { label: 'Academic Editor', value: article.academic_editor },
+    article.received_at && { label: 'Received', value: compactDate(article.received_at) },
+    article.accepted_at && { label: 'Accepted', value: compactDate(article.accepted_at) },
+    article.published_at && { label: 'Published', value: compactDate(article.published_at) },
+    article.tracking_code && { label: 'Tracking', value: article.tracking_code },
+  ].filter(Boolean);
+
+  const statementBlocks = [
+    article.license_statement && { title: 'Copyright and License', body: article.license_statement },
+    article.data_availability_statement && { title: 'Data Availability', body: article.data_availability_statement },
+    article.funding_statement && { title: 'Funding', body: article.funding_statement },
+    article.competing_interests_statement && { title: 'Competing Interests', body: article.competing_interests_statement },
+    article.abbreviations && { title: 'Abbreviations', body: article.abbreviations },
+  ].filter(Boolean);
+
   return (
     <div className="min-h-screen bg-zinc-50/20 dark:bg-zinc-950/10 pb-24 px-4 sm:px-6 lg:px-8 text-left">
       <SeoHead
@@ -339,7 +370,7 @@ export default function ArticleDetail() {
                 )}
                 <div className="text-left min-w-0">
                   <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-mono block mb-1">
-                    Published in Journal
+                    Published in Magazine
                   </span>
                   <h4 className="text-sm font-bold text-zinc-900 dark:text-white truncate">
                     {article.magazine.title}
@@ -444,6 +475,17 @@ export default function ArticleDetail() {
             )}
           </div>
 
+          {details.length > 0 && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {details.map((item) => (
+                <div key={item.label} className="rounded-xl border border-zinc-150 bg-zinc-50/70 p-3 dark:border-zinc-850 dark:bg-zinc-950/30">
+                  <span className="block text-[8px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">{item.label}</span>
+                  <span className="mt-1 block text-xs font-bold text-zinc-800 dark:text-zinc-200">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* 7. Abstract */}
           {article.abstract && (
             <div className="bg-zinc-50/50 dark:bg-zinc-900/10 p-6 sm:p-8 rounded-2xl border border-zinc-150 dark:border-zinc-850/80 text-left space-y-4">
@@ -454,6 +496,31 @@ export default function ArticleDetail() {
                 className="font-serif italic text-base sm:text-lg leading-relaxed text-zinc-700 dark:text-zinc-300 prose dark:prose-invert max-w-none"
                 dangerouslySetInnerHTML={{ __html: article.abstract }}
               />
+            </div>
+          )}
+
+          {articleImages.length > 0 && (
+            <div className="space-y-4 text-left">
+              <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
+                Article Images
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {articleImages.map((asset) => {
+                  const imageUrl = asset.download_url || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/articles/assets/${asset.id}/download`;
+                  return (
+                    <figure key={asset.id} className="overflow-hidden rounded-2xl border border-zinc-150 bg-white dark:border-zinc-850 dark:bg-zinc-950/30">
+                      <img src={imageUrl} alt={asset.title || asset.original_filename || article.title} className="h-64 w-full object-cover" />
+                      {(asset.title || asset.caption || asset.description) && (
+                        <figcaption className="space-y-1 p-4 text-left">
+                          {asset.title && <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{asset.title}</p>}
+                          {asset.caption && <p className="text-xs text-zinc-600 dark:text-zinc-350">{asset.caption}</p>}
+                          {asset.description && <p className="text-[11px] text-zinc-500 dark:text-zinc-450">{asset.description}</p>}
+                        </figcaption>
+                      )}
+                    </figure>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -489,6 +556,33 @@ export default function ArticleDetail() {
             </div>
           )}
 
+          {publicationSections.length > 0 && (
+            <div className="space-y-8 border-t border-zinc-100 pt-8 text-left dark:border-zinc-800/80">
+              {publicationSections.map((section) => (
+                <section key={section.section_key} id={`section-${section.section_key}`} className="space-y-3">
+                  <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
+                    {section.title || sectionLabels[section.section_key] || section.section_key.replaceAll('_', ' ')}
+                  </h3>
+                  <div
+                    className="prose prose-zinc max-w-none font-serif text-base leading-relaxed text-zinc-800 dark:prose-invert dark:text-zinc-200"
+                    dangerouslySetInnerHTML={{ __html: section.content_html }}
+                  />
+                </section>
+              ))}
+            </div>
+          )}
+
+          {statementBlocks.length > 0 && (
+            <div className="grid gap-4 border-t border-zinc-100 pt-8 text-left md:grid-cols-2 dark:border-zinc-800/80">
+              {statementBlocks.map((item) => (
+                <section key={item.title} className="rounded-2xl border border-zinc-150 bg-zinc-50/60 p-5 dark:border-zinc-850 dark:bg-zinc-950/30">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-white">{item.title}</h3>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-zinc-600 dark:text-zinc-350">{item.body}</p>
+                </section>
+              ))}
+            </div>
+          )}
+
           {/* 10. Citation block */}
           <div className="bg-amber-500/[0.01] dark:bg-amber-500/[0.005] border border-amber-500/15 p-6 rounded-2xl text-left space-y-4">
             <div className="flex items-center justify-between">
@@ -505,7 +599,7 @@ export default function ArticleDetail() {
               </button>
             </div>
             <p className="font-sans text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium bg-zinc-50/50 dark:bg-zinc-950/40 p-4 rounded-xl border border-zinc-150 dark:border-zinc-850 select-all">
-              {getCitationText()}
+              {article.citation_text || getCitationText()}
             </p>
           </div>
 
