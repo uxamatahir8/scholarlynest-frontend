@@ -2,7 +2,7 @@
 
 import { safeApiMessage } from '../../utils/safeErrors';
 import React, { useState, useRef } from 'react';
-import { Upload, X, File, FileSpreadsheet, FileText, Image, Archive, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, X, File, FileSpreadsheet, FileText, Image, Loader2, AlertCircle } from 'lucide-react';
 import api from '../../utils/api';
 import { logError } from '../../utils/safeLogger';
 import { useToast } from '../../context/ToastContext';
@@ -43,9 +43,6 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
     }
     if (mime.includes('image') || ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) {
       return <Image className="w-8 h-8 text-indigo-500" />;
-    }
-    if (mime.includes('zip') || mime.includes('compressed') || ['zip', 'rar', 'tar', 'gz'].includes(ext)) {
-      return <Archive className="w-8 h-8 text-amber-600" />;
     }
     return <File className="w-8 h-8 text-zinc-500" />;
   };
@@ -207,6 +204,7 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
           ref={fileInputRef}
           type="file"
           multiple
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.webp"
           onChange={handleChange}
           className="hidden"
         />
@@ -215,7 +213,7 @@ export default function ArticleAssetDropzone({ articleId, assets, onAssetsChange
           Drag & drop supplementary files here, or <span className="text-amber-600 dark:text-amber-400 hover:text-amber-700 hover:underline">browse files</span>
         </p>
         <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono mt-1.5">
-          Supports PDF, Word, Excel, CSV, ZIP, Images (Max 25MB each)
+          Supports PDF, Word, Excel, CSV, TXT, and images (Max 25MB each)
         </p>
       </div>
 

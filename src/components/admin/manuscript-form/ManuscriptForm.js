@@ -31,8 +31,10 @@ import LoadingState from '../../ui/LoadingState';
 import StatusBadge from '../../ui/StatusBadge';
 import { ConfirmationModal } from '../../ui/ConfirmationModal';
 import CoAuthorRepeater from '../../article/CoAuthorRepeater';
+import ReviewerPreferenceRepeater, { normalizeReviewerPreferences } from '../../article/ReviewerPreferenceRepeater';
 import ArticleAssetBufferedDropzone from '../../article/ArticleAssetBufferedDropzone';
 import ArticleAssetDropzone from '../../article/ArticleAssetDropzone';
+import ArticleImagesDropzone from '../../article/ArticleImagesDropzone';
 import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
 import {
   appendAcademicMetadata,
@@ -170,6 +172,8 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [abstract, setAbstract] = useState('');
   const [fullText, setFullText] = useState('');
   const [authors, setAuthors] = useState([]);
+  const [suggestedReviewers, setSuggestedReviewers] = useState([]);
+  const [opposedReviewers, setOpposedReviewers] = useState([]);
   const [academicMetadata, setAcademicMetadata] = useState(emptyAcademicMetadata);
   const [selectedTags, setSelectedTags] = useState([]);
   const [keywordInput, setKeywordInput] = useState('');
@@ -177,6 +181,8 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [featuredImage, setFeaturedImage] = useState(null);
   const [deleteFeaturedImage, setDeleteFeaturedImage] = useState(false);
   const [supplementaryFiles, setSupplementaryFiles] = useState([]);
+  const [articleImages, setArticleImages] = useState([]);
+  const [queuedArticleImages, setQueuedArticleImages] = useState([]);
   const [assets, setAssets] = useState([]);
   const [revisionResponse, setRevisionResponse] = useState('');
   const [changeSummary, setChangeSummary] = useState('');
@@ -209,7 +215,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (!title.trim()) missing.push({ key: 'title', label: 'Add a manuscript title', target: '#manuscript-basics' });
     if (!cleanRichText(abstract)) missing.push({ key: 'abstract', label: 'Add an abstract', target: '#manuscript-basics' });
     if (!cleanRichText(fullText)) missing.push({ key: 'fullText', label: 'Add the manuscript text', target: '#manuscript-basics' });
-    if (!magazineId) missing.push({ key: 'magazineId', label: 'Choose a journal', target: '#journal-selection' });
+    if (!magazineId) missing.push({ key: 'magazineId', label: 'Choose a magazine', target: '#magazine-selection' });
     if (visibleAuthors.length === 0) missing.push({ key: 'authors', label: 'Add at least one author', target: '#authors-affiliations' });
     if (!owner) missing.push({ key: 'owner', label: 'Choose one article owner', target: '#authors-affiliations' });
     if (correspondingAuthors.length === 0) missing.push({ key: 'corresponding', label: 'Choose a corresponding author', target: '#authors-affiliations' });
@@ -268,6 +274,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
           setAbstract(nextArticle.abstract || '');
           setFullText(nextArticle.full_text || '');
           setAssets(nextArticle.assets || []);
+          setArticleImages(nextArticle.article_images || (nextArticle.assets || []).filter((asset) => asset.asset_type === 'image'));
+          setSuggestedReviewers(nextArticle.reviewer_preferences?.suggested || []);
+          setOpposedReviewers(nextArticle.reviewer_preferences?.opposed || []);
           setSelectedTags(Array.isArray(nextArticle.tags) ? nextArticle.tags.map((tag) => tag.id) : []);
           setAcademicMetadata({
             articleCategory: nextArticle.article_category || '',
@@ -351,8 +360,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const handlePdfChange = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (file.type !== 'application/pdf') {
-      toast('Please upload a PDF manuscript file.', 'error');
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!['pdf', 'doc', 'docx'].includes(ext)) {
+      toast('Please upload a PDF, DOC, or DOCX article file.', 'error');
       return;
     }
     setPdfFile(file);
@@ -375,12 +385,21 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
 
   const validateForm = () => {
     const errors = {};
-    if (!magazineId) errors.magazineId = 'Please choose a journal.';
+    if (!magazineId) errors.magazineId = 'Please choose a magazine.';
     if (!title.trim()) errors.title = 'Please add a manuscript title.';
     if (!cleanRichText(abstract)) errors.abstract = 'Please add an abstract.';
     if (!cleanRichText(fullText)) errors.fullText = 'Please add the manuscript text.';
     if (isRevision && !revisionResponse.trim()) errors.revisionResponse = 'Please add a response to the revision request.';
     Object.assign(errors, validateAuthors(isSuperAdmin ? authors : visibleAuthors, { isSuperAdmin: true, user }));
+    const suggested = normalizeReviewerPreferences(suggestedReviewers);
+    const opposed = normalizeReviewerPreferences(opposedReviewers);
+    const suggestedEmails = suggested.map((item) => item.email).filter(Boolean);
+    const opposedEmails = opposed.map((item) => item.email).filter(Boolean);
+    const authorEmails = visibleAuthors.map((author) => author.email).filter(Boolean);
+    if (suggestedEmails.length !== new Set(suggestedEmails).size) errors.suggestedReviewers = 'Suggested reviewer emails must be unique.';
+    if (opposedEmails.length !== new Set(opposedEmails).size) errors.opposedReviewers = 'Opposing reviewer emails must be unique.';
+    if (suggestedEmails.some((email) => opposedEmails.includes(email))) errors.suggestedReviewers = 'A reviewer cannot be both suggested and opposed.';
+    if (suggestedEmails.some((email) => authorEmails.includes(email))) errors.suggestedReviewers = 'Authors cannot be suggested as reviewers.';
     if (!isSuperAdmin && visibleAuthors.find((author) => author.is_owner)?.email !== user?.email?.trim().toLowerCase()) {
       errors.coAuthors = 'The submitting author must remain the article owner.';
     }
@@ -408,6 +427,8 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     const normalizedAuthors = normalizeAuthorRows(isSuperAdmin ? authors : visibleAuthors);
     formData.append('authors', JSON.stringify(normalizedAuthors));
     formData.append('co_authors', JSON.stringify(normalizedAuthors));
+    formData.append('suggested_reviewers', JSON.stringify(normalizeReviewerPreferences(suggestedReviewers)));
+    formData.append('opposed_reviewers', JSON.stringify(normalizeReviewerPreferences(opposedReviewers)));
     return formData;
   };
 
@@ -433,6 +454,25 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     return true;
   };
 
+  const uploadArticleImages = async (nextArticleId) => {
+    if (!nextArticleId || queuedArticleImages.length === 0) return true;
+    let failed = 0;
+    for (const file of queuedArticleImages) {
+      try {
+        await uploadAndAwaitClean({ file, purpose: 'article_image', attachableId: nextArticleId });
+      } catch (err) {
+        logError('Failed to upload article image', err);
+        failed += 1;
+      }
+    }
+    if (failed > 0) {
+      toast(`Manuscript saved, but ${failed} article image upload${failed > 1 ? 's' : ''} failed.`, 'warning');
+      return false;
+    }
+    setQueuedArticleImages([]);
+    return true;
+  };
+
   const persistManuscript = async (intent) => {
     if (!validateForm()) {
       toast('Please review the highlighted manuscript requirements.', 'error');
@@ -449,7 +489,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
       setSavingMessage(intent === 'submit' ? 'Submitting manuscript...' : 'Saving draft...');
       const uploadIds = {};
       if (pdfFile) {
-        setSavingMessage('Uploading manuscript PDF...');
+        setSavingMessage('Uploading article file...');
         const pdfUpload = await uploadAndAwaitClean({
           file: pdfFile,
           purpose: isRevision ? 'article_revision' : 'article_manuscript',
@@ -472,6 +512,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
         : await api.post('/articles', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       const savedArticle = response.data?.article;
       await uploadSupplementaryFiles(savedArticle?.id || articleId);
+      await uploadArticleImages(savedArticle?.id || articleId);
       toast(intent === 'submit' ? 'Manuscript submitted for editorial review.' : 'Draft manuscript saved.', 'success');
       if (intent === 'submit') {
         router.push(savedArticle?.id ? `/admin/articles/${savedArticle.id}/workflow` : '/admin/articles');
@@ -587,7 +628,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
 
               <div>
                 <label className={labelClass}>Manuscript text <span className="text-amber-700">*</span></label>
-                <p className="mb-3 mt-1 text-sm leading-relaxed text-[var(--muted)]">Use the structured editor for the submission text. A PDF may also be attached in the files section.</p>
+                <p className="mb-3 mt-1 text-sm leading-relaxed text-[var(--muted)]">Use the structured editor for the submission text. A PDF or Word file may also be attached in the files section.</p>
                 <RichEditor value={fullText} onChange={setFullText} placeholder="Write or paste the manuscript text..." minHeight="360px" />
                 <FieldError id="manuscript-text-error">{validationErrors.fullText}</FieldError>
               </div>
@@ -595,31 +636,31 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
           </Section>
 
           <Section
-            id="journal-selection"
+            id="magazine-selection"
             eyebrow="Step 2"
-            title="Journal Selection"
-            description="Choose the journal where this manuscript should enter editorial review."
+            title="Magazine Selection"
+            description="Choose the magazine where this manuscript should enter editorial review."
           >
             <div className="grid gap-5 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
               <div>
-                <label htmlFor="journal-select" className={labelClass}>Journal <span className="text-amber-700">*</span></label>
+                <label htmlFor="magazine-select" className={labelClass}>Magazine <span className="text-amber-700">*</span></label>
                 <select
-                  id="journal-select"
+                  id="magazine-select"
                   value={magazineId}
                   onChange={(event) => {
                     setMagazineId(event.target.value);
                     setSelectedTags([]);
                   }}
                   aria-invalid={!!validationErrors.magazineId}
-                  aria-describedby={validationErrors.magazineId ? 'journal-select-error' : undefined}
+                  aria-describedby={validationErrors.magazineId ? 'magazine-select-error' : undefined}
                   className={selectClass}
                 >
-                  <option value="">Choose a journal</option>
+                  <option value="">Choose a magazine</option>
                   {magazines.map((magazine) => (
                     <option key={magazine.id} value={magazine.id}>{magazine.title}</option>
                   ))}
                 </select>
-                <FieldError id="journal-select-error">{validationErrors.magazineId}</FieldError>
+                <FieldError id="magazine-select-error">{validationErrors.magazineId}</FieldError>
               </div>
               <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
                 <div className="flex items-start gap-3">
@@ -627,10 +668,10 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                     <BookOpen className="h-5 w-5" aria-hidden="true" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Selected journal</p>
-                    <h3 className="mt-1 text-lg font-bold text-[var(--foreground)]">{selectedMagazine?.title || 'No journal selected'}</h3>
+                    <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Selected magazine</p>
+                    <h3 className="mt-1 text-lg font-bold text-[var(--foreground)]">{selectedMagazine?.title || 'No magazine selected'}</h3>
                     <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-[var(--muted)]">
-                      {selectedMagazine?.description || 'Choose the journal where this manuscript should enter editorial review.'}
+                      {selectedMagazine?.description || 'Choose the magazine where this manuscript should enter editorial review.'}
                     </p>
                   </div>
                 </div>
@@ -641,7 +682,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
           <Section
             id="authors-affiliations"
             eyebrow="Step 3"
-            title="Authors and Affiliations"
+            title="Authors and Affiliates"
             description="List contributors, affiliations, corresponding authors, and editor access where supported."
           >
             {!isSuperAdmin && (
@@ -668,8 +709,40 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
           </Section>
 
           <Section
-            id="academic-classification"
+            id="suggested-reviewers"
             eyebrow="Step 4"
+            title="Suggested Reviewers"
+            description="Suggest qualified reviewers for editorial consideration. No reviewer accounts are created from this list."
+          >
+            <ReviewerPreferenceRepeater
+              title="Suggested reviewers"
+              description="Editors may invite these reviewers later, subject to conflict checks."
+              rows={suggestedReviewers}
+              setRows={setSuggestedReviewers}
+              tone="suggested"
+            />
+            <FieldError id="suggested-reviewers-error">{validationErrors.suggestedReviewers}</FieldError>
+          </Section>
+
+          <Section
+            id="opposing-reviewers"
+            eyebrow="Step 5"
+            title="Opposing Reviewers"
+            description="List reviewers who should not be assigned because of conflicts or other concerns."
+          >
+            <ReviewerPreferenceRepeater
+              title="Opposing reviewers"
+              description="These reviewers are blocked from assignment by backend validation."
+              rows={opposedReviewers}
+              setRows={setOpposedReviewers}
+              tone="opposed"
+            />
+            <FieldError id="opposed-reviewers-error">{validationErrors.opposedReviewers}</FieldError>
+          </Section>
+
+          <Section
+            id="academic-classification"
+            eyebrow="Step 6"
             title="Classification and Declarations"
             description="Classify the manuscript and add optional statements when they apply to the submission."
           >
@@ -726,13 +799,13 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
 
           <Section
             id="keywords"
-            eyebrow="Step 5"
+            eyebrow="Step 7"
             title="Keywords"
-            description="Select journal tags or add keywords that help editors and readers understand the manuscript topic."
+            description="Select magazine tags or add keywords that help editors and readers understand the manuscript topic."
           >
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-5">
                 <label className={labelClass}>Keyword terms</label>
-                <p className={helpClass}>Select existing journal tags or add manuscript keywords.</p>
+                <p className={helpClass}>Select existing magazine tags or add manuscript keywords.</p>
                 {loadingTags ? (
                   <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -787,21 +860,21 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
 
           <Section
             id="manuscript-files"
-            eyebrow="Step 6"
+            eyebrow="Step 8"
             title="Manuscript Files"
-            description="Attach the optional PDF manuscript and supporting materials using the existing secure upload endpoints."
+            description="Attach the article file and supporting materials using the existing secure upload endpoints."
           >
             <div className="space-y-6">
               <div className="grid gap-5 md:grid-cols-2">
                 <FilePicker
                   id="main-manuscript-file"
-                  label="Main manuscript PDF"
-                  accept="application/pdf"
+                  label="Article PDF/Word file"
+                  accept="application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   fileName={pdfFile?.name || ''}
-                  existingLabel={hasExistingPdf ? 'Existing manuscript PDF attached' : ''}
+                  existingLabel={hasExistingPdf ? 'Existing article file attached' : ''}
                   onChange={handlePdfChange}
                   onClear={() => setPdfFile(null)}
-                  help="Optional PDF manuscript. The text editor content remains required."
+                  help="Only one PDF, DOC, or DOCX file is allowed."
                 />
                 <FilePicker
                   id="featured-image-file"
@@ -823,6 +896,17 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               ) : (
                 <ArticleAssetBufferedDropzone files={supplementaryFiles} onFilesChanged={setSupplementaryFiles} />
               )}
+
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-5">
+                <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">Article Images</h3>
+                <ArticleImagesDropzone
+                  articleId={isEdit ? articleId : null}
+                  images={articleImages}
+                  queuedImages={queuedArticleImages}
+                  onQueuedImagesChanged={setQueuedArticleImages}
+                  onImagesChanged={setArticleImages}
+                />
+              </div>
             </div>
           </Section>
 
@@ -885,9 +969,15 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                 <p className="mt-1 line-clamp-2 text-base font-semibold text-[var(--foreground)]">{title || 'Not added yet'}</p>
               </div>
               <div>
-                <span className="block text-sm font-bold text-[var(--muted)]">Journal</span>
+                <span className="block text-sm font-bold text-[var(--muted)]">Magazine</span>
                 <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{selectedMagazine?.title || 'Not selected'}</p>
               </div>
+              {article?.tracking_code && (
+                <div>
+                  <span className="block text-sm font-bold text-[var(--muted)]">Tracking code</span>
+                  <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{article.tracking_code}</p>
+                </div>
+              )}
               <div>
                 <span className="block text-sm font-bold text-[var(--muted)]">Authors</span>
                 <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{visibleAuthors.length || 0} listed</p>
@@ -898,8 +988,8 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               </div>
               <div>
                 <span className="block text-sm font-bold text-[var(--muted)]">Files</span>
-                <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{pdfFile || hasExistingPdf ? 'Main PDF attached' : 'Text manuscript only'}</p>
-                <p className="mt-1 text-sm text-[var(--muted)]">{isEdit ? `${assets.length} supplementary file${assets.length === 1 ? '' : 's'}` : `${supplementaryFiles.length} supplementary file${supplementaryFiles.length === 1 ? '' : 's'} queued`}</p>
+                <p className="mt-1 text-base font-semibold text-[var(--foreground)]">{pdfFile || hasExistingPdf ? 'Article file attached' : 'Text manuscript only'}</p>
+                <p className="mt-1 text-sm text-[var(--muted)]">{isEdit ? `${assets.length} supplementary file${assets.length === 1 ? '' : 's'}` : `${supplementaryFiles.length} supplementary file${supplementaryFiles.length === 1 ? '' : 's'} queued`} · {isEdit ? articleImages.length : queuedArticleImages.length} article image{(isEdit ? articleImages.length : queuedArticleImages.length) === 1 ? '' : 's'}</p>
               </div>
             </div>
 

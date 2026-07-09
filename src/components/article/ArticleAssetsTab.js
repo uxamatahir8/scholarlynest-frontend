@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Download, File, FileSpreadsheet, FileText, Image, Archive, FileQuestion, ShieldCheck } from 'lucide-react';
+import { Download, File, FileSpreadsheet, FileText, Image, FileQuestion, ShieldCheck } from 'lucide-react';
 import api from '../../utils/api';
 
 export default function ArticleAssetsTab({ assets }) {
@@ -31,9 +31,6 @@ export default function ArticleAssetsTab({ assets }) {
     }
     if (mime.includes('image') || ['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(ext)) {
       return <Image className="w-6 h-6 text-indigo-500" />;
-    }
-    if (mime.includes('zip') || mime.includes('compressed') || ['zip', 'rar', 'tar', 'gz'].includes(ext)) {
-      return <Archive className="w-6 h-6 text-amber-600" />;
     }
     return <FileQuestion className="w-6 h-6 text-zinc-500" />;
   };
