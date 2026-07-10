@@ -10,6 +10,7 @@ import { useToast } from '../../context/ToastContext';
 import { Lock, Mail, User as UserIcon, Loader2, AlertCircle, Eye, EyeOff, Check, X, School, Info, ArrowRight, BookOpen, Contact } from 'lucide-react';
 import SeoHead from '../../components/SeoHead';
 import api from '../../utils/api';
+import { registerSchema, validateWithZod } from '../../lib/validation';
 
 export default function Register() {
   const { user, register: registerUser, loginWithPayload, loading: authLoading } = useAuth();
