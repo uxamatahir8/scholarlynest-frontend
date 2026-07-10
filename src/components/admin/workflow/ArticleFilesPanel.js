@@ -1,9 +1,19 @@
 import React from 'react';
-import { Download } from 'lucide-react';
+import { Download, FileImage, Files, Sheet } from 'lucide-react';
 import EmptyState from '../../ui/EmptyState';
 import WorkflowSection from './WorkflowSection';
 import { fileTypeLabels, formatDate, labelize } from './workflowDisplay';
 import api from '../../../utils/api';
+
+const imageExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
+const sheetExtensions = new Set(['xls', 'xlsx', 'csv']);
+const imageMimePrefixes = ['image/'];
+const sheetMimes = new Set([
+  'text/csv',
+  'application/csv',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
 
 function fileDownloadUrl(path) {
   if (!path) return '#';
@@ -11,6 +21,35 @@ function fileDownloadUrl(path) {
   const apiBase = (api.defaults.baseURL || '').replace(/\/$/, '');
   const suffix = path.startsWith('/api/') ? path.replace(/^\/api/, '') : path;
   return `${apiBase}${suffix}`;
+}
+
+function assetTitle(item) {
+  return item.title || item.original_filename || item.original_name || 'Supplementary asset';
+}
+
+function assetMeta(kind, item) {
+  if (kind === 'file') {
+    return `${fileTypeLabels[item.file_type] || labelize(item.file_type)} · ${formatDate(item.created_at)}`;
+  }
+  return item.mime_type || 'File';
+}
+
+function extensionFor(item) {
+  const source = assetTitle(item);
+  const match = String(source || '').toLowerCase().match(/\.([a-z0-9]+)(?:$|\?)/);
+  return match?.[1] || '';
+}
+
+function supplementaryGroup(kind, item) {
+  const extension = extensionFor(item);
+  const mime = String(item.mime_type || item.detected_mime_type || item.declared_mime_type || '').toLowerCase();
+  if (item.asset_type === 'image' || imageExtensions.has(extension) || imageMimePrefixes.some((prefix) => mime.startsWith(prefix))) {
+    return 'images';
+  }
+  if (sheetExtensions.has(extension) || sheetMimes.has(mime)) {
+    return 'sheets';
+  }
+  return 'files';
 }
 
 function DownloadRow({ item, title, meta }) {
@@ -39,12 +78,19 @@ export default function ArticleFilesPanel({ files = [], assets = [] }) {
   const manuscriptFiles = files.filter((file) => file.file_type === 'manuscript');
   const supplementaryFileRecords = files.filter((file) => file.file_type === 'supplementary');
   const workflowFiles = files.filter((file) => !['manuscript', 'supplementary'].includes(file.file_type));
-  const supplementaryAssets = assets.filter((asset) => asset.asset_type !== 'image');
-  const articleImages = assets.filter((asset) => asset.asset_type === 'image');
   const supplementaryItems = [
     ...supplementaryFileRecords.map((file) => ({ kind: 'file', item: file })),
-    ...supplementaryAssets.map((asset) => ({ kind: 'asset', item: asset })),
+    ...assets.map((asset) => ({ kind: 'asset', item: asset })),
   ];
+  const groupedSupplementaryItems = supplementaryItems.reduce((groups, entry) => {
+    groups[supplementaryGroup(entry.kind, entry.item)].push(entry);
+    return groups;
+  }, { images: [], sheets: [], files: [] });
+  const supplementaryGroups = [
+    { id: 'images', title: 'Images', icon: FileImage, items: groupedSupplementaryItems.images },
+    { id: 'sheets', title: 'Sheets and Data', icon: Sheet, items: groupedSupplementaryItems.sheets },
+    { id: 'files', title: 'Files and Documents', icon: Files, items: groupedSupplementaryItems.files },
+  ].filter((group) => group.items.length > 0);
 
   return (
     <WorkflowSection
@@ -98,27 +144,44 @@ export default function ArticleFilesPanel({ files = [], assets = [] }) {
       {supplementaryItems.length > 0 && (
         <div className="mt-5 min-w-0 max-w-full overflow-hidden border-t border-[var(--border)] pt-5">
           <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Supplementary Assets</h3>
-          <ul className="mt-3 grid min-w-0 max-w-full gap-2">
-            {supplementaryItems.map(({ kind, item }) => (
-              <DownloadRow
-                key={`${kind}-${item.id}`}
-                item={item}
-                title={item.title || item.original_filename || item.original_name || 'Supplementary asset'}
-                meta={kind === 'file' ? `${fileTypeLabels[item.file_type] || labelize(item.file_type)} · ${formatDate(item.created_at)}` : item.mime_type || 'File'}
-              />
-            ))}
-          </ul>
-        </div>
-      )}
-      {articleImages.length > 0 && (
-        <div className="mt-5 border-t border-[var(--border)] pt-5">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Article Images</h3>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            {articleImages.map((asset) => (
-              <figure key={asset.id} className="overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-muted)]">
-                <img src={fileDownloadUrl(asset.download_url)} alt={asset.title || asset.original_filename || 'Article image'} className="h-40 w-full object-cover" />
-                {(asset.title || asset.caption) && <figcaption className="p-3 text-xs text-[var(--muted)]">{asset.title || asset.caption}</figcaption>}
-              </figure>
+          <div className="mt-3 grid min-w-0 max-w-full gap-4">
+            {supplementaryGroups.map((group) => (
+              <section key={group.id} className="min-w-0 max-w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <group.icon className="h-4 w-4 shrink-0 text-[var(--muted)]" aria-hidden="true" />
+                    <h4 className="truncate text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{group.title}</h4>
+                  </div>
+                  <span className="shrink-0 text-xs font-bold text-[var(--muted)]">{group.items.length} item{group.items.length === 1 ? '' : 's'}</span>
+                </div>
+                {group.id === 'images' ? (
+                  <div className="grid min-w-0 max-w-full gap-3 sm:grid-cols-2">
+                    {group.items.map(({ kind, item }) => (
+                      <figure key={`${kind}-${item.id}`} className="min-w-0 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-muted)]">
+                        <img src={fileDownloadUrl(item.download_url)} alt={assetTitle(item)} className="h-36 w-full object-cover" />
+                        <figcaption className="grid min-w-0 gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                          <span className="min-w-0 truncate text-xs font-bold text-[var(--foreground)]" title={assetTitle(item)}>{assetTitle(item)}</span>
+                          <a href={fileDownloadUrl(item.download_url)} target="_blank" rel="noreferrer" className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-bold text-[var(--foreground)] hover:bg-[var(--surface-muted)] sm:w-auto">
+                            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                            Open
+                          </a>
+                        </figcaption>
+                      </figure>
+                    ))}
+                  </div>
+                ) : (
+                  <ul className="grid min-w-0 max-w-full gap-2">
+                    {group.items.map(({ kind, item }) => (
+                      <DownloadRow
+                        key={`${kind}-${item.id}`}
+                        item={item}
+                        title={assetTitle(item)}
+                        meta={assetMeta(kind, item)}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </section>
             ))}
           </div>
         </div>
