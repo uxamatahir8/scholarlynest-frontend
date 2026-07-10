@@ -2,6 +2,7 @@ export const STATUS_META = {
   draft: ['Draft', 'zinc'],
   pending: ['Submitted', 'blue'],
   submitted: ['Submitted', 'blue'],
+  in_transit: ['In Transit', 'amber'],
   under_review: ['Under Review', 'indigo'],
   assigned_to_sub_editor: ['Assigned to Sub Editor', 'violet'],
   reviewer_assigned: ['Reviewer Assigned', 'cyan'],
@@ -41,6 +42,7 @@ export const STATUS_TONE_CLASSES = {
 export const STATUS_FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'submitted', label: 'Submitted' },
+  { id: 'in_transit', label: 'In Transit' },
   { id: 'under_review', label: 'Under Review' },
   { id: 'assigned_to_sub_editor', label: 'Sub Editor' },
   { id: 'reviewer_assigned', label: 'Reviewer' },

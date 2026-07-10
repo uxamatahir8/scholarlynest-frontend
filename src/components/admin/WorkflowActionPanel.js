@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, CheckCircle2, ClipboardCheck, FileCheck2, Loader2, Send, Upload, UserPlus } from 'lucide-react';
+import { ArrowRightLeft, Check, CheckCircle2, ClipboardCheck, FileCheck2, Loader2, Send, Upload, UserPlus, XCircle } from 'lucide-react';
 import api from '../../utils/api';
 import { safeApiMessage } from '../../utils/safeErrors';
 import { logError } from '../../utils/safeLogger';
@@ -20,8 +20,10 @@ import {
 } from './articleWorkflow';
 import { uploadAndAwaitClean } from '../../lib/mediaUploads/DirectUploadClient';
 import {
-  finalEditorialDecisionSchema,
-  postPublicationWorkflowSchema,
+	  finalEditorialDecisionSchema,
+	  articleTransferRejectSchema,
+	  articleTransferRequestSchema,
+	  postPublicationWorkflowSchema,
   productionAssignmentSchema,
   productionCompletionSchema,
   reviewerWorkflowSubmitSchemaFor,
@@ -90,6 +92,9 @@ export default function WorkflowActionPanel({
   const [confirmAction, setConfirmAction] = useState(null);
   const [assignees, setAssignees] = useState({});
   const [screenForm, setScreenForm] = useState({ decision: 'send_to_review', plagiarism_status: '', plagiarism_score: '', comments: '' });
+  const [transferTargets, setTransferTargets] = useState([]);
+  const [transferForm, setTransferForm] = useState({ to_magazine_id: '', editor_comments: '' });
+  const [transferRejectForm, setTransferRejectForm] = useState({ author_rejection_reason: '' });
   const [subEditorId, setSubEditorId] = useState('');
   const [reviewerId, setReviewerId] = useState('');
   const [manualReviewer, setManualReviewer] = useState({ name: '', email: '', affiliation: '' });
@@ -150,6 +155,17 @@ export default function WorkflowActionPanel({
       setAssignees((prev) => ({ ...prev, [role]: res.data?.data || [] }));
     } catch (err) {
       logError(`Failed to load ${role} assignees`, err);
+    }
+  };
+
+  const loadTransferTargets = async () => {
+    if (!article?.id || transferTargets.length) return;
+    try {
+      const res = await api.get(`/articles/${article.id}/transfer-target-magazines`);
+      setTransferTargets(res.data?.data || []);
+    } catch (err) {
+      logError('Failed to load transfer target magazines', err);
+      toast(safeApiMessage(err, 'Unable to load transfer target magazines.'), 'error');
     }
   };
 
@@ -263,6 +279,9 @@ export default function WorkflowActionPanel({
 
   const status = article.status;
   const canScreen = canEditorial && ['submitted', 'pending'].includes(status);
+  const pendingTransferRequest = article?.pending_transfer_request;
+  const canRequestTransfer = Boolean(article?.can_request_transfer) && canScreen;
+  const canRespondTransferRequest = Boolean(article?.can_respond_transfer_request) && status === 'in_transit' && pendingTransferRequest;
   const canAssignSubEditor = canEditorial && ['under_review', 'resubmitted'].includes(status);
   const canShowReviewerAssignment = canAssignReviewer && ['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted'].includes(status);
   const canFinalDecision = canEditorial && REVIEWABLE_STATUSES.has(status);
@@ -282,7 +301,11 @@ export default function WorkflowActionPanel({
     ? 'This will mark your copyediting task as complete and move the manuscript toward publication readiness.'
     : 'This will mark your production task as complete and move the manuscript toward publication readiness.';
 
-  const hasAnyAction = canScreen || canAssignSubEditor || canShowReviewerAssignment || (isSubEditor && mySubEditorAssignment)
+  useEffect(() => {
+    if (canRequestTransfer) loadTransferTargets();
+  }, [canRequestTransfer, article?.id]);
+
+  const hasAnyAction = canScreen || canRespondTransferRequest || canAssignSubEditor || canShowReviewerAssignment || (isSubEditor && mySubEditorAssignment)
     || (isReviewer && myReviewerAssignment) || canFinalDecision || canAuthorFinalReview || canShowProductionAssignment || canCompleteProduction
     || completedProductionAssignment || canShowPublish || canPostPublication;
 
@@ -297,55 +320,108 @@ export default function WorkflowActionPanel({
           <EmptyState title="No action available">Your role has no workflow action for this manuscript right now.</EmptyState>
         )}
 
+        {status === 'in_transit' && (
+          <Alert tone="warning" title="Article in transit">
+            This manuscript is waiting for the author to accept or reject a magazine transfer request. Normal editorial workflow actions are paused until the request is resolved.
+          </Alert>
+        )}
+
         {canScreen && (
-          <ActionBlock title="Editorial Screening" description="Decide whether this manuscript moves into review or is rejected during screening.">
+          <ActionBlock title="Editorial Screening" description="Decide whether this manuscript moves into review, is rejected during screening, or should be transferred to another magazine.">
             <div className="grid gap-3 md:grid-cols-3">
               <Field label="Decision" required>
                 <Select value={screenForm.decision} onChange={(event) => setScreenForm({ ...screenForm, decision: event.target.value })}>
                   <option value="send_to_review">Send to Review</option>
+                  {canRequestTransfer && <option value="transfer">Transfer Article</option>}
                   <option value="reject">Reject at Screening</option>
                 </Select>
               </Field>
-              <Field label="Similarity Status">
-                <Input value={screenForm.plagiarism_status} onChange={(event) => setScreenForm({ ...screenForm, plagiarism_status: event.target.value })} />
-              </Field>
-              <Field label="Similarity Score">
-                <Input type="number" min="0" max="100" value={screenForm.plagiarism_score} onChange={(event) => setScreenForm({ ...screenForm, plagiarism_score: event.target.value })} />
-              </Field>
+              {screenForm.decision !== 'transfer' && (
+                <>
+                  <Field label="Similarity Status">
+                    <Input value={screenForm.plagiarism_status} onChange={(event) => setScreenForm({ ...screenForm, plagiarism_status: event.target.value })} />
+                  </Field>
+                  <Field label="Similarity Score">
+                    <Input type="number" min="0" max="100" value={screenForm.plagiarism_score} onChange={(event) => setScreenForm({ ...screenForm, plagiarism_score: event.target.value })} />
+                  </Field>
+                </>
+              )}
             </div>
-            <Field label={screenForm.decision === 'reject' ? 'Reason for Author' : 'Screening Notes'} required={screenForm.decision === 'reject'}>
-              <Textarea value={screenForm.comments} onChange={(event) => setScreenForm({ ...screenForm, comments: event.target.value })} rows={3} />
-            </Field>
-            {fileInput('plagiarism_report', 'Similarity Report')}
-            <Button
-              type="button"
-              icon={ClipboardCheck}
-              isLoading={busyAction === 'screen'}
-              disabled={screenForm.decision === 'reject' && !screenForm.comments.trim()}
-	              onClick={() => {
-	                if (!validateAction(workflowScreeningSchema, screenForm)) return;
-	                askConfirmation({
-	                key: 'screen',
-	                title: screenForm.decision === 'reject' ? 'Reject during screening?' : 'Send manuscript to review?',
-	                message: screenForm.decision === 'reject'
-                  ? 'This will reject the manuscript during screening and notify the author-facing workflow with your reason.'
-                  : 'This will move the manuscript into editorial review.',
-                confirmText: screenForm.decision === 'reject' ? 'Reject Manuscript' : 'Send to Review',
-                variant: screenForm.decision === 'reject' ? 'danger' : 'primary',
-	                run: () => runAction('screen', async () => api.post(`/admin/articles/${article.id}/screen`, await buildDirectUploadFormData({
-	                  ...screenForm,
-	                  plagiarism_score: screenForm.plagiarism_score === '' ? null : Number(screenForm.plagiarism_score),
-                }, {
-                  plagiarism_report_upload_id: {
-                    file: files.plagiarism_report,
-                    purpose: 'article_plagiarism_report',
-                  },
-	                }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Screening result saved.'),
-	              });
-	              }}
-            >
-              Save Screening
-            </Button>
+            {screenForm.decision === 'transfer' ? (
+              <>
+                <Alert tone="info" title="Transfer requires author approval">
+                  The author will receive a request to accept or reject the proposed magazine transfer. The manuscript will move to In Transit while waiting.
+                </Alert>
+                <Field label="Target Magazine" required>
+                  <Select value={transferForm.to_magazine_id} onChange={(event) => setTransferForm({ ...transferForm, to_magazine_id: event.target.value })}>
+                    <option value="">Select target magazine</option>
+                    {transferTargets.map((magazine) => (
+                      <option key={magazine.id} value={magazine.id}>{magazine.name || magazine.title}</option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Transfer Comments" required>
+                  <Textarea value={transferForm.editor_comments} onChange={(event) => setTransferForm({ ...transferForm, editor_comments: event.target.value })} rows={4} />
+                </Field>
+                <Button
+                  type="button"
+                  icon={ArrowRightLeft}
+                  isLoading={busyAction === 'transfer-request'}
+                  onClick={() => {
+                    if (!validateAction(articleTransferRequestSchema, transferForm)) return;
+                    askConfirmation({
+                      key: 'transfer-request',
+                      title: 'Send transfer request?',
+                      message: 'This will pause normal editorial workflow and ask the author to approve moving the manuscript to the selected magazine.',
+                      confirmText: 'Submit Transfer Request',
+                      variant: 'primary',
+                      run: () => runAction('transfer-request', () => api.post(`/articles/${article.id}/transfer-requests`, {
+                        to_magazine_id: Number(transferForm.to_magazine_id),
+                        editor_comments: transferForm.editor_comments,
+                      }), 'Transfer request sent to the author.'),
+                    });
+                  }}
+                >
+                  Submit Transfer Request
+                </Button>
+              </>
+            ) : (
+              <>
+                <Field label={screenForm.decision === 'reject' ? 'Reason for Author' : 'Screening Notes'} required={screenForm.decision === 'reject'}>
+                  <Textarea value={screenForm.comments} onChange={(event) => setScreenForm({ ...screenForm, comments: event.target.value })} rows={3} />
+                </Field>
+                {fileInput('plagiarism_report', 'Similarity Report')}
+                <Button
+                  type="button"
+                  icon={ClipboardCheck}
+                  isLoading={busyAction === 'screen'}
+                  disabled={screenForm.decision === 'reject' && !screenForm.comments.trim()}
+                  onClick={() => {
+                    if (!validateAction(workflowScreeningSchema, screenForm)) return;
+                    askConfirmation({
+                      key: 'screen',
+                      title: screenForm.decision === 'reject' ? 'Reject during screening?' : 'Send manuscript to review?',
+                      message: screenForm.decision === 'reject'
+                        ? 'This will reject the manuscript during screening and notify the author-facing workflow with your reason.'
+                        : 'This will move the manuscript into editorial review.',
+                      confirmText: screenForm.decision === 'reject' ? 'Reject Manuscript' : 'Send to Review',
+                      variant: screenForm.decision === 'reject' ? 'danger' : 'primary',
+                      run: () => runAction('screen', async () => api.post(`/admin/articles/${article.id}/screen`, await buildDirectUploadFormData({
+                        ...screenForm,
+                        plagiarism_score: screenForm.plagiarism_score === '' ? null : Number(screenForm.plagiarism_score),
+                      }, {
+                        plagiarism_report_upload_id: {
+                          file: files.plagiarism_report,
+                          purpose: 'article_plagiarism_report',
+                        },
+                      }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Screening result saved.'),
+                    });
+                  }}
+                >
+                  Save Screening
+                </Button>
+              </>
+            )}
           </ActionBlock>
         )}
 
@@ -699,6 +775,65 @@ export default function WorkflowActionPanel({
             >
               Record Decision
             </Button>
+          </ActionBlock>
+        )}
+
+        {canRespondTransferRequest && (
+          <ActionBlock title="Magazine Transfer Request" description="Review the editor’s proposed transfer and choose whether this manuscript should move to the suggested magazine.">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">Current Magazine</p>
+                <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">{pendingTransferRequest.from_magazine?.title || article.magazine?.title || 'Current magazine'}</p>
+              </div>
+              <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">Suggested Magazine</p>
+                <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">{pendingTransferRequest.to_magazine?.title || 'Suggested magazine'}</p>
+              </div>
+            </div>
+            <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3 text-sm text-[var(--muted)]">
+              <p><span className="font-semibold text-[var(--foreground)]">Requested by:</span> {pendingTransferRequest.requested_by?.name || 'Editorial team'}</p>
+              <p><span className="font-semibold text-[var(--foreground)]">Requested at:</span> {pendingTransferRequest.requested_at ? new Date(pendingTransferRequest.requested_at).toLocaleString() : 'Not recorded'}</p>
+              <p className="mt-2 whitespace-pre-line"><span className="font-semibold text-[var(--foreground)]">Editor comments:</span> {pendingTransferRequest.editor_comments || 'No comments provided.'}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                icon={CheckCircle2}
+                isLoading={busyAction === 'transfer-accept'}
+                onClick={() => askConfirmation({
+                  key: 'transfer-accept',
+                  title: 'Accept magazine transfer?',
+                  message: 'This will move the manuscript to the suggested magazine and return it to Screening.',
+                  confirmText: 'Accept Transfer',
+                  variant: 'primary',
+                  run: () => runAction('transfer-accept', () => api.post(`/articles/${article.id}/transfer-requests/${pendingTransferRequest.id}/accept`), 'Transfer accepted.'),
+                })}
+              >
+                Accept Transfer
+              </Button>
+              <Button
+                type="button"
+                icon={XCircle}
+                variant="secondary"
+                isLoading={busyAction === 'transfer-reject'}
+                onClick={() => {
+                  if (!validateAction(articleTransferRejectSchema, transferRejectForm)) return;
+                  askConfirmation({
+                    key: 'transfer-reject',
+                    title: 'Reject magazine transfer?',
+                    message: 'This will keep the manuscript in the current magazine and return it to Screening.',
+                    confirmText: 'Reject Transfer',
+                    variant: 'danger',
+                    run: () => runAction('transfer-reject', () => api.post(`/articles/${article.id}/transfer-requests/${pendingTransferRequest.id}/reject`, transferRejectForm), 'Transfer rejected.'),
+                  });
+                }}
+              >
+                Reject Transfer
+              </Button>
+            </div>
+            <Field label="Rejection Reason" required>
+              <Textarea value={transferRejectForm.author_rejection_reason} onChange={(event) => setTransferRejectForm({ author_rejection_reason: event.target.value })} rows={3} />
+            </Field>
           </ActionBlock>
         )}
 

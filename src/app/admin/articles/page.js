@@ -48,6 +48,7 @@ const getFullImageUrl = (path) => {
 const AUTHOR_STATUS_LABELS = {
   draft: 'Draft',
   submitted: 'Submitted',
+  in_transit: 'In Transit',
   under_review: 'Under review',
   assigned_to_sub_editor: 'Under review',
   reviewer_assigned: 'Under review',

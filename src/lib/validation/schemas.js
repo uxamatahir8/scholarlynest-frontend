@@ -100,7 +100,7 @@ export const reviewerInvitationResponseSchema = z.object({
 export const reviewerSubmitSchema = z.object({ recommendation: requiredString('Recommendation'), comments_for_author: optionalString('Comments', 10000), confidential_comments: optionalString('Confidential comments', 10000) });
 
 export const workflowScreeningSchema = z.object({
-  decision: z.enum(['send_to_review', 'reject']),
+  decision: z.enum(['send_to_review', 'reject', 'transfer']),
   plagiarism_status: optionalString('Similarity status', 255),
   plagiarism_score: optionalPercent,
   comments: optionalString('Screening notes', 10000),
@@ -108,6 +108,15 @@ export const workflowScreeningSchema = z.object({
   if (data.decision === 'reject' && !String(data.comments || '').trim()) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['comments'], message: 'Reason for Author is required.' });
   }
+});
+
+export const articleTransferRequestSchema = z.object({
+  to_magazine_id: idField,
+  editor_comments: requiredString('Transfer comments', 5000),
+});
+
+export const articleTransferRejectSchema = z.object({
+  author_rejection_reason: requiredString('Rejection reason', 5000),
 });
 
 export const workflowAssigneeSchema = z.object({ assignee_id: idField });
