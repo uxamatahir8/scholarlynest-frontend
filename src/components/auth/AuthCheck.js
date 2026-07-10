@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { ShieldAlert, KeyRound, Loader2, CheckCircle2 } from 'lucide-react';
 import api from '../../utils/api';
+import { enforcedPasswordResetSchema, validateWithZod } from '../../lib/validation';
 
 export default function AuthCheck({ children }) {
   const { user, refreshUser } = useAuth();
@@ -25,13 +26,12 @@ export default function AuthCheck({ children }) {
     e.preventDefault();
     setErrors({});
 
-    if (password.length < 8) {
-      setErrors({ password: ['Password must be at least 8 characters.'] });
-      return;
-    }
-
-    if (password !== passwordConfirmation) {
-      setErrors({ password_confirmation: ['Passwords do not match.'] });
+    const validation = validateWithZod(enforcedPasswordResetSchema, {
+      password,
+      password_confirmation: passwordConfirmation,
+    });
+    if (!validation.success) {
+      setErrors(Object.fromEntries(Object.entries(validation.errors).map(([key, value]) => [key, [value]])));
       return;
     }
 
@@ -84,7 +84,6 @@ export default function AuthCheck({ children }) {
               <KeyRound className="absolute left-3 top-3.5 w-4 h-4 text-zinc-500" />
               <input
                 type="password"
-                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
@@ -102,7 +101,6 @@ export default function AuthCheck({ children }) {
               <KeyRound className="absolute left-3 top-3.5 w-4 h-4 text-zinc-500" />
               <input
                 type="password"
-                required
                 value={passwordConfirmation}
                 onChange={(e) => setPasswordConfirmation(e.target.value)}
                 placeholder="••••••••••••"

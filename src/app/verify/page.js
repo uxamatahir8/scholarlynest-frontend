@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { ShieldCheck, Mail, Loader2, AlertCircle } from 'lucide-react';
 import api from '../../utils/api';
+import { emailVerificationSchema, forgotPasswordSchema, validateWithZod } from '../../lib/validation';
 
 function VerifyForm() {
   const { loginWithPayload } = useAuth();
@@ -33,13 +34,9 @@ function VerifyForm() {
     e.preventDefault();
     setError('');
 
-    if (!email) {
-      setError('Email address is required.');
-      return;
-    }
-
-    if (!code || code.length !== 6) {
-      setError('Please enter a valid 6-digit verification code.');
+    const validation = validateWithZod(emailVerificationSchema, { email, code });
+    if (!validation.success) {
+      setError(Object.values(validation.errors)[0] || validation.message);
       return;
     }
 
@@ -61,8 +58,9 @@ function VerifyForm() {
   };
 
   const handleResend = async () => {
-    if (!email) {
-      setError('Email address is required to resend the code.');
+    const validation = validateWithZod(forgotPasswordSchema, { email });
+    if (!validation.success) {
+      setError(Object.values(validation.errors)[0] || validation.message);
       return;
     }
 
@@ -123,7 +121,7 @@ function VerifyForm() {
           </label>
           <div className="relative flex items-center">
             <input
-              type="email"
+              type="text"
               id="verify-email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

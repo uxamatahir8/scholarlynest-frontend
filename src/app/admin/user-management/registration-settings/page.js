@@ -17,6 +17,7 @@ import { Select } from '../../../../components/ui/Input';
 import LoadingState from '../../../../components/ui/LoadingState';
 import Textarea from '../../../../components/ui/Textarea';
 import RegistrationStatusPanel from '../../../../components/admin/users/RegistrationStatusPanel';
+import { registrationSettingsSchema, validateWithZod } from '../../../../lib/validation';
 
 export default function RegistrationSettingsPage() {
   const router = useRouter();
@@ -78,11 +79,9 @@ export default function RegistrationSettingsPage() {
   }, [authLoading, canUsePage, router]);
 
   const submitSettings = async () => {
-    const errors = {};
-    if (!settings.default_role_id) errors.default_role_id = 'Default public role is required.';
-    if (settings.registration_notice.length > 500) errors.registration_notice = 'Registration notice must be 500 characters or fewer.';
-    setValidationErrors(errors);
-    if (Object.keys(errors).length) return;
+    const validation = validateWithZod(registrationSettingsSchema, settings);
+    setValidationErrors(validation.errors);
+    if (!validation.success) return;
 
     setSaving(true);
     try {
