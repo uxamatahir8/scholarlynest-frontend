@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { ImagePlus, Loader2, Pencil, Save, X } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import MagazineFormFields from '../MagazineFormFields';
+import { magazineSchema, validateWithZod } from '../../../lib/validation';
 
 const RichEditor = dynamic(() => import('../../ui/RichEditor'), {
   ssr: false,
@@ -38,6 +39,7 @@ export default function MagazineFormDialog({
 }) {
   const [form, setForm] = useState(emptyForm);
   const [fileName, setFileName] = useState('');
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (!open) return;
@@ -60,6 +62,9 @@ export default function MagazineFormDialog({
 
   const submit = (event) => {
     event.preventDefault();
+    const validation = validateWithZod(magazineSchema, form);
+    if (!validation.success) { setErrors(validation.errors); return; }
+    setErrors({});
     onSubmit?.(form);
   };
 
@@ -94,12 +99,13 @@ export default function MagazineFormDialog({
                 <label className="block">
                   <span className="text-sm font-semibold text-[var(--foreground)]">Magazine title</span>
                   <input
-                    required
+                    aria-invalid={!!errors.title}
                     value={form.title}
                     disabled={readOnly}
                     onChange={(event) => update('title', event.target.value)}
                     className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm font-semibold text-[var(--foreground)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] disabled:opacity-60"
                   />
+                  {errors.title && <p className="mt-1 text-xs font-semibold text-red-600">{errors.title}</p>}
                 </label>
                 <MagazineFormFields value={form.editor_id} onChange={(value) => update('editor_id', value)} disabled={readOnly} />
               </section>

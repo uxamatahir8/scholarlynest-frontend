@@ -49,7 +49,7 @@ export default function UserForm({
             <Input value={values.name} onChange={(event) => setValue('name', event.target.value)} placeholder="Jane Researcher" />
           </Field>
           <Field label="Email Address" required error={errors.email}>
-            <Input type="email" value={values.email} onChange={(event) => setValue('email', event.target.value)} placeholder="jane@example.edu" />
+            <Input type="text" value={values.email} onChange={(event) => setValue('email', event.target.value)} placeholder="jane@example.edu" />
           </Field>
           <Field label="University / Affiliation" error={errors.university_name} helperText="Optional unless backend validation requires it for this route.">
             <Input value={values.university_name} onChange={(event) => setValue('university_name', event.target.value)} placeholder="University or organization" />

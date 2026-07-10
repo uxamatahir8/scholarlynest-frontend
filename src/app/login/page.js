@@ -10,6 +10,7 @@ import { useToast } from '../../context/ToastContext';
 import { Lock, Mail, Loader2, AlertCircle, Eye, EyeOff, LayoutDashboard } from 'lucide-react';
 import SeoHead from '../../components/SeoHead';
 import api from '../../utils/api';
+import { loginSchema, validateWithZod } from '../../lib/validation';
 
 export default function Login() {
   const { user, login, loginWithPayload, loading: authLoading } = useAuth();
@@ -120,19 +121,7 @@ export default function Login() {
     e.preventDefault();
     setError('');
     
-    // Custom Client-Side Validation
-    const errors = {};
-    if (!email.trim()) {
-      errors.email = 'Academic email address is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = 'Please enter a valid email address (e.g. name@university.edu).';
-    }
-
-    if (!password) {
-      errors.password = 'Password is required.';
-    } else if (password.length < 8) {
-      errors.password = 'Password must be at least 8 characters long.';
-    }
+    const errors = validateWithZod(loginSchema, { email, password }).errors;
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -222,7 +211,7 @@ export default function Login() {
             <div className="relative flex items-center">
               <input
                 ref={emailInputRef}
-                type="email"
+                type="text"
                 id="login-email"
                 value={email}
                 onChange={(e) => {

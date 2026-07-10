@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { ShieldCheck, Mail, Loader2, AlertCircle } from 'lucide-react';
 import api from '../../utils/api';
+import { twoFactorVerificationSchema, validateWithZod } from '../../lib/validation';
 
 function Verify2FAForm() {
   const { loginWithPayload } = useAuth();
@@ -32,13 +33,9 @@ function Verify2FAForm() {
     e.preventDefault();
     setError('');
 
-    if (!email) {
-      setError('Email address is required.');
-      return;
-    }
-
-    if (!code || code.length !== 6) {
-      setError('Please enter your 6-digit authentication code.');
+    const validation = validateWithZod(twoFactorVerificationSchema, { email, code });
+    if (!validation.success) {
+      setError(Object.values(validation.errors)[0] || validation.message);
       return;
     }
 
@@ -100,7 +97,7 @@ function Verify2FAForm() {
           </label>
           <div className="relative flex items-center">
             <input
-              type="email"
+              type="text"
               id="2fa-email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

@@ -44,6 +44,7 @@ import {
   validateAuthors,
 } from '../../article/academicArticleForm';
 import { isArticleEditableStatus, normalizeStatus } from '../../../utils/status';
+import { articleDraftSchema, articleSubmitSchema, normalizeZodErrors } from '../../../lib/validation';
 
 const RichEditor = dynamic(() => import('../../ui/RichEditor'), {
   ssr: false,
@@ -376,6 +377,10 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
 
   const validateForm = ({ scope = 'submit' } = {}) => {
     const errors = {};
+    const zodResult = scope === 'submit'
+      ? articleSubmitSchema.safeParse({ magazine_id: magazineId, title, abstract: cleanRichText(abstract), terms_accepted: termsAccepted })
+      : articleDraftSchema.safeParse({ magazine_id: magazineId || '', title, abstract: cleanRichText(abstract), terms_accepted: termsAccepted });
+    if (!zodResult.success) Object.assign(errors, normalizeZodErrors(zodResult.error));
     if (!magazineId) errors.magazineId = 'Please choose a magazine.';
     if (!title.trim()) errors.title = 'Please add a manuscript title.';
     if (!cleanRichText(abstract)) errors.abstract = 'Please add an abstract.';

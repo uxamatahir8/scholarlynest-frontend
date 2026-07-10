@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, Calendar, CheckCircle2, Loader2, Plus, Trash2, Upload, X } from 'lucide-react';
 import api from '../../utils/api';
 import RichEditor from '../ui/RichEditor';
+import { publishArticleModalSchema, validateWithZod } from '../../lib/validation';
 
 const defaultSections = [
   { section_key: 'introduction', title: 'Introduction', content_html: '', sort_order: 1, image_file: null },
@@ -46,6 +47,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
   });
   const [sections, setSections] = useState(defaultSections);
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (!isOpen || !magazineId) return;
@@ -128,6 +130,27 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const publicationSectionsPayload = sections.map((section, index) => ({
+      id: section.id,
+      section_key: slugKey(section.section_key || section.title, `section_${index + 1}`),
+      title: section.title,
+      content_html: section.content_html,
+      sort_order: index + 1,
+      image_file: section.image_file,
+      existing_media_upload_session_id: section.existing_media_upload_session_id,
+    }));
+    const validation = validateWithZod(publishArticleModalSchema, {
+      published_year: selectedYear,
+      published_month: selectedMonth,
+      magazine_issue_id: magazineIssueId || null,
+      doi,
+      page_start: pageStart,
+      page_end: pageEnd,
+      metadata,
+      publication_sections: publicationSectionsPayload,
+    });
+    setErrors(validation.errors);
+    if (!validation.success) return;
     setSubmitting(true);
     try {
       await onSubmit({
@@ -139,16 +162,9 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
         page_end: pageEnd ? parseInt(pageEnd, 10) : null,
         publication_pdf: publicationPdf,
         ...metadata,
-        publication_sections: sections.map((section, index) => ({
-          id: section.id,
-          section_key: slugKey(section.section_key || section.title, `section_${index + 1}`),
-          title: section.title,
-          content_html: section.content_html,
-          sort_order: index + 1,
-          image_file: section.image_file,
-          existing_media_upload_session_id: section.existing_media_upload_session_id,
-        })),
+        publication_sections: publicationSectionsPayload,
       });
+      setErrors({});
     } catch (err) {
       logError(err);
     } finally {
@@ -197,6 +213,11 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
                 {articleTitle}
               </p>
             </div>
+            {Object.keys(errors).length > 0 && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+                {Object.values(errors)[0]}
+              </div>
+            )}
 
             <div className="h-px bg-zinc-100 dark:bg-zinc-850" />
 
@@ -228,7 +249,6 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
                   <select
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(e.target.value)}
-                    required
                     className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-105 cursor-pointer appearance-none font-sans"
                   >
                     {years.map((y) => (
@@ -248,7 +268,6 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
                   <select
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value)}
-                    required
                     className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-105 cursor-pointer appearance-none font-sans"
                   >
                     {months.map((m) => (

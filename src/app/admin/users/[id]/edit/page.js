@@ -13,6 +13,7 @@ import ErrorState from '../../../../../components/ui/ErrorState';
 import LoadingState from '../../../../../components/ui/LoadingState';
 import UserForm from '../../../../../components/admin/users/UserForm';
 import { isMagazineAssignmentRole, isSubEditorRole } from '../../../../../utils/userManagement';
+import { adminUserSchemaFor, validateWithZod } from '../../../../../lib/validation';
 
 const initialValues = {
   name: '',
@@ -85,19 +86,15 @@ export default function EditUserPage() {
   }, [authLoading, canUsePage, router, userId]);
 
   const validate = () => {
-    const errors = {};
-    if (!values.name.trim()) errors.name = 'Name is required.';
-    if (!values.email.trim()) errors.email = 'Email address is required.';
-    if (!values.role_id) errors.role_id = 'Role assignment is required.';
     const selectedRole = roles.find((role) => String(role.id) === String(values.role_id));
-    if (isSubEditorRole(selectedRole) && values.editor_ids.length === 0) {
-      errors.editor_ids = 'At least one Editor must be assigned to a Sub Editor.';
-    }
-    if (isMagazineAssignmentRole(selectedRole) && values.magazine_ids.length === 0) {
-      errors.magazine_ids = 'Select at least one magazine for this role.';
-    }
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    const schema = adminUserSchemaFor({
+      requireStatus: true,
+      requireEditorAssignment: isSubEditorRole(selectedRole),
+      requireMagazineAssignment: isMagazineAssignmentRole(selectedRole),
+    });
+    const validation = validateWithZod(schema, values);
+    setFieldErrors(validation.errors);
+    return validation.success;
   };
 
   const handleSubmit = async (event) => {

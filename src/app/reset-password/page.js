@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Lock, ShieldAlert, Loader2, AlertCircle, Check, X, Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
+import { resetPasswordFormSchema, validateWithZod } from '../../lib/validation';
 
 function ResetPasswordForm() {
   const { toast } = useToast();
@@ -75,18 +76,15 @@ function ResetPasswordForm() {
       return;
     }
 
-    const errors = {};
-    if (!password) {
-      errors.password = 'New password is required.';
-    } else if (!isPasswordStrong) {
-      errors.password = 'Password does not meet the complexity requirements.';
-    }
-    if (password !== passwordConfirmation) {
-      errors.passwordConfirmation = 'Passwords do not match.';
-    }
+    const validation = validateWithZod(resetPasswordFormSchema, {
+      email: emailParam,
+      token: tokenParam,
+      password,
+      passwordConfirmation,
+    });
 
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
+    if (!validation.success) {
+      setFieldErrors(validation.errors);
       toast('Please correct the validation errors in your fields.', 'error');
       return;
     }

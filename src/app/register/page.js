@@ -10,6 +10,7 @@ import { useToast } from '../../context/ToastContext';
 import { Lock, Mail, User as UserIcon, Loader2, AlertCircle, Eye, EyeOff, Check, X, School, Info, ArrowRight, BookOpen, Contact } from 'lucide-react';
 import SeoHead from '../../components/SeoHead';
 import api from '../../utils/api';
+import { registerFinalSchema, registerStepOneSchema, validateWithZod } from '../../lib/validation';
 
 export default function Register() {
   const { user, register: registerUser, loginWithPayload, loading: authLoading } = useAuth();
@@ -154,29 +155,14 @@ export default function Register() {
 
   // Validation logic for Step 1
   const validateStep1 = () => {
-    const errors = {};
-    if (!name.trim()) {
-      errors.name = 'Full Name or Academic Title is required.';
-    } else if (name.trim().length < 2) {
-      errors.name = 'Academic Title must be at least 2 characters.';
-    }
+    const validation = validateWithZod(registerStepOneSchema, { name, university_name: universityName, email });
 
-    if (!universityName.trim()) {
-      errors.university_name = 'University or Institutional Affiliation is required.';
-    }
-
-    if (!email.trim()) {
-      errors.email = 'Academic email address is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = 'Please enter a valid email address (e.g. fleming@university.edu).';
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
+    if (!validation.success) {
+      setFieldErrors(validation.errors);
       toast('Please correct fields in Step 1 before continuing.', 'error');
-      if (errors.name) nameRef.current?.focus();
-      else if (errors.university_name) universityRef.current?.focus();
-      else if (errors.email) emailRef.current?.focus();
+      if (validation.errors.name) nameRef.current?.focus();
+      else if (validation.errors.university_name) universityRef.current?.focus();
+      else if (validation.errors.email) emailRef.current?.focus();
       return false;
     }
 
@@ -197,25 +183,13 @@ export default function Register() {
     setError('');
     setFieldErrors({});
 
-    // Final Validation
-    const errors = {};
-    if (!password) {
-      errors.password = 'Password is required.';
-    } else if (password.length < 8) {
-      errors.password = 'Password must be at least 8 characters long.';
-    }
+    const validation = validateWithZod(registerFinalSchema, { password, passwordConfirmation });
 
-    if (!passwordConfirmation) {
-      errors.passwordConfirmation = 'Please confirm your password.';
-    } else if (password !== passwordConfirmation) {
-      errors.passwordConfirmation = 'Passwords do not match.';
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
+    if (!validation.success) {
+      setFieldErrors(validation.errors);
       toast('Please correct verification errors in Step 2.', 'error');
-      if (errors.password) passwordRef.current?.focus();
-      else if (errors.passwordConfirmation) confirmPasswordRef.current?.focus();
+      if (validation.errors.password) passwordRef.current?.focus();
+      else if (validation.errors.passwordConfirmation) confirmPasswordRef.current?.focus();
       return;
     }
 
@@ -386,7 +360,6 @@ export default function Register() {
                       if (fieldErrors.university_name) setFieldErrors(prev => ({ ...prev, university_name: '' }));
                     }}
                     placeholder="Harvard University"
-                    required
                     aria-invalid={!!fieldErrors.university_name}
                     aria-describedby={fieldErrors.university_name ? "university-error" : undefined}
                     className={`w-full text-xs font-semibold pl-9 pr-3 py-2.5 bg-surface-muted dark:bg-zinc-900/30 border rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-gold/40 placeholder-zinc-400 dark:placeholder-zinc-650 transition-all ${fieldErrors.university_name ? 'border-danger focus:border-danger' : 'border-border dark:border-zinc-800/80 focus:border-accent-gold dark:focus:border-accent-gold'}`}
@@ -408,7 +381,7 @@ export default function Register() {
                 <div className="relative flex items-center">
                   <input
                     ref={emailRef}
-                    type="email"
+                    type="text"
                     id="reg-email"
                     value={email}
                     onChange={(e) => {
