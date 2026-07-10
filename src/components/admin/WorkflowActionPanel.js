@@ -13,6 +13,7 @@ import { Input, Select } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import EmptyState from '../ui/EmptyState';
 import WorkflowSection from './workflow/WorkflowSection';
+import { labelize } from './workflow/workflowDisplay';
 import {
   PUBLISHABLE_STATUSES,
   REVIEWABLE_STATUSES,
@@ -48,7 +49,7 @@ const postPublicationActions = [
   { value: 'unpublish', label: 'Unpublish' },
 ];
 
-const productionStatuses = new Set(['accepted', 'ready_for_publication']);
+const productionStatuses = new Set(['accepted', 'copy_editing', 'ready_for_publication']);
 const activeProductionAssignmentStatuses = new Set(['active', 'pending', 'in_progress', 'assigned']);
 
 function ActionBlock({ title, description, children }) {
@@ -98,7 +99,6 @@ export default function WorkflowActionPanel({
   const isReviewer = hasRole('reviewer');
   const isPublisher = hasRole('publisher');
   const isCopyEditor = hasRole('copy_editor');
-  const isProofreader = hasRole('proofreader');
   const canEditorial = isAdmin || isEditor;
   const canAssignReviewer = isAdmin || isEditor || isSubEditor;
   const canPublish = isAdmin || isPublisher;
@@ -114,19 +114,19 @@ export default function WorkflowActionPanel({
 
   const myProductionAssignment = useMemo(() => (
     (workflowContext?.production_assignments || []).find((item) => {
-      const roleMatches = isCopyEditor ? item.role === 'copy_editor' : isProofreader ? item.role === 'proofreader' : true;
+      const roleMatches = isCopyEditor ? item.role === 'copy_editor' : true;
       const userMatches = isAdmin || Number(item.user_id) === Number(user?.id);
       return userMatches && roleMatches && activeProductionAssignmentStatuses.has(item.status);
     })
-  ), [workflowContext, user, isAdmin, isCopyEditor, isProofreader]);
+  ), [workflowContext, user, isAdmin, isCopyEditor]);
 
   const completedProductionAssignment = useMemo(() => (
     (workflowContext?.production_assignments || []).find((item) => {
-      const roleMatches = isCopyEditor ? item.role === 'copy_editor' : isProofreader ? item.role === 'proofreader' : true;
+      const roleMatches = isCopyEditor ? item.role === 'copy_editor' : true;
       const userMatches = isAdmin || Number(item.user_id) === Number(user?.id);
       return userMatches && roleMatches && item.status === 'completed';
     })
-  ), [workflowContext, user, isAdmin, isCopyEditor, isProofreader]);
+  ), [workflowContext, user, isAdmin, isCopyEditor]);
 
   const loadAssignees = async (role) => {
     if (assignees[role] || !article?.magazine_id) return;
@@ -146,7 +146,6 @@ export default function WorkflowActionPanel({
     if (canAssignReviewer) loadAssignees('reviewer');
     if (canAssignProduction) {
       loadAssignees('copy_editor');
-      loadAssignees('proofreader');
     }
   }, [article?.id, canEditorial, canAssignReviewer, canAssignProduction]);
 
@@ -208,6 +207,14 @@ export default function WorkflowActionPanel({
     setQuestionnaireResponses((prev) => ({ ...prev, [question.id]: value }));
   };
 
+  const reviewerAssignmentForEmail = (email) => {
+    const normalized = String(email || '').trim().toLowerCase();
+    if (!normalized) return null;
+    return (article.reviewer_assignments || []).find((assignment) => (
+      String(assignment.invitee_email || '').trim().toLowerCase() === normalized
+    ));
+  };
+
   const questionnairePayload = () => Object.entries(questionnaireResponses).map(([questionId, answer]) => ({
     question_id: Number(questionId),
     answer,
@@ -221,26 +228,21 @@ export default function WorkflowActionPanel({
   const canShowPublish = canPublish && PUBLISHABLE_STATUSES.has(status);
   const canPostPublication = canPublish && status === 'published';
   const canShowProductionAssignment = canAssignProduction && productionStatuses.has(status);
-  const canCompleteProduction = (isAdmin || isCopyEditor || isProofreader) && myProductionAssignment;
+  const canAuthorFinalReview = Boolean(article?.can_author_final_review);
+  const canCompleteProduction = (isAdmin || isCopyEditor) && myProductionAssignment;
   const productionTaskLabel = myProductionAssignment?.role === 'copy_editor'
     ? 'Copyediting Task'
-    : myProductionAssignment?.role === 'proofreader'
-      ? 'Proofreading Task'
-      : 'Production Task';
-  const productionFileLabel = myProductionAssignment?.role === 'proofreader' ? 'Proof File' : 'Copyedited Manuscript';
+    : 'Production Task';
+  const productionFileLabel = 'Copyedited Manuscript';
   const productionCompleteLabel = myProductionAssignment?.role === 'copy_editor'
     ? 'Mark Copyediting Complete'
-    : myProductionAssignment?.role === 'proofreader'
-      ? 'Mark Proofreading Complete'
-      : 'Complete Task';
+    : 'Complete Task';
   const productionCompleteMessage = myProductionAssignment?.role === 'copy_editor'
     ? 'This will mark your copyediting task as complete and move the manuscript toward publication readiness.'
-    : myProductionAssignment?.role === 'proofreader'
-      ? 'This will mark your proofreading task as complete and move the manuscript toward publication readiness.'
-      : 'This will mark your production task as complete and move the manuscript toward publication readiness.';
+    : 'This will mark your production task as complete and move the manuscript toward publication readiness.';
 
   const hasAnyAction = canScreen || canAssignSubEditor || canShowReviewerAssignment || (isSubEditor && mySubEditorAssignment)
-    || (isReviewer && myReviewerAssignment) || canFinalDecision || canShowProductionAssignment || canCompleteProduction
+    || (isReviewer && myReviewerAssignment) || canFinalDecision || canAuthorFinalReview || canShowProductionAssignment || canCompleteProduction
     || completedProductionAssignment || canShowPublish || canPostPublication;
 
   return (
@@ -363,18 +365,22 @@ export default function WorkflowActionPanel({
                     <div className="space-y-2">
                       <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Suggested Reviewers</p>
                       <div className="grid gap-2">
-                        {article.reviewer_preferences.suggested.map((reviewer) => (
+                        {article.reviewer_preferences.suggested.map((reviewer) => {
+                          const existingAssignment = reviewerAssignmentForEmail(reviewer.email);
+                          const state = existingAssignment?.invitation_state || existingAssignment?.status;
+                          return (
                           <div key={reviewer.id || reviewer.email} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                               <div>
                                 <p className="text-sm font-bold text-[var(--foreground)]">{reviewer.name}</p>
                                 <p className="text-xs text-[var(--muted)]">{reviewer.email}{reviewer.affiliation ? ` · ${reviewer.affiliation}` : ''}</p>
                               </div>
-                              <Button
+	                              <Button
                                 type="button"
                                 size="sm"
                                 icon={UserPlus}
-                                isLoading={busyAction === `suggested-${reviewer.id}`}
+	                                isLoading={busyAction === `suggested-${reviewer.id}`}
+	                                disabled={Boolean(existingAssignment)}
                                 onClick={() => askConfirmation({
                                   key: `suggested-${reviewer.id}`,
                                   title: 'Invite suggested reviewer?',
@@ -384,11 +390,12 @@ export default function WorkflowActionPanel({
                                   run: () => runAction(`suggested-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { suggested_preference_id: reviewer.id }), 'Reviewer invitation sent.'),
                                 })}
                               >
-                                Invite
-                              </Button>
+	                                {state ? labelize(state) : 'Invite'}
+	                              </Button>
                             </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                     </div>
                   )}
@@ -420,7 +427,7 @@ export default function WorkflowActionPanel({
                       className="mt-3"
                       icon={UserPlus}
                       isLoading={busyAction === 'manual-reviewer'}
-                      disabled={!manualReviewer.email.trim()}
+                      disabled={!manualReviewer.email.trim() || Boolean(reviewerAssignmentForEmail(manualReviewer.email))}
                       onClick={() => askConfirmation({
                         key: 'manual-reviewer',
                         title: 'Invite manual reviewer?',
@@ -430,7 +437,7 @@ export default function WorkflowActionPanel({
                         run: () => runAction('manual-reviewer', () => api.post(`/admin/articles/${article.id}/assign-reviewer`, manualReviewer), 'Reviewer invitation sent.'),
                       })}
                     >
-                      Send Manual Invitation
+                      {reviewerAssignmentForEmail(manualReviewer.email)?.invitation_state ? labelize(reviewerAssignmentForEmail(manualReviewer.email).invitation_state) : 'Send Manual Invitation'}
                     </Button>
                   </div>
                 </div>
@@ -637,8 +644,31 @@ export default function WorkflowActionPanel({
           </ActionBlock>
         )}
 
+        {canAuthorFinalReview && (
+          <ActionBlock title="Author Final Review" description="Approve the accepted manuscript so production can begin.">
+            <Alert tone="info" title="Accepted manuscript">
+              The editorial decision is complete. Approval is limited to the manuscript owner or corresponding author.
+            </Alert>
+            <Button
+              type="button"
+              icon={FileCheck2}
+              isLoading={busyAction === 'author-final-review'}
+              onClick={() => askConfirmation({
+                key: 'author-final-review',
+                title: 'Approve final review?',
+                message: 'This confirms the accepted manuscript may move to copyediting.',
+                confirmText: 'Approve Final Review',
+                variant: 'primary',
+                run: () => runAction('author-final-review', () => api.post(`/admin/articles/${article.id}/author-final-review`), 'Final review approved.'),
+              })}
+            >
+              Approve Final Review
+            </Button>
+          </ActionBlock>
+        )}
+
         {canShowProductionAssignment && (
-          <ActionBlock title="Production Assignment" description="Assign copyediting or proofing work for the accepted manuscript.">
+          <ActionBlock title="Production Assignment" description="Assign copyediting work for the accepted manuscript.">
             <div className="grid gap-3 md:grid-cols-3">
               <Field label="Production Role">
                 <Select
@@ -648,8 +678,7 @@ export default function WorkflowActionPanel({
                     loadAssignees(event.target.value);
                   }}
                 >
-                  <option value="copy_editor">Copy Editor</option>
-                  <option value="proofreader">Proofreader</option>
+	              <option value="copy_editor">Copy Editor</option>
                 </Select>
               </Field>
               <Field label="Assignee">
@@ -669,10 +698,8 @@ export default function WorkflowActionPanel({
               disabled={!productionForm.user_id}
               onClick={() => askConfirmation({
                 key: 'assign-production',
-                title: productionForm.role === 'proofreader' ? 'Send to proofreading?' : 'Send to copyediting?',
-                message: productionForm.role === 'proofreader'
-                  ? 'This will assign proofing work and move the manuscript into proofreading.'
-                  : 'This will assign copyediting work and move the manuscript into copyediting.',
+	                title: 'Send to copyediting?',
+	                message: 'This will assign copyediting work and move the manuscript into copyediting.',
                 confirmText: 'Assign Production',
                 variant: 'primary',
                 run: () => runAction('assign-production', () => api.post(`/admin/articles/${article.id}/production-assignments`, {
@@ -704,7 +731,7 @@ export default function WorkflowActionPanel({
                 run: () => runAction('complete-production', async () => api.post(`/admin/production-assignments/${myProductionAssignment.id}/complete`, await buildDirectUploadFormData({}, {
                   production_file_upload_id: {
                     file: files.production_file,
-                    purpose: myProductionAssignment.role === 'proofreader' ? 'article_proof_file' : 'article_production_file',
+	                    purpose: 'article_production_file',
                     extra: { assignment_type: 'production_assignment', assignment_id: myProductionAssignment.id },
                   },
                 }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Production task completed.'),

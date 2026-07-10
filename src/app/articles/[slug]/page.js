@@ -308,7 +308,6 @@ export default function ArticleDetail() {
     article.received_at && { label: 'Received', value: compactDate(article.received_at) },
     article.accepted_at && { label: 'Accepted', value: compactDate(article.accepted_at) },
     article.published_at && { label: 'Published', value: compactDate(article.published_at) },
-    article.tracking_code && { label: 'Tracking', value: article.tracking_code },
   ].filter(Boolean);
 
   const statementBlocks = [
@@ -317,6 +316,17 @@ export default function ArticleDetail() {
     article.funding_statement && { title: 'Funding', body: article.funding_statement },
     article.competing_interests_statement && { title: 'Competing Interests', body: article.competing_interests_statement },
     article.abbreviations && { title: 'Abbreviations', body: article.abbreviations },
+  ].filter(Boolean);
+  const contentNav = [
+    article.abstract && { id: 'abstract', label: 'Abstract' },
+    article.seo_keywords && { id: 'keywords', label: 'Keywords' },
+    ...publicationSections.map((section) => ({
+      id: `section-${section.section_key}`,
+      label: section.title || sectionLabels[section.section_key] || section.section_key.replaceAll('_', ' '),
+    })),
+    articleImages.length > 0 && { id: 'gallery', label: 'Gallery' },
+    ((article.assets && article.assets.length > 0) || article.has_pdf) && { id: 'supplementary-assets', label: 'Supplementary Assets' },
+    { id: 'citation', label: 'Citation' },
   ].filter(Boolean);
 
   return (
@@ -352,8 +362,22 @@ export default function ArticleDetail() {
           )}
         </div>
 
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
+          <aside className="hidden lg:block">
+            <nav className="sticky top-24 rounded-2xl border border-zinc-150 bg-white/80 p-4 text-left shadow-sm dark:border-zinc-850 dark:bg-zinc-900/50" aria-label="Article sections">
+              <p className="mb-3 text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Sections</p>
+              <div className="space-y-1">
+                {contentNav.map((item) => (
+                  <a key={item.id} href={`#${item.id}`} className="block rounded-lg px-3 py-2 text-xs font-bold text-zinc-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-zinc-300 dark:hover:text-amber-300">
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </nav>
+          </aside>
+
         {/* Centralized Reading Column */}
-        <div className="max-w-4xl mx-auto bg-white/80 dark:bg-zinc-900/35 border border-zinc-100 dark:border-zinc-900/60 rounded-3xl p-6 sm:p-10 lg:p-12 shadow-sm space-y-10">
+        <article className="min-w-0 bg-white/80 dark:bg-zinc-900/35 border border-zinc-100 dark:border-zinc-900/60 rounded-3xl p-6 sm:p-10 lg:p-12 shadow-sm space-y-10">
           
           {/* 1. Magazine Context Banner */}
           {article.magazine && (
@@ -488,7 +512,7 @@ export default function ArticleDetail() {
 
           {/* 7. Abstract */}
           {article.abstract && (
-            <div className="bg-zinc-50/50 dark:bg-zinc-900/10 p-6 sm:p-8 rounded-2xl border border-zinc-150 dark:border-zinc-850/80 text-left space-y-4">
+            <section id="abstract" className="scroll-mt-24 bg-zinc-50/50 dark:bg-zinc-900/10 p-6 sm:p-8 rounded-2xl border border-zinc-150 dark:border-zinc-850/80 text-left space-y-4">
               <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
                 Abstract
               </h3>
@@ -496,37 +520,12 @@ export default function ArticleDetail() {
                 className="font-serif italic text-base sm:text-lg leading-relaxed text-zinc-700 dark:text-zinc-300 prose dark:prose-invert max-w-none"
                 dangerouslySetInnerHTML={{ __html: article.abstract }}
               />
-            </div>
-          )}
-
-          {articleImages.length > 0 && (
-            <div className="space-y-4 text-left">
-              <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
-                Article Images
-              </h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {articleImages.map((asset) => {
-                  const imageUrl = asset.download_url || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/articles/assets/${asset.id}/download`;
-                  return (
-                    <figure key={asset.id} className="overflow-hidden rounded-2xl border border-zinc-150 bg-white dark:border-zinc-850 dark:bg-zinc-950/30">
-                      <img src={imageUrl} alt={asset.title || asset.original_filename || article.title} className="h-64 w-full object-cover" />
-                      {(asset.title || asset.caption || asset.description) && (
-                        <figcaption className="space-y-1 p-4 text-left">
-                          {asset.title && <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{asset.title}</p>}
-                          {asset.caption && <p className="text-xs text-zinc-600 dark:text-zinc-350">{asset.caption}</p>}
-                          {asset.description && <p className="text-[11px] text-zinc-500 dark:text-zinc-450">{asset.description}</p>}
-                        </figcaption>
-                      )}
-                    </figure>
-                  );
-                })}
-              </div>
-            </div>
+            </section>
           )}
 
           {/* 8. Keywords */}
           {article.seo_keywords && (
-            <div className="text-left space-y-2">
+            <section id="keywords" className="scroll-mt-24 text-left space-y-2">
               <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-mono block">
                 Keywords
               </span>
@@ -540,7 +539,7 @@ export default function ArticleDetail() {
                   </span>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           {/* 9. Full Text */}
@@ -559,10 +558,13 @@ export default function ArticleDetail() {
           {publicationSections.length > 0 && (
             <div className="space-y-8 border-t border-zinc-100 pt-8 text-left dark:border-zinc-800/80">
               {publicationSections.map((section) => (
-                <section key={section.section_key} id={`section-${section.section_key}`} className="space-y-3">
+                <section key={section.section_key} id={`section-${section.section_key}`} className="scroll-mt-24 space-y-3">
                   <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
                     {section.title || sectionLabels[section.section_key] || section.section_key.replaceAll('_', ' ')}
                   </h3>
+                  {section.image_url && (
+                    <img src={section.image_url} alt={section.title || 'Publication section image'} className="max-h-[420px] w-full rounded-2xl border border-zinc-150 object-cover dark:border-zinc-850" />
+                  )}
                   <div
                     className="prose prose-zinc max-w-none font-serif text-base leading-relaxed text-zinc-800 dark:prose-invert dark:text-zinc-200"
                     dangerouslySetInnerHTML={{ __html: section.content_html }}
@@ -570,6 +572,31 @@ export default function ArticleDetail() {
                 </section>
               ))}
             </div>
+          )}
+
+          {articleImages.length > 0 && (
+            <section id="gallery" className="scroll-mt-24 space-y-4 border-t border-zinc-100 pt-8 text-left dark:border-zinc-800/80">
+              <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
+                Gallery
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {articleImages.map((asset) => {
+                  const imageUrl = asset.download_url || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/articles/assets/${asset.id}/download`;
+                  return (
+                    <a key={asset.id} href={imageUrl} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-2xl border border-zinc-150 bg-white dark:border-zinc-850 dark:bg-zinc-950/30">
+                      <img src={imageUrl} alt={asset.title || asset.original_filename || article.title} className="h-64 w-full object-cover" />
+                      {(asset.title || asset.caption || asset.description) && (
+                        <span className="block space-y-1 p-4 text-left">
+                          {asset.title && <span className="block text-xs font-bold text-zinc-900 dark:text-zinc-100">{asset.title}</span>}
+                          {asset.caption && <span className="block text-xs text-zinc-600 dark:text-zinc-350">{asset.caption}</span>}
+                          {asset.description && <span className="block text-[11px] text-zinc-500 dark:text-zinc-450">{asset.description}</span>}
+                        </span>
+                      )}
+                    </a>
+                  );
+                })}
+              </div>
+            </section>
           )}
 
           {statementBlocks.length > 0 && (
@@ -584,7 +611,7 @@ export default function ArticleDetail() {
           )}
 
           {/* 10. Citation block */}
-          <div className="bg-amber-500/[0.01] dark:bg-amber-500/[0.005] border border-amber-500/15 p-6 rounded-2xl text-left space-y-4">
+          <section id="citation" className="scroll-mt-24 bg-amber-500/[0.01] dark:bg-amber-500/[0.005] border border-amber-500/15 p-6 rounded-2xl text-left space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 font-mono flex items-center">
                 <Clipboard className="w-3.5 h-3.5 mr-1.5" />
@@ -601,13 +628,13 @@ export default function ArticleDetail() {
             <p className="font-sans text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium bg-zinc-50/50 dark:bg-zinc-950/40 p-4 rounded-xl border border-zinc-150 dark:border-zinc-850 select-all">
               {article.citation_text || getCitationText()}
             </p>
-          </div>
+          </section>
 
           {/* 11. PDF / Supplementary Assets List */}
           {((article.assets && article.assets.length > 0) || article.has_pdf) && (
-            <div className="border-t border-zinc-100 dark:border-zinc-800/80 pt-8 text-left space-y-4">
+            <section id="supplementary-assets" className="scroll-mt-24 border-t border-zinc-100 dark:border-zinc-800/80 pt-8 text-left space-y-4">
               <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
-                Public Downloads
+                Supplementary Assets
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -639,12 +666,14 @@ export default function ArticleDetail() {
 
                 {/* Supplementary Assets files list */}
                 {article.assets && article.assets.map((asset) => {
-                  const downloadUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/articles/assets/${asset.id}/download`;
+                  const downloadUrl = asset.download_url || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/articles/assets/${asset.id}/download`;
+                  const isPdf = (asset.mime_type || '').toLowerCase().includes('pdf') || String(asset.original_filename || '').toLowerCase().endsWith('.pdf');
                   return (
-                    <div 
-                      key={asset.id}
-                      className="bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-200/60 dark:border-zinc-800/80 p-5 rounded-2xl flex items-center justify-between group"
-                    >
+                    <div key={asset.id} className="space-y-3 rounded-2xl border border-zinc-200/60 bg-zinc-50/50 p-5 dark:border-zinc-800/80 dark:bg-zinc-900/20">
+                      {isPdf && (
+                        <iframe src={downloadUrl} title={asset.original_filename || 'Supplementary PDF'} className="h-72 w-full rounded-xl border border-zinc-200 bg-white dark:border-zinc-800" />
+                      )}
+                      <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center space-x-3.5 min-w-0">
                         <div className="p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/10 shrink-0">
                           {getFileIcon(asset.mime_type, asset.original_filename)}
@@ -665,11 +694,12 @@ export default function ArticleDetail() {
                       >
                         <Download className="w-4 h-4" />
                       </a>
+                      </div>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </section>
           )}
 
           {/* Sequential Navigation Pagination */}
@@ -685,6 +715,7 @@ export default function ArticleDetail() {
             />
           </div>
 
+        </article>
         </div>
 
       </div>

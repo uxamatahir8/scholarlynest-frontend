@@ -92,10 +92,10 @@ export default function Footer() {
       <div className="mx-auto w-full max-w-[1440px] px-4 py-14 sm:px-6 lg:px-8 lg:py-16">
         <div className="grid gap-10 lg:grid-cols-[1.2fr_1.4fr_1fr] lg:gap-14">
           <section className="space-y-5" aria-labelledby="footer-brand-heading">
-            <Image src="/logo.png" alt="Scholarly Nest" width={690} height={362} className="h-10 w-auto object-contain" />
-            <h2 id="footer-brand-heading" className="font-serif text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">Scholarly Nest</h2>
+            <Image src="/logo.png" alt="ScholarlyNest" width={690} height={362} className="h-10 w-auto object-contain" />
+            <h2 id="footer-brand-heading" className="font-serif text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">ScholarlyNest</h2>
             <p className="max-w-sm text-sm leading-relaxed text-zinc-600 dark:text-zinc-350">
-              Scholarly Nest helps researchers, editors, and institutions publish and discover trusted academic work through clear public archives and structured editorial workflows.
+              ScholarlyNest helps researchers, editors, and institutions publish and discover trusted academic work through clear public archives and structured editorial workflows.
             </p>
             <p className="max-w-sm text-sm font-semibold leading-relaxed text-zinc-800 dark:text-zinc-200">
               Open discovery, careful review, and durable scholarly records.
@@ -186,7 +186,7 @@ export default function Footer() {
 
         <div className="mt-12 flex flex-col gap-5 border-t border-zinc-200 pt-6 text-sm text-zinc-500 dark:border-zinc-850 dark:text-zinc-450 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span>© {new Date().getFullYear()} Scholarly Nest.</span>
+            <span>© {new Date().getFullYear()} ScholarlyNest.</span>
             {legalPages.map((page) => (
               <Link key={page.id || page.slug} href={`/${page.slug}`} className="font-medium underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:text-white">
                 {page.title}

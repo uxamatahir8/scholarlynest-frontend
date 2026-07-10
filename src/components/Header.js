@@ -73,8 +73,8 @@ export default function Header() {
   return (
     <header className="relative left-1/2 w-screen -translate-x-1/2 bg-white/95 dark:bg-zinc-950/95">
       <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/" aria-label="Scholarly Nest home" className="flex shrink-0 items-center rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950">
-          <Image src="/logo.png" alt="Scholarly Nest" width={690} height={362} className="h-9 w-auto object-contain" priority />
+        <Link href="/" aria-label="ScholarlyNest home" className="flex shrink-0 items-center rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950">
+          <Image src="/logo.png" alt="ScholarlyNest" width={690} height={362} className="h-9 w-auto object-contain" priority />
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex" aria-label="Public navigation">
