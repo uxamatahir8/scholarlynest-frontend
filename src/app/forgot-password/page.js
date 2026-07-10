@@ -34,7 +34,7 @@ export default function ForgotPassword() {
       toast('Verification instructions sent if the account exists.', 'success');
       setSubmitted(true);
     } catch (err) {
-      const msg = safeApiMessage(err, 'Failed to send password reset code.');
+      const msg = safeApiMessage(err, 'Failed to send password reset link.');
       setError(msg);
       toast(msg, 'error');
       setTimeout(() => errorRef.current?.focus(), 100);
@@ -58,7 +58,7 @@ export default function ForgotPassword() {
               Recover Password
             </h2>
             <p className="text-xs text-muted max-w-xs mx-auto leading-relaxed">
-              Enter your registered scholar email below and we will send you a secure link and code to establish a new password.
+              Enter your registered scholar email below and we will send you a secure link to establish a new password.
             </p>
           </div>
         </div>
@@ -80,7 +80,7 @@ export default function ForgotPassword() {
         {submitted ? (
           <div className="space-y-4 text-center py-4">
             <p className="text-xs text-muted leading-relaxed max-w-sm mx-auto font-medium">
-              If the email address matches an active account, you will receive a secure password reset link and verification code shortly. Please check your inbox and follow the instructions to establish your new credentials.
+              If the email address matches an active account, you will receive a secure password reset link shortly. Please check your inbox and follow the instructions to establish your new credentials.
             </p>
             <div className="pt-2">
               <Link

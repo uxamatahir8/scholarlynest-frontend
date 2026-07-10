@@ -20,8 +20,6 @@ const initialValues = {
   university_name: '',
   role_id: '',
   status: 'active',
-  password: '',
-  password_confirmation: '',
   editor_ids: [],
   magazine_ids: [],
 };
@@ -73,8 +71,6 @@ export default function EditUserPage() {
           university_name: user.university || user.university_name || '',
           role_id: roleId,
           status: user.status || 'active',
-          password: '',
-          password_confirmation: '',
           editor_ids: (user.assigned_editors || []).map((editor) => editor.id),
           magazine_ids: (user.assigned_magazines || []).map((magazine) => magazine.id),
         });
@@ -93,9 +89,6 @@ export default function EditUserPage() {
     if (!values.name.trim()) errors.name = 'Name is required.';
     if (!values.email.trim()) errors.email = 'Email address is required.';
     if (!values.role_id) errors.role_id = 'Role assignment is required.';
-    if (values.password && values.password !== values.password_confirmation) {
-      errors.confirm_password = 'Password confirmation does not match.';
-    }
     const selectedRole = roles.find((role) => String(role.id) === String(values.role_id));
     if (isSubEditorRole(selectedRole) && values.editor_ids.length === 0) {
       errors.editor_ids = 'At least one Editor must be assigned to a Sub Editor.';
@@ -119,10 +112,6 @@ export default function EditUserPage() {
       role_id: Number(values.role_id),
       status: values.status,
     };
-    if (values.password) {
-      payload.password = values.password;
-      payload.password_confirmation = values.password_confirmation;
-    }
     if (isSubEditorRole(selectedRole)) payload.editor_ids = values.editor_ids;
     if (isMagazineAssignmentRole(selectedRole)) payload.magazine_ids = values.magazine_ids;
 
@@ -130,7 +119,6 @@ export default function EditUserPage() {
     setGeneralError('');
     try {
       await api.patch(`/admin/users/${userId}`, payload);
-      setValues((current) => ({ ...current, password: '', password_confirmation: '' }));
       toast('User account updated.', 'success');
       router.push('/admin/users');
     } catch (error) {
@@ -138,8 +126,6 @@ export default function EditUserPage() {
       setFieldErrors({
         name: apiErrors.name?.[0],
         email: apiErrors.email?.[0],
-        password: apiErrors.password?.[0],
-        password_confirmation: apiErrors.password_confirmation?.[0],
         role_id: apiErrors.role_id?.[0],
         status: apiErrors.status?.[0],
         university_name: apiErrors.university_name?.[0],

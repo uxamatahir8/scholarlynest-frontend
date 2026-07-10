@@ -13,7 +13,7 @@ function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams.get('email') || '';
-  const codeParam = searchParams.get('code') || '';
+  const tokenParam = searchParams.get('token') || '';
   const errorRef = useRef(null);
 
   const [password, setPassword] = useState('');
@@ -37,7 +37,7 @@ function ResetPasswordForm() {
   const isPasswordStrong = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSymbol;
 
   useEffect(() => {
-    if (!emailParam || !codeParam) {
+    if (!emailParam || !tokenParam) {
       setVerifying(false);
       setVerificationFailed(true);
       return;
@@ -47,7 +47,7 @@ function ResetPasswordForm() {
       setVerifying(true);
       setError('');
       try {
-        await api.post('/password/verify-reset-code', { email: emailParam, code: codeParam });
+        await api.post('/password/verify-reset-code', { email: emailParam, token: tokenParam });
         setCodeVerified(true);
       } catch (err) {
         setVerificationFailed(true);
@@ -58,7 +58,7 @@ function ResetPasswordForm() {
       }
     };
     autoVerify();
-  }, [emailParam, codeParam]);
+  }, [emailParam, tokenParam]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -90,7 +90,7 @@ function ResetPasswordForm() {
     try {
       await api.post('/reset-password', {
         email: emailParam,
-        code: codeParam,
+        token: tokenParam,
         password,
         password_confirmation: passwordConfirmation,
       });

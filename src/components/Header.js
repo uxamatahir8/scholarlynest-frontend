@@ -149,7 +149,6 @@ export default function Header() {
                   <div className="px-3 py-3">
                     <p className="truncate text-sm font-bold text-zinc-950 dark:text-white">{user.name || user.email}</p>
                     <div className="mt-2 flex items-center gap-2">
-                      <span className="text-sm text-zinc-500">Role</span>
                       <RoleBadge user={user} />
                     </div>
                   </div>
