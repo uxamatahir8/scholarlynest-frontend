@@ -26,7 +26,7 @@ import EmptyState from '../../ui/EmptyState';
 import ErrorState from '../../ui/ErrorState';
 import LoadingState from '../../ui/LoadingState';
 import StatusBadge from '../../ui/StatusBadge';
-import { supportTicketSchema, validateWithZod } from '../../../lib/validation';
+import { supportTicketReplySchema, supportTicketSchema, supportTicketStatusSchema, validateWithZod } from '../../../lib/validation';
 
 const ISSUE_TYPES = [
   ['technical_issue', 'Technical issue'],
@@ -226,7 +226,8 @@ export default function SupportTicketWorkspace({ mode = 'list', admin = false, t
 
   const submitReply = async (event) => {
     event.preventDefault();
-    if (!reply.trim()) { setError('Reply message is required.'); return; }
+    const validation = validateWithZod(supportTicketReplySchema, { reply });
+    if (!validation.success) { setError(Object.values(validation.errors)[0]); return; }
     setSaving(true);
     setError('');
     try {
@@ -246,6 +247,11 @@ export default function SupportTicketWorkspace({ mode = 'list', admin = false, t
   };
 
   const updateStatus = async (status) => {
+    const validation = validateWithZod(supportTicketStatusSchema, { status });
+    if (!validation.success) {
+      toast(Object.values(validation.errors)[0] || validation.message, 'error');
+      return;
+    }
     setSaving(true);
     try {
       const response = await api.patch(`${basePath}/${ticket.id}/status`, { status });

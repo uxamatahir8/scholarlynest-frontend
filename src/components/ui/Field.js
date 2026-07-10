@@ -19,7 +19,6 @@ export default function Field({
         id: children.props.id || fieldId,
         'aria-invalid': error ? 'true' : undefined,
         'aria-describedby': [helperId, errorId].filter(Boolean).join(' ') || undefined,
-        required: children.props.required ?? required,
       })
     : children;
 

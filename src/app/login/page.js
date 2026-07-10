@@ -211,7 +211,7 @@ export default function Login() {
             <div className="relative flex items-center">
               <input
                 ref={emailInputRef}
-                type="email"
+                type="text"
                 id="login-email"
                 value={email}
                 onChange={(e) => {

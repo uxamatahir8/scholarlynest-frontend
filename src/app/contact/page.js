@@ -190,7 +190,7 @@ export default function ContactPage() {
                     <div>
                       <Label>Email Address</Label>
                       <Input
-                        type="email"
+                        type="text"
                         name="email"
                         value={formData.email}
                         onChange={handleChange}

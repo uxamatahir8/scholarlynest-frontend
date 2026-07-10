@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { ArrowUp, Check, Mail, Send } from 'lucide-react';
 import api from '../../utils/api';
 import { logWarn } from '../../utils/safeLogger';
+import { newsletterSchema, validateWithZod } from '../../lib/validation';
 
 const EXPLORE_LINKS = [
   { label: 'Home', href: '/' },
@@ -65,8 +66,9 @@ export default function Footer() {
     setError('');
     setMessage('');
 
-    if (!trimmedEmail) {
-      setError('Enter an email address to subscribe.');
+    const validation = validateWithZod(newsletterSchema, { email: trimmedEmail });
+    if (!validation.success) {
+      setError(Object.values(validation.errors)[0] || validation.message);
       return;
     }
 
@@ -159,7 +161,7 @@ export default function Footer() {
               <div className="flex flex-col gap-2 sm:flex-row lg:flex-col xl:flex-row">
                 <input
                   id="footer-newsletter-email"
-                  type="email"
+	                  type="text"
                   value={email}
                   onChange={(event) => {
                     setEmail(event.target.value);
