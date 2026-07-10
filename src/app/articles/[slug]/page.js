@@ -667,12 +667,8 @@ export default function ArticleDetail() {
                 {/* Supplementary Assets files list */}
                 {article.assets && article.assets.map((asset) => {
                   const downloadUrl = asset.download_url || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/articles/assets/${asset.id}/download`;
-                  const isPdf = (asset.mime_type || '').toLowerCase().includes('pdf') || String(asset.original_filename || '').toLowerCase().endsWith('.pdf');
                   return (
                     <div key={asset.id} className="space-y-3 rounded-2xl border border-zinc-200/60 bg-zinc-50/50 p-5 dark:border-zinc-800/80 dark:bg-zinc-900/20">
-                      {isPdf && (
-                        <iframe src={downloadUrl} title={asset.original_filename || 'Supplementary PDF'} className="h-72 w-full rounded-xl border border-zinc-200 bg-white dark:border-zinc-800" />
-                      )}
                       <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center space-x-3.5 min-w-0">
                         <div className="p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/10 shrink-0">
