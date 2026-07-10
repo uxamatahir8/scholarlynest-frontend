@@ -10,6 +10,7 @@ import { Input, Textarea, Select as CustomSelect, Label } from '../../components
 import SeoHead from '../../components/SeoHead';
 import api from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
+import { contactSchema, validateWithZod } from '../../lib/validation';
 
 export default function ContactPage() {
   const { toast } = useToast();
@@ -57,12 +58,7 @@ export default function ContactPage() {
     e.preventDefault();
     setValidationErrors({});
 
-    const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = 'Full name is required.';
-    if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'A valid email address is required.';
-    }
-    if (!formData.message.trim()) newErrors.message = 'Please provide details for your inquiry.';
+    const newErrors = validateWithZod(contactSchema, formData).errors;
 
     if (Object.keys(newErrors).length > 0) {
       setValidationErrors(newErrors);
