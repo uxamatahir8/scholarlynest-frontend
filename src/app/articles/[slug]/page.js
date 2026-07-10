@@ -461,7 +461,7 @@ export default function ArticleDetail() {
             </span>
             
             {/* 3. Title */}
-            <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-white leading-tight tracking-tight">
+            <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-zinc-900 dark:text-white leading-tight tracking-tight">
               {article.title}
             </h1>
             
