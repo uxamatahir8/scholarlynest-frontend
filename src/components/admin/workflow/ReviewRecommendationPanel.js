@@ -24,7 +24,7 @@ export default function ReviewRecommendationPanel({ article, canSeeReviewerIdent
       recommendations.push({
         key: `reviewer-${assignment.id}`,
         title: 'Reviewer recommendation',
-        actor: canSeeReviewerIdentity ? assignment.reviewer?.name || 'Assigned reviewer' : `Reviewer ${index + 1}`,
+        actor: canSeeReviewerIdentity ? assignment.invitee_name || assignment.reviewer?.name || 'Assigned reviewer' : `Reviewer ${index + 1}`,
         recommendation: assignment.recommendation,
         comments: assignment.comments_for_author,
         questionnaire: assignment.questionnaire_instance,
