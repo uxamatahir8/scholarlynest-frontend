@@ -47,7 +47,10 @@ export default function ArticleMetadataPanel({ article }) {
       {article.abstract && (
         <div className="mt-5 border-t border-[var(--border)] pt-5">
           <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Abstract</h3>
-          <p className="mt-2 text-sm leading-relaxed text-[var(--foreground)]">{article.abstract}</p>
+          <div
+            className="prose prose-sm mt-2 max-w-none break-words text-sm leading-relaxed text-[var(--foreground)] dark:prose-invert"
+            dangerouslySetInnerHTML={{ __html: article.abstract }}
+          />
         </div>
       )}
       {(article.keywords || []).length > 0 && (
