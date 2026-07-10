@@ -64,7 +64,7 @@ export const supportTicketReplySchema = z.object({ reply: requiredString('Reply 
 export const supportTicketStatusSchema = z.object({ status: z.enum(['submitted', 'in_review', 'waiting_for_user', 'resolved', 'closed']) });
 export const contactSchema = z.object({ name: requiredString('Name'), email: emailField(), subject: requiredString('Subject'), message: requiredString('Message', 10000) });
 export const newsletterSchema = z.object({ email: emailField() });
-export const magazineSchema = z.object({ title: requiredString('Magazine name'), slug: requiredString('Slug'), description: optionalString('Description', 10000) });
+export const magazineSchema = z.object({ title: requiredString('Magazine name'), slug: z.string().optional(), description: optionalString('Description', 10000) });
 export const issueSchema = z.object({
   magazine_id: idField,
   volume_number: z.coerce.number().int('Volume must be a whole number.').positive('Volume must be greater than zero.'),
