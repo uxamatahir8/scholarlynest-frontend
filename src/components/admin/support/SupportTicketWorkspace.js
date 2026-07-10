@@ -26,6 +26,7 @@ import EmptyState from '../../ui/EmptyState';
 import ErrorState from '../../ui/ErrorState';
 import LoadingState from '../../ui/LoadingState';
 import StatusBadge from '../../ui/StatusBadge';
+import { supportTicketSchema, validateWithZod } from '../../../lib/validation';
 
 const ISSUE_TYPES = [
   ['technical_issue', 'Technical issue'],
@@ -205,6 +206,8 @@ export default function SupportTicketWorkspace({ mode = 'list', admin = false, t
 
   const submitTicket = async (event) => {
     event.preventDefault();
+    const validation = validateWithZod(supportTicketSchema, form);
+    if (!validation.success) { setError(Object.values(validation.errors)[0]); return; }
     setSaving(true);
     setError('');
     try {
@@ -223,6 +226,7 @@ export default function SupportTicketWorkspace({ mode = 'list', admin = false, t
 
   const submitReply = async (event) => {
     event.preventDefault();
+    if (!reply.trim()) { setError('Reply message is required.'); return; }
     setSaving(true);
     setError('');
     try {
@@ -280,12 +284,12 @@ export default function SupportTicketWorkspace({ mode = 'list', admin = false, t
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500" htmlFor="title">Title</label>
-                <input id="title" value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} required maxLength={180} className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950" />
+                <input id="title" value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950" />
               </div>
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500" htmlFor="details">Details</label>
-              <textarea id="details" value={form.details} onChange={(event) => setForm((current) => ({ ...current, details: event.target.value }))} required rows={8} maxLength={10000} className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950" />
+              <textarea id="details" value={form.details} onChange={(event) => setForm((current) => ({ ...current, details: event.target.value }))} rows={8} className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950" />
             </div>
             <AttachmentPicker files={files} setFiles={setFiles} disabled={saving} />
             {uploadState && <p className="text-xs font-semibold text-amber-700">{uploadState}</p>}
@@ -353,7 +357,7 @@ export default function SupportTicketWorkspace({ mode = 'list', admin = false, t
               <form onSubmit={submitReply} className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 {error && <ErrorState title="Reply problem" className="mb-4">{error}</ErrorState>}
                 <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500" htmlFor="reply">Reply</label>
-                <textarea id="reply" value={reply} onChange={(event) => setReply(event.target.value)} required rows={5} maxLength={10000} className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950" />
+                <textarea id="reply" value={reply} onChange={(event) => setReply(event.target.value)} rows={5} className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950" />
                 <div className="mt-4">
                   <AttachmentPicker files={files} setFiles={setFiles} disabled={saving} />
                 </div>
