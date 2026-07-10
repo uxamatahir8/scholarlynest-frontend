@@ -390,7 +390,7 @@ export default function ArticleDetail() {
         </div>
 
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
-          <aside className="hidden lg:block">
+          <aside className="hidden pt-[192px] lg:block">
             <nav className="sticky top-24 rounded-2xl border border-zinc-150 bg-white/80 p-4 text-left shadow-sm dark:border-zinc-850 dark:bg-zinc-900/50" aria-label="Article sections">
               <p className="mb-3 text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Sections</p>
               <div className="space-y-1">
