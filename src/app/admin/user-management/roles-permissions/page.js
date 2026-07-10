@@ -19,6 +19,7 @@ import Field from '../../../../components/ui/Field';
 import { Input } from '../../../../components/ui/Input';
 import LoadingState from '../../../../components/ui/LoadingState';
 import { permissionCategory, permissionLabel, roleAccessAreas, rolePurpose } from '../../../../utils/userManagement';
+import { roleCreateSchema, validateWithZod } from '../../../../lib/validation';
 
 const PROTECTED_PERMISSION_NAMES = new Set([
   'roles.view-any',
@@ -128,11 +129,9 @@ export default function RolesPermissionsPage() {
 
   const handleCreateRole = async (event) => {
     event.preventDefault();
-    const errors = {};
-    if (!newRole.display_name.trim()) errors.display_name = 'Display name is required.';
-    if (!newRole.name.trim()) errors.name = 'Role identifier is required.';
-    setCreateErrors(errors);
-    if (Object.keys(errors).length) return;
+    const validation = validateWithZod(roleCreateSchema, newRole);
+    setCreateErrors(validation.errors);
+    if (!validation.success) return;
 
     setCreatingRole(true);
     try {

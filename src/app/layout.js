@@ -3,6 +3,7 @@ import { ToastProvider } from '../context/ToastContext';
 import TransitionWrapper from '../components/TransitionWrapper';
 import MainLayoutWrapper from '../components/MainLayoutWrapper';
 import AuthCheck from '../components/auth/AuthCheck';
+import CookieBanner from '../components/CookieBanner';
 import './globals.css';
 import { Roboto } from 'next/font/google';
 
@@ -52,6 +53,7 @@ export default function RootLayout({ children }) {
                 <TransitionWrapper>
                   {children}
                 </TransitionWrapper>
+                <CookieBanner />
               </MainLayoutWrapper>
             </AuthCheck>
           </ToastProvider>

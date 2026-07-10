@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { KeyRound, Mail, Loader2, AlertCircle } from 'lucide-react';
 import api from '../../utils/api';
+import { forgotPasswordSchema, validateWithZod } from '../../lib/validation';
 
 export default function ForgotPassword() {
   const { toast } = useToast();
@@ -28,8 +29,9 @@ export default function ForgotPassword() {
     e.preventDefault();
     setError('');
 
-    if (!email) {
-      setError('Please enter your academic email address.');
+    const validation = validateWithZod(forgotPasswordSchema, { email });
+    if (!validation.success) {
+      setError(validation.errors.email || validation.message);
       return;
     }
 
@@ -107,7 +109,7 @@ export default function ForgotPassword() {
               </label>
               <div className="relative flex items-center">
                 <input
-                  type="email"
+                  type="text"
                   id="forgot-email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

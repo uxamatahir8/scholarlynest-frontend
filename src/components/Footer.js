@@ -6,10 +6,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { BookOpen, GraduationCap, FileText, Send, Check } from 'lucide-react';
 import api from '../utils/api';
+import { newsletterSchema, validateWithZod } from '../lib/validation';
 
 const Footer = () => {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [error, setError] = useState('');
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -30,17 +32,23 @@ const Footer = () => {
 
   const handleSubscribeSubmit = async (e) => {
     e.preventDefault();
-    if (email.trim()) {
-      try {
-        await api.post('/newsletter/subscribe', { email });
-        setSubscribed(true);
-        setTimeout(() => {
-          setSubscribed(false);
-          setEmail('');
-        }, 4000);
-      } catch (err) {
-        logError('Failed to subscribe to newsletter:', err);
-      }
+    const trimmedEmail = email.trim();
+    const validation = validateWithZod(newsletterSchema, { email: trimmedEmail });
+    if (!validation.success) {
+      setError(Object.values(validation.errors)[0] || validation.message);
+      return;
+    }
+    setError('');
+    try {
+      await api.post('/newsletter/subscribe', { email: trimmedEmail });
+      setSubscribed(true);
+      setTimeout(() => {
+        setSubscribed(false);
+        setEmail('');
+      }, 4000);
+    } catch (err) {
+      logError('Failed to subscribe to newsletter:', err);
+      setError('Subscription could not be completed right now.');
     }
   };
 
@@ -105,22 +113,28 @@ const Footer = () => {
                 <span>Subscription Confirmed!</span>
               </div>
             ) : (
-              <form onSubmit={handleSubscribeSubmit} className="flex relative w-full">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="jsmith@university.edu"
-                  className="w-full text-xs font-medium pl-3 pr-8 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-700 transition-colors"
-                />
+	              <form onSubmit={handleSubscribeSubmit} className="space-y-2">
+	                <div className="flex relative w-full">
+	                <input
+	                  type="text"
+	                  value={email}
+	                  onChange={(e) => {
+	                    setEmail(e.target.value);
+	                    setError('');
+	                  }}
+	                  placeholder="jsmith@university.edu"
+	                  aria-invalid={Boolean(error)}
+	                  className="w-full text-xs font-medium pl-3 pr-8 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-md focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-700 transition-colors"
+	                />
                 <button 
                   type="submit"
                   className="absolute right-1 top-1 p-1.5 bg-zinc-900 hover:bg-zinc-950 dark:bg-zinc-200 dark:hover:bg-white text-white dark:text-zinc-950 rounded-md transition-premium"
-                >
-                  <Send className="w-3 h-3" />
-                </button>
-              </form>
+	                >
+	                  <Send className="w-3 h-3" />
+	                </button>
+	                </div>
+	                {error && <p className="text-[10px] font-semibold text-red-600 dark:text-red-400">{error}</p>}
+	              </form>
             )}
           </div>
 

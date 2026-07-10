@@ -8,6 +8,7 @@ import api from '../../../../utils/api';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../context/ToastContext';
 import { useRouter } from 'next/navigation';
+import { subEditorInviteSchema, validateWithZod } from '../../../../lib/validation';
 
 export default function MySubEditorsPage() {
   const { user, hasRole } = useAuth();
@@ -19,6 +20,7 @@ export default function MySubEditorsPage() {
   const [unassigningId, setUnassigningId] = useState(null);
   
   const [form, setForm] = useState({ name: '', email: '' });
+  const [formErrors, setFormErrors] = useState({});
 
   const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
   const roleAllowed = isEditor;
@@ -52,7 +54,12 @@ export default function MySubEditorsPage() {
 
   const handleInvite = async (e) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.email.trim()) return;
+    const validation = validateWithZod(subEditorInviteSchema, form);
+    setFormErrors(validation.errors);
+    if (!validation.success) {
+      toast(Object.values(validation.errors)[0] || validation.message, 'error');
+      return;
+    }
 
     setInviting(true);
     try {
@@ -62,6 +69,7 @@ export default function MySubEditorsPage() {
       });
       toast(res.data?.message || 'Sub Editor linked successfully.', 'success');
       setForm({ name: '', email: '' });
+      setFormErrors({});
       fetchSubEditors();
     } catch (err) {
       logError(err);
@@ -180,24 +188,32 @@ export default function MySubEditorsPage() {
               <label className="text-[10px] font-bold uppercase text-zinc-450 dark:text-zinc-500">Name</label>
               <input
                 type="text"
-                required
                 value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, name: e.target.value });
+                  if (formErrors.name) setFormErrors((current) => ({ ...current, name: '' }));
+                }}
                 placeholder="Full name"
+                aria-invalid={Boolean(formErrors.name)}
                 className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-xs dark:border-zinc-800 dark:bg-zinc-950 focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100"
               />
+              {formErrors.name && <p className="text-[10px] font-semibold text-red-600 dark:text-red-400">{formErrors.name}</p>}
             </div>
             
             <div className="space-y-1">
               <label className="text-[10px] font-bold uppercase text-zinc-450 dark:text-zinc-500">Email Address</label>
               <input
-                type="email"
-                required
+                type="text"
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                onChange={(e) => {
+                  setForm({ ...form, email: e.target.value });
+                  if (formErrors.email) setFormErrors((current) => ({ ...current, email: '' }));
+                }}
                 placeholder="email@example.com"
+                aria-invalid={Boolean(formErrors.email)}
                 className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-xs dark:border-zinc-800 dark:bg-zinc-950 focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100"
               />
+              {formErrors.email && <p className="text-[10px] font-semibold text-red-600 dark:text-red-400">{formErrors.email}</p>}
             </div>
 
             <div className="rounded-xl border border-amber-500/10 bg-amber-500/[0.04] p-3 text-xs text-amber-805 dark:text-amber-400 flex items-start gap-2">

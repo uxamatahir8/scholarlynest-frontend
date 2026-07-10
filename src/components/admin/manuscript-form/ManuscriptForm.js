@@ -44,6 +44,7 @@ import {
   validateAuthors,
 } from '../../article/academicArticleForm';
 import { isArticleEditableStatus, normalizeStatus } from '../../../utils/status';
+import { articleDraftSchema, articleSubmitSchema, normalizeZodErrors } from '../../../lib/validation';
 
 const RichEditor = dynamic(() => import('../../ui/RichEditor'), {
   ssr: false,
@@ -183,6 +184,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [assets, setAssets] = useState([]);
   const [revisionResponse, setRevisionResponse] = useState('');
   const [changeSummary, setChangeSummary] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [submittingIntent, setSubmittingIntent] = useState('');
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
@@ -375,10 +377,15 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
 
   const validateForm = ({ scope = 'submit' } = {}) => {
     const errors = {};
+    const zodResult = scope === 'submit'
+      ? articleSubmitSchema.safeParse({ magazine_id: magazineId, title, abstract: cleanRichText(abstract), terms_accepted: termsAccepted })
+      : articleDraftSchema.safeParse({ magazine_id: magazineId || '', title, abstract: cleanRichText(abstract), terms_accepted: termsAccepted });
+    if (!zodResult.success) Object.assign(errors, normalizeZodErrors(zodResult.error));
     if (!magazineId) errors.magazineId = 'Please choose a magazine.';
     if (!title.trim()) errors.title = 'Please add a manuscript title.';
     if (!cleanRichText(abstract)) errors.abstract = 'Please add an abstract.';
     if (isRevision && !revisionResponse.trim()) errors.revisionResponse = 'Please add a response to the revision request.';
+    if (scope === 'submit' && !termsAccepted) errors.termsAccepted = 'You must accept the terms and conditions before submitting.';
     if (isSuperAdmin) {
       Object.assign(errors, validateAuthors(authors, { isSuperAdmin: true, user }));
     } else if (visibleAuthors.find((author) => author.is_owner)?.email !== user?.email?.trim().toLowerCase()) {
@@ -414,6 +421,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     formData.append('title', title);
     formData.append('abstract', abstract);
     formData.append('status', nextStatus);
+    if (intent === 'submit') formData.append('terms_accepted', termsAccepted ? '1' : '0');
     appendAcademicMetadata(formData, academicMetadata);
     if (uploadIds.pdf_upload_id) formData.append('pdf_upload_id', uploadIds.pdf_upload_id);
     if (revisionResponse.trim()) formData.append('revision_response', revisionResponse.trim());
@@ -952,6 +960,24 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                 </div>
               </div>
             </Section>
+          )}
+
+          {currentStep === 4 && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
+              <label className="flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-[var(--foreground)]">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(event) => setTermsAccepted(event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-[var(--border)] text-amber-600 focus:ring-amber-500"
+                />
+                <span>
+                  I confirm that I accept the terms and conditions for submitting this article. Draft saves do not require acceptance.
+                  <Link href="/terms" className="ml-1 font-bold text-amber-700 underline dark:text-amber-300">Read the terms</Link>
+                </span>
+              </label>
+              <FieldError id="terms-accepted-error">{validationErrors.termsAccepted}</FieldError>
+            </div>
           )}
 
           <div className="flex flex-col-reverse gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between">

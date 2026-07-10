@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { Mail, Check, Loader2, Send } from 'lucide-react';
 import api from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
+import { newsletterSchema, validateWithZod } from '../../lib/validation';
 
 export default function NewsletterRibbon() {
   const { toast } = useToast();
@@ -15,7 +16,8 @@ export default function NewsletterRibbon() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    const validation = validateWithZod(newsletterSchema, { email });
+    if (!validation.success) { toast(validation.errors.email || validation.message, 'error'); return; }
 
     try {
       setLoading(true);
@@ -77,8 +79,7 @@ export default function NewsletterRibbon() {
               <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 w-full">
                 <div className="relative flex-grow">
                   <input
-                    type="email"
-                    required
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="jsmith@university.edu"

@@ -15,6 +15,16 @@ import Field from '../../ui/Field';
 import { Input } from '../../ui/Input';
 import LoadingState from '../../ui/LoadingState';
 import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
+import {
+  changePasswordSchema,
+  currentEmailCodeSchema,
+  disableTwoFactorSchema,
+  newEmailCodeSchema,
+  newEmailRequestSchema,
+  profileSchema,
+  validateWithZod,
+  verificationCodeSchema,
+} from '../../../lib/validation';
 
 const passwordRuleText = 'Use at least 8 characters with uppercase, lowercase, number, and symbol.';
 
@@ -111,12 +121,12 @@ export default function AccountWorkspace() {
   ], [user]);
 
   const validateProfile = () => {
-    const errors = {};
-    if (!profile.name.trim()) errors.name = 'Name is required.';
-    if (profile.name.trim().length > 255) errors.name = 'Name must be 255 characters or fewer.';
-    if (profile.university_name.length > 255) errors.university_name = 'University or affiliation must be 255 characters or fewer.';
-    setProfileErrors(errors);
-    return Object.keys(errors).length === 0;
+    const validation = validateWithZod(profileSchema, {
+      name: profile.name,
+      university_name: profile.university_name,
+    });
+    setProfileErrors(validation.errors);
+    return validation.success;
   };
 
   const saveProfile = async (event) => {
@@ -182,10 +192,9 @@ export default function AccountWorkspace() {
   };
 
   const verifyPasswordCode = async () => {
-    const errors = {};
-    if (!/^\d{6}$/.test(passwordState.code)) errors.code = 'Enter the 6-digit code sent to your email.';
-    setPasswordErrors(errors);
-    if (Object.keys(errors).length) return;
+    const validation = validateWithZod(verificationCodeSchema, { code: passwordState.code });
+    setPasswordErrors(validation.errors);
+    if (!validation.success) return;
     try {
       setVerifyingPasswordCode(true);
       await api.post('/password/verify-code', { code: passwordState.code });
@@ -199,13 +208,14 @@ export default function AccountWorkspace() {
   };
 
   const validatePassword = () => {
-    const errors = {};
-    if (!passwordState.codeVerified) errors.code = 'Verify the emailed code before changing password.';
-    if (!passwordState.password) errors.password = 'New password is required.';
-    if (passwordState.password && passwordState.password.length < 8) errors.password = passwordRuleText;
-    if (passwordState.password !== passwordState.password_confirmation) errors.password_confirmation = 'Password confirmation must match.';
+    const validation = validateWithZod(changePasswordSchema, passwordState);
+    const errors = { ...validation.errors };
+    if (errors.codeVerified) {
+      errors.code = errors.codeVerified;
+      delete errors.codeVerified;
+    }
     setPasswordErrors(errors);
-    return Object.keys(errors).length === 0;
+    return validation.success;
   };
 
   const changePassword = async (event) => {
@@ -249,10 +259,9 @@ export default function AccountWorkspace() {
   };
 
   const verifyCurrentEmailCode = async () => {
-    const errors = {};
-    if (!/^\d{6}$/.test(currentEmailCode)) errors.currentEmailCode = 'Enter the 6-digit code from your current email.';
-    setEmailErrors(errors);
-    if (Object.keys(errors).length) return;
+    const validation = validateWithZod(currentEmailCodeSchema, { currentEmailCode });
+    setEmailErrors(validation.errors);
+    if (!validation.success) return;
     try {
       setEmailLoading(true);
       await api.post('/profile/email/verify-current-code', { code: currentEmailCode });
@@ -266,11 +275,9 @@ export default function AccountWorkspace() {
   };
 
   const requestNewEmailCode = async () => {
-    const errors = {};
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) errors.newEmail = 'Enter a valid new email address.';
-    if (newEmail.toLowerCase() === profile.email.toLowerCase()) errors.newEmail = 'New email must be different from your current email.';
-    setEmailErrors(errors);
-    if (Object.keys(errors).length) return;
+    const validation = validateWithZod(newEmailRequestSchema, { newEmail, currentEmail: profile.email });
+    setEmailErrors(validation.errors);
+    if (!validation.success) return;
     try {
       setEmailLoading(true);
       await api.post('/profile/email/request-new-code', { email: newEmail.trim() });
@@ -283,10 +290,9 @@ export default function AccountWorkspace() {
   };
 
   const verifyNewEmailCode = async () => {
-    const errors = {};
-    if (!/^\d{6}$/.test(newEmailCode)) errors.newEmailCode = 'Enter the 6-digit code from your new email.';
-    setEmailErrors(errors);
-    if (Object.keys(errors).length) return;
+    const validation = validateWithZod(newEmailCodeSchema, { newEmailCode });
+    setEmailErrors(validation.errors);
+    if (!validation.success) return;
     try {
       setEmailLoading(true);
       await api.post('/profile/email/verify-new-code', { code: newEmailCode });
@@ -327,10 +333,9 @@ export default function AccountWorkspace() {
   };
 
   const disableTwoFactor = async () => {
-    const errors = {};
-    if (!/^\d{6}$/.test(disable2faCode)) errors.disable2faCode = 'Enter the 6-digit disable code.';
-    setTwoFactorErrors(errors);
-    if (Object.keys(errors).length) return;
+    const validation = validateWithZod(disableTwoFactorSchema, { disable2faCode });
+    setTwoFactorErrors(validation.errors);
+    if (!validation.success) return;
     try {
       setTwoFactorLoading(true);
       await api.post('/2fa/disable', { code: disable2faCode });
@@ -529,7 +534,7 @@ export default function AccountWorkspace() {
                   Enter the new email address, request its code, then confirm it.
                 </Alert>
                 <Field label="New email address" error={emailErrors.newEmail}>
-                  <Input type="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} />
+                  <Input type="text" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} />
                 </Field>
                 <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-start">
                   <Field label="New email code" error={emailErrors.newEmailCode}>
