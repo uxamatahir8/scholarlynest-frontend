@@ -267,65 +267,6 @@ select option {
   color: var(--foreground) !important;
 }
 
-/* Rich Text Editor Overrides */
-.quill-premium-wrapper .ql-toolbar.ql-snow {
-  border-radius: 8px 8px 0 0;
-  border: none;
-  border-bottom: 1px solid var(--muted-border);
-  background-color: transparent;
-  padding: 12px;
-}
-.quill-premium-wrapper .ql-container.ql-snow {
-  border: none;
-  border-radius: 0 0 8px 8px;
-  font-family: var(--font-sans);
-  font-size: 15px;
-  min-height: 400px;
-}
-.quill-premium-wrapper .ql-editor {
-  min-height: 400px;
-  padding: 24px;
-}
-.dark .quill-premium-wrapper .ql-editor {
-  color: var(--foreground);
-}
-.dark .quill-premium-wrapper .ql-editor.ql-blank::before {
-  color: var(--muted);
-}
-.dark .quill-premium-wrapper .ql-snow .ql-stroke {
-  stroke: var(--muted);
-}
-.dark .quill-premium-wrapper .ql-snow .ql-fill, 
-.dark .quill-premium-wrapper .ql-snow .ql-stroke.ql-fill {
-  fill: var(--muted);
-}
-.dark .quill-premium-wrapper .ql-snow .ql-picker {
-  color: var(--muted);
-}
-.dark .quill-premium-wrapper .ql-snow .ql-picker-options {
-  background-color: var(--background);
-  border-color: var(--muted-border);
-}
-.dark .quill-premium-wrapper .ql-snow .ql-picker-item:hover {
-  color: var(--foreground);
-}
-.quill-premium-wrapper .ql-editor img {
-  border-radius: 8px;
-  margin: 1.5rem 0;
-  max-width: 100%;
-  border: 1px solid var(--muted-border);
-}
-
-.quill-magazine-wrapper .ql-container.ql-snow {
-  min-height: 180px !important;
-  max-height: 300px !important;
-}
-.quill-magazine-wrapper .ql-editor {
-  min-height: 180px !important;
-  max-height: 300px !important;
-  padding: 14px !important;
-}
-
 /* Background Gradients */
 .bg-mesh {
   background-image: 

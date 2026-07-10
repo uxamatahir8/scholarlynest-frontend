@@ -24,8 +24,7 @@ import api from '../../../utils/api';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
 
-// Dynamically import pre-made QuillEditor to avoid Next.js Server-Side Rendering (SSR) issues
-const QuillEditor = dynamic(() => import('../../../components/ui/QuillEditor'), { 
+const RichEditor = dynamic(() => import('../../../components/ui/RichEditor'), {
   ssr: false,
   loading: () => <div className="h-44 bg-zinc-150 dark:bg-zinc-900/50 animate-pulse rounded-xl border border-zinc-200 dark:border-zinc-800" />
 });
@@ -195,7 +194,7 @@ function MessageRow({ msg, isExpanded, onToggle, onStatusUpdate, formatDate }) {
                     </div>
                     {/* Render raw HTML reply content safely sanitized */}
                     <div 
-                      className="text-[11px] font-medium text-zinc-650 dark:text-zinc-400 leading-relaxed pl-1 ql-editor-preview"
+                      className="rich-editor-preview text-[11px] font-medium text-zinc-650 dark:text-zinc-400 leading-relaxed pl-1"
                       dangerouslySetInnerHTML={{ __html: sanitizeHTML(reply.message) }}
                     />
                   </div>
@@ -260,12 +259,12 @@ function MessageRow({ msg, isExpanded, onToggle, onStatusUpdate, formatDate }) {
                   </div>
                   
                   {replyMode === 'visual' ? (
-                    /* Styled Quill Rich Text Editor */
-                    <div className="quill-editor-wrapper bg-white dark:bg-[#121211] border border-zinc-200 dark:border-zinc-800/65 rounded-xl overflow-hidden text-zinc-850 dark:text-zinc-200">
-                      <QuillEditor 
+                    <div className="bg-white dark:bg-[#121211] border border-zinc-200 dark:border-zinc-800/65 rounded-xl overflow-hidden text-zinc-850 dark:text-zinc-200">
+                      <RichEditor
                         value={replyBody}
                         onChange={setReplyBody}
                         placeholder="Write your rich text response here..."
+                        minHeight="180px"
                       />
                     </div>
                   ) : (
@@ -302,52 +301,21 @@ function MessageRow({ msg, isExpanded, onToggle, onStatusUpdate, formatDate }) {
                 </button>
               </div>
 
-              {/* Injected custom styles for the Quill editor */}
               <style>{`
-                .quill-editor-wrapper .ql-toolbar.ql-snow {
-                  border: none !important;
-                  border-bottom: 1px solid #e4e4e7 !important;
-                  background: #f9f9fb;
-                }
-                .dark .quill-editor-wrapper .ql-toolbar.ql-snow {
-                  background: #1a1a19;
-                  border-bottom-color: #27272a !important;
-                }
-                .quill-editor-wrapper .ql-container.ql-snow {
-                  border: none !important;
-                  min-height: 180px;
-                  font-size: 13px;
-                }
-                .quill-editor-wrapper .ql-editor {
-                  min-height: 180px;
-                }
-                .dark .ql-snow .ql-stroke {
-                  stroke: #e4e4e7 !important;
-                }
-                .dark .ql-snow .ql-fill {
-                  fill: #e4e4e7 !important;
-                }
-                .dark .ql-snow .ql-picker {
-                  color: #e4e4e7 !important;
-                }
-                .dark .ql-snow .ql-picker-options {
-                  background-color: #1a1a19 !important;
-                  border-color: #27272a !important;
-                }
-                .ql-editor-preview p {
+                .rich-editor-preview p {
                   margin-bottom: 8px;
                 }
-                .ql-editor-preview ul {
+                .rich-editor-preview ul {
                   list-style-type: disc;
                   padding-left: 20px;
                   margin-bottom: 8px;
                 }
-                .ql-editor-preview ol {
+                .rich-editor-preview ol {
                   list-style-type: decimal;
                   padding-left: 20px;
                   margin-bottom: 8px;
                 }
-                .ql-editor-preview blockquote {
+                .rich-editor-preview blockquote {
                   border-left: 4px solid #10b981;
                   padding-left: 12px;
                   color: #71717a;
