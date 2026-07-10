@@ -14,7 +14,7 @@ export default function GlobalError({ error, reset }) {
       <body className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
         <main className="flex min-h-screen items-center justify-center px-4 py-20 sm:px-6">
           <div className="max-w-xl text-center">
-            <p className="text-sm font-semibold text-amber-700">Scholarly Nest</p>
+            <p className="text-sm font-semibold text-amber-700">ScholarlyNest</p>
             <h1 className="mt-3 font-serif text-4xl font-bold">The site could not finish loading.</h1>
             <p className="mt-4 text-base leading-8 text-zinc-600">
               Please retry the page. Technical details have been kept out of the public view.

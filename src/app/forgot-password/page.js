@@ -1,15 +1,17 @@
 'use client';
 
 import { safeApiMessage } from '../../utils/safeErrors';
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { KeyRound, Mail, Loader2, AlertCircle } from 'lucide-react';
 import api from '../../utils/api';
 
 export default function ForgotPassword() {
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const errorRef = useRef(null);
 
@@ -17,6 +19,10 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && user) router.replace('/admin');
+  }, [authLoading, user, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -7,6 +7,7 @@ import {
   FileText,
   HelpCircle,
   LayoutDashboard,
+  LifeBuoy,
   Mail,
   MessageSquare,
   Newspaper,
@@ -82,7 +83,7 @@ export const consoleNavigation = [
         label: 'Proofreader Desk',
         href: '/admin/proofreader',
         icon: FileCheck2,
-        isVisible: ({ user, impersonationStatus }) => !userHasRole(user, 'super_admin') && hasAnyRole(user, ['admin', 'proofreader']) || (userHasRole(user, 'super_admin') && !impersonationStatus?.active),
+        isVisible: () => false,
       },
       {
         label: 'Publisher Desk',
@@ -105,7 +106,7 @@ export const consoleNavigation = [
         label: 'Issue Manager',
         href: '/admin/issues',
         icon: Newspaper,
-        isVisible: ({ user }) => hasAnyRole(user, ['super_admin', 'admin', 'publisher', 'editor', 'magazine_editor']),
+        isVisible: ({ user }) => hasAnyRole(user, ['super_admin', 'publisher']),
       },
       {
         label: 'Magazine Tags',
@@ -165,12 +166,19 @@ export const consoleNavigation = [
         icon: Mail,
         isVisible: ({ hasPermission }) => can(hasPermission, 'newsletters.view-any'),
       },
+      {
+        label: 'Support Tickets',
+        href: '/admin/support-tickets',
+        icon: LifeBuoy,
+        isVisible: ({ user, hasPermission }) => hasAnyRole(user, ['super_admin', 'admin']) || can(hasPermission, 'support_ticket_management'),
+      },
     ],
   },
   {
     group: 'Account',
     items: [
       { label: 'My Account', href: '/admin/settings', icon: Settings },
+      { label: 'Support', href: '/admin/support', icon: LifeBuoy },
     ],
   },
   {

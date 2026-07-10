@@ -4,8 +4,8 @@ import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  Search as SearchIcon, Loader2, BookOpen, FileText, Globe, ArrowLeft, 
+import {
+  Search as SearchIcon, Loader2, BookOpen, FileText, Globe, ArrowLeft,
   ArrowRight, AlertCircle, Calendar, User, BookOpenText, X
 } from 'lucide-react';
 import api from '../../utils/api';
@@ -46,11 +46,11 @@ function SearchResultsContent() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await api.get(
         `/search/full?q=${encodeURIComponent(searchQuery)}&type=${tab}&page=${page}`
       );
-      
+
       const data = response.data;
       setResults(data.data || []);
       setTotalResults(data.total || 0);
@@ -83,16 +83,16 @@ function SearchResultsContent() {
     switch (item.type) {
       case 'magazine':
         return (
-          <div 
-            key={`mag-${item.id}`} 
+          <div
+            key={`mag-${item.id}`}
             className="group flex flex-col md:flex-row gap-6 py-6 border-b border-zinc-100 dark:border-zinc-900/60 transition-colors text-left"
           >
             {(item.additional?.cover_image_url || item.additional?.cover_image) && (
               <div className="w-20 h-28 rounded-xl overflow-hidden shrink-0 border border-zinc-200/60 dark:border-zinc-800 shadow-sm">
-                <img 
+                <img
                   src={item.additional.cover_image_url || getFullImageUrl(item.additional.cover_image)}
-                  alt={item.title} 
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                  alt={item.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               </div>
             )}
@@ -112,8 +112,8 @@ function SearchResultsContent() {
                 </p>
               )}
               <div className="pt-1">
-                <Link 
-                  href={item.target_url} 
+                <Link
+                  href={item.target_url}
                   className="inline-flex items-center space-x-1 text-[10px] font-sans font-bold uppercase tracking-wider text-amber-600 hover:text-amber-700 transition-colors"
                 >
                   <span>Explore Issue</span>
@@ -126,8 +126,8 @@ function SearchResultsContent() {
 
       case 'article':
         return (
-          <div 
-            key={`art-${item.id}`} 
+          <div
+            key={`art-${item.id}`}
             className="group flex flex-col gap-3 py-6 border-b border-zinc-100 dark:border-zinc-900/60 transition-colors text-left"
           >
             <div className="flex flex-wrap items-center gap-2">
@@ -141,11 +141,11 @@ function SearchResultsContent() {
                 </span>
               )}
             </div>
-            
+
             <h3 className="font-serif text-lg font-bold text-zinc-900 dark:text-white leading-tight group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
               <Link href={item.target_url}>{item.title}</Link>
             </h3>
-            
+
             {item.additional?.abstract && (
               <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed line-clamp-3">
                 {item.additional.abstract}
@@ -159,9 +159,9 @@ function SearchResultsContent() {
                   {item.additional?.author || 'Unknown Author'}
                 </span>
               </div>
-              
-              <Link 
-                href={item.target_url} 
+
+              <Link
+                href={item.target_url}
                 className="inline-flex items-center space-x-1 text-[10px] font-sans font-bold uppercase tracking-wider text-amber-600 hover:text-amber-700 transition-colors"
               >
               <span>Read Article</span>
@@ -173,8 +173,8 @@ function SearchResultsContent() {
 
       default: // page (CMS or Magazine Custom Page)
         return (
-          <div 
-            key={`page-${item.id}`} 
+          <div
+            key={`page-${item.id}`}
             className="group flex flex-col gap-3 py-6 border-b border-zinc-100 dark:border-zinc-900/60 transition-colors text-left"
           >
             <div className="flex flex-wrap items-center gap-2">
@@ -198,8 +198,8 @@ function SearchResultsContent() {
             )}
 
             <div className="pt-1">
-              <Link 
-                href={item.target_url} 
+              <Link
+                href={item.target_url}
                 className="inline-flex items-center space-x-1 text-[10px] font-sans font-bold uppercase tracking-wider text-amber-600 hover:text-amber-700 transition-colors"
               >
                 <span>View Guidelines</span>
@@ -231,23 +231,23 @@ function SearchResultsContent() {
         description="Search articles, magazines, and dynamic pages on ScholarlyNest scientific dissemination platform."
         ogUrl="/search"
       />
-      
+
       <div className="relative pt-32 pb-16 border-b border-zinc-100 dark:border-zinc-900/60 bg-white/60 dark:bg-zinc-900/20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-30 space-y-6 text-center">
-          
+
           <div className="flex justify-center">
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="inline-flex items-center space-x-1.5 text-[10px] font-sans font-bold uppercase tracking-widest text-zinc-400 hover:text-amber-605 transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Return Home</span>
             </Link>
           </div>
-          
+
           <div className="space-y-2">
             <h1 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-900 dark:text-white tracking-tight leading-tight">
-              Search Scholarly Nest
+              Search ScholarlyNest
             </h1>
             <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 font-medium max-w-xl mx-auto">
               Search published articles, academic magazines, and public pages.
@@ -272,10 +272,10 @@ function SearchResultsContent() {
 
       {/* 2. Main Search Results Area */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
-        
+
         {q ? (
           <div className="space-y-6">
-            
+
             {/* Filter Tabs & Count Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-150 dark:border-zinc-850/80 pb-4 gap-4">
               <div className="flex flex-wrap gap-1.5 p-1 bg-zinc-100/80 dark:bg-zinc-900/40 rounded-xl border border-zinc-200/30 dark:border-zinc-850/50">

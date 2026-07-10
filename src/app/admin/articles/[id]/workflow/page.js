@@ -98,7 +98,26 @@ export default function ArticleWorkflowPage() {
       payload.append('is_peer_reviewed', publishData.is_peer_reviewed ? '1' : '0');
     }
     if (publishData.publication_sections) {
-      payload.append('publication_sections', JSON.stringify(publishData.publication_sections));
+      const publicationSections = [];
+      for (const section of publishData.publication_sections) {
+        let mediaUploadId = section.existing_media_upload_session_id || null;
+        if (section.image_file) {
+          const sectionImageUpload = await uploadAndAwaitClean({
+            file: section.image_file,
+            purpose: 'publication_section_image',
+            attachableId: article.id,
+          });
+          mediaUploadId = sectionImageUpload.id;
+        }
+        publicationSections.push({
+          section_key: section.section_key,
+          title: section.title,
+          content_html: section.content_html,
+          sort_order: section.sort_order,
+          media_upload_session_id: mediaUploadId,
+        });
+      }
+      payload.append('publication_sections', JSON.stringify(publicationSections));
     }
     if (publishData.publication_pdf) {
       const pdfUpload = await uploadAndAwaitClean({
@@ -159,7 +178,7 @@ export default function ArticleWorkflowPage() {
         <aside className="space-y-6">
           <WorkflowContextPanel article={article} />
           <AssignmentSummary article={article} canSeeReviewerIdentity={showReviewerIdentity} />
-          <ArticleFilesPanel files={article.files || []} />
+          <ArticleFilesPanel files={article.files || []} assets={article.assets || []} />
         </aside>
       </div>
 
@@ -171,6 +190,7 @@ export default function ArticleWorkflowPage() {
           onClose={() => setPublishOpen(false)}
           articleTitle={article.title}
           magazineId={article.magazine_id}
+          publicationSections={article.publication_sections || []}
           onSubmit={handlePublishSubmit}
         />
       )}

@@ -8,7 +8,7 @@ export default function NotFound() {
   return (
     <main className="flex min-h-[80vh] items-center justify-center bg-[var(--background)] px-4 py-20 sm:px-6">
       <SeoHead
-        title="Page Not Found - Scholarly Nest"
+        title="Page Not Found - ScholarlyNest"
         description="The requested page could not be located."
         ogUrl="/404"
       />

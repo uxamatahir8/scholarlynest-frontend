@@ -26,7 +26,8 @@ export default function ConsoleUserMenu({ user, onLogout, impersonationActive, o
     };
   }, [open]);
 
-  const initial = user?.name?.charAt(0) || 'U';
+  const initial = user?.name?.charAt(0) || user?.email?.charAt(0) || 'U';
+  const avatarUrl = user?.profile_image_url || user?.profile_image || '';
 
   return (
     <div ref={menuRef} className="relative">
@@ -37,7 +38,9 @@ export default function ConsoleUserMenu({ user, onLogout, impersonationActive, o
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-muted)] text-xs font-bold text-[var(--accent)]">{initial}</span>
+        <span className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[var(--surface-muted)] text-xs font-bold text-[var(--accent)]">
+          {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : initial}
+        </span>
         <span className="hidden max-w-36 truncate sm:inline">{user?.name || 'Account'}</span>
         <ChevronDown className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
       </button>

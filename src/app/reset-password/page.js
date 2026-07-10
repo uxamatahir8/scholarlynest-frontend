@@ -4,12 +4,14 @@ import { safeApiMessage } from '../../utils/safeErrors';
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Lock, ShieldAlert, Loader2, AlertCircle, Check, X, Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
 
 function ResetPasswordForm() {
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams.get('email') || '';
@@ -35,6 +37,10 @@ function ResetPasswordForm() {
   const hasSymbol = /[@$!%*?&]/.test(password);
   const passwordsMatch = password && password === passwordConfirmation;
   const isPasswordStrong = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSymbol;
+
+  useEffect(() => {
+    if (!authLoading && user) router.replace('/admin');
+  }, [authLoading, user, router]);
 
   useEffect(() => {
     if (!emailParam || !tokenParam) {

@@ -73,8 +73,8 @@ export default function Header() {
   return (
     <header className="relative left-1/2 w-screen -translate-x-1/2 bg-white/95 dark:bg-zinc-950/95">
       <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/" aria-label="Scholarly Nest home" className="flex shrink-0 items-center rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950">
-          <Image src="/logo.png" alt="Scholarly Nest" width={690} height={362} className="h-9 w-auto object-contain" priority />
+        <Link href="/" aria-label="ScholarlyNest home" className="flex shrink-0 items-center rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950">
+          <Image src="/logo.png" alt="ScholarlyNest" width={690} height={362} className="h-9 w-auto object-contain" priority />
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex" aria-label="Public navigation">
@@ -138,8 +138,12 @@ export default function Header() {
                 aria-expanded={accountOpen}
                 className="inline-flex max-w-[180px] items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-zinc-100 dark:hover:bg-zinc-900"
               >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-bold text-zinc-850 dark:bg-zinc-900 dark:text-zinc-100">
-                  {(user.name || user.email || 'U').charAt(0)}
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 text-xs font-bold text-zinc-850 dark:bg-zinc-900 dark:text-zinc-100">
+                  {user.profile_image_url || user.profile_image ? (
+                    <img src={user.profile_image_url || user.profile_image} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    (user.name || user.email || 'U').charAt(0)
+                  )}
                 </span>
                 <span className="truncate">{user.name || 'Account'}</span>
               </button>
@@ -213,7 +217,16 @@ export default function Header() {
           {user ? (
             <div className="space-y-3 pt-3">
               <div className="space-y-2 rounded-md bg-zinc-50 p-4 dark:bg-zinc-900">
-                <p className="text-base font-bold text-zinc-950 dark:text-white">{user.name || user.email}</p>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-sm font-bold text-zinc-850 dark:bg-zinc-800 dark:text-zinc-100">
+                    {user.profile_image_url || user.profile_image ? (
+                      <img src={user.profile_image_url || user.profile_image} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      (user.name || user.email || 'U').charAt(0)
+                    )}
+                  </span>
+                  <p className="min-w-0 truncate text-base font-bold text-zinc-950 dark:text-white">{user.name || user.email}</p>
+                </div>
                 <p className="text-sm text-zinc-600 dark:text-zinc-350">{roleLabel}</p>
               </div>
               <Link href="/admin" className="flex min-h-11 items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-bold text-white transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">

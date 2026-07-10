@@ -262,6 +262,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
         if (articleRes?.data) {
           const nextArticle = articleRes.data;
           setArticle(nextArticle);
+          if (Number.isInteger(Number(nextArticle.resume_step))) {
+            setCurrentStep(Math.max(0, Math.min(4, Number(nextArticle.resume_step) - 1)));
+          }
           setMagazineId(String(nextArticle.magazine_id || ''));
           setTitle(nextArticle.title || '');
           setAbstract(nextArticle.abstract || '');

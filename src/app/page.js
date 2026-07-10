@@ -160,8 +160,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <SeoHead
-        title="Scholarly Nest - Academic Publishing Platform"
-        description="Discover academic magazines, published articles, and public research archives on Scholarly Nest."
+        title="ScholarlyNest - Academic Publishing Platform"
+        description="Discover academic magazines, published articles, and public research archives on ScholarlyNest."
         ogUrl="/"
       />
 
@@ -179,7 +179,7 @@ export default function Home() {
               A quieter home for published research.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-100">
-              Scholarly Nest helps readers explore academic magazines, authors submit research, and editorial teams maintain public publication archives.
+              ScholarlyNest helps readers explore academic magazines, authors submit research, and editorial teams maintain public publication archives.
             </p>
             <div className="mt-8 max-w-2xl">
               <GlobalSearchInput placeholder="Search articles, authors, magazines..." />

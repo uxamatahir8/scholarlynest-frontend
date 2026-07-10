@@ -21,7 +21,7 @@ export default function AssignmentSummary({ article, canSeeReviewerIdentity }) {
       key: `reviewer-${assignment.id}`,
       label: 'Reviewer',
       name: canSeeReviewerIdentity ? assignment.reviewer?.name || 'Assigned reviewer' : `Reviewer ${index + 1}`,
-      status: labelize(assignment.status),
+      status: labelize(assignment.invitation_state || assignment.status),
     });
   });
 

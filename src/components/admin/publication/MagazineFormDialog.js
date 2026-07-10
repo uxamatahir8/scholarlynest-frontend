@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ImagePlus, Loader2, Save, X } from 'lucide-react';
+import { ImagePlus, Loader2, Pencil, Save, X } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import MagazineFormFields from '../MagazineFormFields';
 
@@ -137,10 +137,28 @@ export default function MagazineFormDialog({
               <section className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
                 <h3 className="text-sm font-bold text-[var(--foreground)]">Publication Appearance</h3>
                 <p className="mt-1 text-sm text-[var(--muted)]">Upload a cover image. Existing storage values are kept private.</p>
-                <label className={`mt-4 flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] p-4 text-center ${readOnly ? 'pointer-events-none opacity-60' : ''}`}>
-                  <ImagePlus className="h-6 w-6 text-[var(--muted)]" aria-hidden="true" />
-                  <span className="mt-2 text-sm font-semibold text-[var(--foreground)]">{fileName || 'Choose cover image'}</span>
-                  <span className="mt-1 text-xs text-[var(--muted)]">JPEG, PNG, GIF, SVG, or WebP</span>
+                <label className={`group relative mt-4 flex aspect-[4/3] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] text-center ${readOnly ? 'pointer-events-none opacity-60' : ''}`}>
+                  {fileName || magazine?.cover_image_url || magazine?.cover_image ? (
+                    <img
+                      src={fileName && form.cover_image_file ? URL.createObjectURL(form.cover_image_file) : (magazine?.cover_image_url || magazine?.cover_image)}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center p-4">
+                      <ImagePlus className="h-6 w-6 text-[var(--muted)]" aria-hidden="true" />
+                      <span className="mt-2 text-sm font-semibold text-[var(--foreground)]">Choose cover image</span>
+                      <span className="mt-1 text-xs text-[var(--muted)]">JPEG, PNG, GIF, SVG, or WebP</span>
+                    </div>
+                  )}
+                  {!readOnly && (
+                    <span className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow">
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  )}
+                  {fileName && (
+                    <span className="absolute inset-x-0 bottom-0 bg-black/65 px-3 py-2 text-xs font-semibold text-white">{fileName}</span>
+                  )}
                   <input
                     type="file"
                     accept="image/*"

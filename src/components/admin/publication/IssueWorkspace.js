@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Calendar, CheckCircle2, ChevronRight, FileText, Loader2, Newspaper, Plus, RefreshCw, Upload } from 'lucide-react';
+import { Calendar, CheckCircle2, ChevronRight, FileText, Image as ImageIcon, Loader2, Newspaper, Pencil, Plus, RefreshCw, Upload } from 'lucide-react';
 import api from '../../../utils/api';
 import { safeApiMessage } from '../../../utils/safeErrors';
 import { logError } from '../../../utils/safeLogger';
@@ -30,6 +30,7 @@ const emptyIssueForm = {
   description: '',
   status: 'draft',
   cover_image: null,
+  cover_image_url: '',
 };
 
 function publicationFormDefaults(article, selectedIssue) {
@@ -63,8 +64,8 @@ export default function IssueWorkspace() {
   const [articleAction, setArticleAction] = useState(null);
   const [latestCitation, setLatestCitation] = useState('');
 
-  const canUsePage = hasRole('publisher') || hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor') || hasRole('super_admin') || hasRole('admin');
-  const canPublishIssues = hasRole('publisher') || hasRole('super_admin') || hasRole('admin');
+  const canUsePage = hasRole('publisher') || hasRole('super_admin');
+  const canPublishIssues = hasRole('publisher') || hasRole('super_admin');
   const magazineFilter = searchParams.get('magazine_id') || '';
   const selectedIssueId = searchParams.get('issue_id') || '';
   const page = Math.max(1, Number(searchParams.get('page') || 1));
@@ -179,6 +180,7 @@ export default function IssueWorkspace() {
       description: issue.description || '',
       status: issue.status || (issue.is_published ? 'published' : 'draft'),
       cover_image: null,
+      cover_image_url: issue.cover_image_url || issue.cover_image || '',
     });
     selectIssue(issue);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
@@ -195,7 +197,7 @@ export default function IssueWorkspace() {
     try {
       const payload = new FormData();
       Object.entries(issueForm).forEach(([key, value]) => {
-        if (key === 'cover_image') return;
+        if (key === 'cover_image' || key === 'cover_image_url') return;
         if (key === 'id' || value === null || value === '') return;
         if (!canPublishIssues && ['status', 'is_published', 'published_at'].includes(key)) return;
         payload.append(key, value);
@@ -292,7 +294,7 @@ export default function IssueWorkspace() {
   }
 
   if (!canUsePage) {
-    return <ErrorState title="Access restricted">Issue management is available only to authorized magazine editors, publishers, and administrators.</ErrorState>;
+    return <ErrorState title="Access restricted">Issue management is available only to Super Admin and Publisher roles.</ErrorState>;
   }
 
   return (
@@ -440,13 +442,35 @@ export default function IssueWorkspace() {
                 <span className="text-sm font-semibold text-[var(--foreground)]">Issue description</span>
                 <textarea rows={3} value={issueForm.description} onChange={(event) => setIssueForm({ ...issueForm, description: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" />
               </label>
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--foreground)]">
-                  <Upload className="h-4 w-4" aria-hidden="true" />
-                  <span>{issueForm.cover_image?.name || 'Cover image'}</span>
+              <div className="mt-4 grid gap-4 md:grid-cols-[220px_minmax(0,1fr)] md:items-end">
+                <label className="group relative flex aspect-[4/3] cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)]">
+                  {issueForm.cover_image || issueForm.cover_image_url ? (
+                    <img
+                      src={issueForm.cover_image ? URL.createObjectURL(issueForm.cover_image) : issueForm.cover_image_url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center text-center">
+                      <ImageIcon className="h-7 w-7 text-[var(--muted)]" aria-hidden="true" />
+                      <span className="mt-2 text-sm font-semibold text-[var(--foreground)]">Issue cover</span>
+                    </div>
+                  )}
+                  <span className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow">
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  {issueForm.cover_image?.name && (
+                    <span className="absolute inset-x-0 bottom-0 bg-black/65 px-3 py-2 text-xs font-semibold text-white">{issueForm.cover_image.name}</span>
+                  )}
                   <input type="file" accept="image/*" className="sr-only" onChange={(event) => setIssueForm({ ...issueForm, cover_image: event.target.files?.[0] || null })} />
                 </label>
-                <Button type="submit" disabled={savingIssue} icon={savingIssue ? Loader2 : CheckCircle2}>{savingIssue ? 'Saving...' : 'Save Issue'}</Button>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
+                    <Upload className="h-4 w-4" aria-hidden="true" />
+                    {issueForm.cover_image?.name || 'Choose a scanned cover image'}
+                  </span>
+                  <Button type="submit" disabled={savingIssue} icon={savingIssue ? Loader2 : CheckCircle2}>{savingIssue ? 'Saving...' : 'Save Issue'}</Button>
+                </div>
               </div>
             </form>
 

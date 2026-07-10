@@ -46,6 +46,8 @@ export default function MagazineWorkspace() {
   const canEdit = hasPermission('magazines.edit') && !isEditor;
   const canDelete = hasRole('super_admin') && hasPermission('magazines.delete') && !isEditor;
   const canEditSeo = hasPermission('seo.magazines') && !isEditor;
+  const canManagePublicPages = hasRole('super_admin') || hasRole('admin') || isEditor || canEdit;
+  const canUseIssueManager = hasRole('super_admin') || hasRole('publisher');
 
   const pageSummary = useMemo(() => {
     const publishedArticles = magazines.reduce((sum, magazine) => sum + Number(magazine.articles_count || 0), 0);
@@ -212,12 +214,16 @@ export default function MagazineWorkspace() {
                     <Link href={`/magazines/${magazine.slug}`} target="_blank" className="inline-flex items-center gap-1 text-sm font-semibold text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] dark:text-amber-400">
                       Public magazine <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                     </Link>
-                    <Link href={`/admin/magazines/${magazine.slug}/pages`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
-                      Public pages <Settings className="h-3.5 w-3.5" aria-hidden="true" />
-                    </Link>
-                    <Link href={`/admin/issues?magazine_id=${magazine.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
-                      Issues <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                    </Link>
+                    {canManagePublicPages && (
+                      <Link href={`/admin/magazines/${magazine.slug}/pages`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                        Public pages <Settings className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Link>
+                    )}
+                    {canUseIssueManager && (
+                      <Link href={`/admin/issues?magazine_id=${magazine.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                        Issues <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Link>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">
@@ -226,9 +232,16 @@ export default function MagazineWorkspace() {
                       {canEdit || canEditSeo ? 'Edit' : 'View'}
                     </Button>
                   )}
-                  <Link href={`/admin/issues?magazine_id=${magazine.id}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] transition-all hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
-                    Manage Issues <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
+                  {canManagePublicPages && (
+                    <Link href={`/admin/magazines/${magazine.slug}/pages`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-all hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                      Public Pages <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  )}
+                  {canUseIssueManager && (
+                    <Link href={`/admin/issues?magazine_id=${magazine.id}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] transition-all hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                      Manage Issues <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  )}
                   {canDelete && (
                     <Button type="button" variant="danger" icon={Trash2} onClick={() => setDeleteTarget(magazine)}>Delete</Button>
                   )}
