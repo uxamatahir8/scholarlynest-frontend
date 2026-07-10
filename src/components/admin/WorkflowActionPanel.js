@@ -731,20 +731,42 @@ export default function WorkflowActionPanel({
                         ) : question.response_type === 'checkbox' ? (
                           <div className="flex flex-wrap gap-2">
                             {(question.options || []).map((option) => {
+                              const val = typeof option === 'object' && option !== null ? option.value : option;
+                              const lbl = typeof option === 'object' && option !== null ? option.label : option;
                               const rawCurrent = questionnaireResponses[question.id] ?? question.answer ?? [];
                               const current = Array.isArray(rawCurrent) ? rawCurrent : [];
-                              const checked = current.includes(option.value);
+                              const checked = current.includes(val);
                               return (
-                                <label key={option.value} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm">
+                                <label key={val} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm cursor-pointer hover:bg-[var(--surface-muted)] transition-colors">
                                   <input
                                     type="checkbox"
                                     checked={checked}
                                     onChange={(event) => {
-                                      const next = event.target.checked ? [...current, option.value] : current.filter((item) => item !== option.value);
+                                      const next = event.target.checked ? [...current, val] : current.filter((item) => item !== val);
                                       updateQuestionnaireAnswer(question, next);
                                     }}
                                   />
-                                  {option.label}
+                                  {lbl}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ) : question.response_type === 'radio' ? (
+                          <div className="flex flex-wrap gap-4">
+                            {(question.options || []).map((option) => {
+                              const val = typeof option === 'object' && option !== null ? option.value : option;
+                              const lbl = typeof option === 'object' && option !== null ? option.label : option;
+                              const checked = (questionnaireResponses[question.id] ?? question.answer) === val;
+                              return (
+                                <label key={val} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm cursor-pointer hover:bg-[var(--surface-muted)] transition-colors">
+                                  <input
+                                    type="radio"
+                                    name={`question-${question.id}`}
+                                    value={val}
+                                    checked={checked}
+                                    onChange={() => updateQuestionnaireAnswer(question, val)}
+                                  />
+                                  {lbl}
                                 </label>
                               );
                             })}
@@ -752,7 +774,11 @@ export default function WorkflowActionPanel({
                         ) : (
                           <Select value={questionnaireResponses[question.id] || question.answer || ''} onChange={(event) => updateQuestionnaireAnswer(question, event.target.value)}>
                             <option value="">Select</option>
-                            {(question.options || []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                            {(question.options || []).map((option) => {
+                              const val = typeof option === 'object' && option !== null ? option.value : option;
+                              const lbl = typeof option === 'object' && option !== null ? option.label : option;
+                              return <option key={val} value={val}>{lbl}</option>;
+                            })}
                           </Select>
                         )}
                       </Field>
