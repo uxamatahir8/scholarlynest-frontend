@@ -174,11 +174,11 @@ export default function ArticleWorkflowPage() {
         <div className="space-y-6">
           <ArticleMetadataPanel article={article} />
           <ReviewRecommendationPanel article={article} canSeeReviewerIdentity={showReviewerIdentity} />
+          <ArticleFilesPanel files={article.files || []} assets={article.assets || []} />
         </div>
         <aside className="space-y-6">
           <WorkflowContextPanel article={article} />
           <AssignmentSummary article={article} canSeeReviewerIdentity={showReviewerIdentity} />
-          <ArticleFilesPanel files={article.files || []} assets={article.assets || []} />
         </aside>
       </div>
 

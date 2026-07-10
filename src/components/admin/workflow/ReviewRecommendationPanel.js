@@ -48,35 +48,35 @@ export default function ReviewRecommendationPanel({ article, canSeeReviewerIdent
       {recommendations.length === 0 ? (
         <EmptyState title="No visible recommendations">Review notes and recommendations will appear here when permitted.</EmptyState>
       ) : (
-        <ul className="space-y-3">
+        <ul className="min-w-0 space-y-3">
           {recommendations.map((item) => (
-            <li key={item.key} className="rounded-md border border-[var(--border)] bg-[var(--surface-muted)] p-3">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                <div>
+            <li key={item.key} className="min-w-0 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-muted)] p-3">
+              <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                <div className="min-w-0">
                   <p className="text-sm font-bold text-[var(--foreground)]">{item.title}</p>
-                  <p className="text-xs font-semibold text-[var(--muted)]">{item.actor}</p>
+                  <p className="truncate text-xs font-semibold text-[var(--muted)]" title={item.actor}>{item.actor}</p>
                 </div>
                 {item.recommendation && (
-                  <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-bold text-[var(--foreground)]">
+                  <span className="w-fit rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs font-bold text-[var(--foreground)]">
                     {labelize(item.recommendation)}
                   </span>
                 )}
               </div>
-              {item.comments && <p className="mt-3 text-sm leading-relaxed text-[var(--foreground)]">{item.comments}</p>}
+              {item.comments && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--foreground)]">{item.comments}</p>}
               {item.questionnaire?.questions?.length > 0 && (
-                <div className="mt-3 rounded-md bg-[var(--surface)] p-3">
+                <div className="mt-3 min-w-0 overflow-hidden rounded-md bg-[var(--surface)] p-3">
                   <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Questionnaire responses</p>
                   <dl className="space-y-2">
                     {item.questionnaire.questions.map((question) => (
-                      <div key={question.id}>
-                        <dt className="text-xs font-bold text-[var(--foreground)]">{question.prompt}</dt>
-                        <dd className="text-sm text-[var(--muted)]">{Array.isArray(question.answer) ? question.answer.join(', ') : (question.answer || 'No response')}</dd>
+                      <div key={question.id} className="min-w-0">
+                        <dt className="break-words text-xs font-bold text-[var(--foreground)]">{question.prompt}</dt>
+                        <dd className="break-words text-sm text-[var(--muted)]">{Array.isArray(question.answer) ? question.answer.join(', ') : (question.answer || 'No response')}</dd>
                       </div>
                     ))}
                   </dl>
                 </div>
               )}
-              {item.internal && <p className="mt-3 rounded-md bg-[var(--surface)] p-3 text-sm leading-relaxed text-[var(--muted)]">Internal note: {item.internal}</p>}
+              {item.internal && <p className="mt-3 rounded-md bg-[var(--surface)] p-3 text-sm leading-relaxed text-[var(--muted)] break-words">Internal note: {item.internal}</p>}
             </li>
           ))}
         </ul>

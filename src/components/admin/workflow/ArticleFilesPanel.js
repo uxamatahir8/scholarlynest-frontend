@@ -1,6 +1,7 @@
 import React from 'react';
 import { Download, FileImage, Files, Sheet } from 'lucide-react';
 import EmptyState from '../../ui/EmptyState';
+import ImageLightboxGallery from '../../ui/ImageLightboxGallery';
 import WorkflowSection from './WorkflowSection';
 import { fileTypeLabels, formatDate, labelize } from './workflowDisplay';
 import api from '../../../utils/api';
@@ -50,6 +51,17 @@ function supplementaryGroup(kind, item) {
     return 'sheets';
   }
   return 'files';
+}
+
+function galleryImage(entry) {
+  const item = entry.item;
+  return {
+    src: fileDownloadUrl(item.download_url),
+    title: assetTitle(item),
+    caption: item.caption,
+    description: item.description,
+    alt: assetTitle(item),
+  };
 }
 
 function DownloadRow({ item, title, meta }) {
@@ -155,20 +167,7 @@ export default function ArticleFilesPanel({ files = [], assets = [] }) {
                   <span className="shrink-0 text-xs font-bold text-[var(--muted)]">{group.items.length} item{group.items.length === 1 ? '' : 's'}</span>
                 </div>
                 {group.id === 'images' ? (
-                  <div className="grid min-w-0 max-w-full gap-3 sm:grid-cols-2">
-                    {group.items.map(({ kind, item }) => (
-                      <figure key={`${kind}-${item.id}`} className="min-w-0 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-muted)]">
-                        <img src={fileDownloadUrl(item.download_url)} alt={assetTitle(item)} className="h-36 w-full object-cover" />
-                        <figcaption className="grid min-w-0 gap-2 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                          <span className="min-w-0 truncate text-xs font-bold text-[var(--foreground)]" title={assetTitle(item)}>{assetTitle(item)}</span>
-                          <a href={fileDownloadUrl(item.download_url)} target="_blank" rel="noreferrer" className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-bold text-[var(--foreground)] hover:bg-[var(--surface-muted)] sm:w-auto">
-                            <Download className="h-3.5 w-3.5" aria-hidden="true" />
-                            Open
-                          </a>
-                        </figcaption>
-                      </figure>
-                    ))}
-                  </div>
+                  <ImageLightboxGallery images={group.items.map(galleryImage)} title="Images" showHeader={false} />
                 ) : (
                   <ul className="grid min-w-0 max-w-full gap-2">
                     {group.items.map(({ kind, item }) => (

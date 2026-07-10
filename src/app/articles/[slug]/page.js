@@ -13,6 +13,7 @@ import { logError } from '../../../utils/safeLogger';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
 import ArticlePagination from '../../../components/article/ArticlePagination';
+import ImageLightboxGallery from '../../../components/ui/ImageLightboxGallery';
 import SeoHead from '../../../components/SeoHead';
 import AuthorHeaderBlock from '../../../components/article/AuthorHeaderBlock';
 import { isArticleEditableStatus } from '../../../utils/status';
@@ -49,6 +50,14 @@ const getFileIcon = (mimeType, filename) => {
   }
   return <FileQuestion className="w-4 h-4 text-zinc-500" />;
 };
+
+const isImageAsset = (asset) => {
+  const mime = String(asset?.mime_type || '').toLowerCase();
+  const ext = String(asset?.original_filename || asset?.title || '').split('.').pop()?.toLowerCase() || '';
+  return asset?.asset_type === 'image' || mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
+};
+
+const assetDownloadUrl = (asset) => asset?.download_url || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/articles/assets/${asset.id}/download`;
 
 const sectionLabels = {
   introduction: 'Introduction',
@@ -300,6 +309,24 @@ export default function ArticleDetail() {
   }
 
   const articleImages = article.article_images || [];
+  const supplementaryImageAssets = (article.assets || []).filter(isImageAsset);
+  const articleGalleryImages = [
+    ...articleImages.map((asset) => ({
+      src: asset.download_url || assetDownloadUrl(asset),
+      title: asset.title || asset.original_filename || article.title,
+      caption: asset.caption,
+      description: asset.description,
+      alt: asset.title || asset.original_filename || article.title,
+    })),
+    ...supplementaryImageAssets.map((asset) => ({
+      src: assetDownloadUrl(asset),
+      title: asset.title || asset.original_filename || article.title,
+      caption: asset.caption,
+      description: asset.description,
+      alt: asset.title || asset.original_filename || article.title,
+    })),
+  ];
+  const supplementaryFiles = (article.assets || []).filter((asset) => !isImageAsset(asset));
   const publicationSections = (article.publication_sections || []).filter((section) => section.content_html);
   const details = [
     article.open_access_label && { label: 'Access', value: article.open_access_label },
@@ -324,7 +351,7 @@ export default function ArticleDetail() {
       id: `section-${section.section_key}`,
       label: section.title || sectionLabels[section.section_key] || section.section_key.replaceAll('_', ' '),
     })),
-    articleImages.length > 0 && { id: 'gallery', label: 'Gallery' },
+    articleGalleryImages.length > 0 && { id: 'gallery', label: 'Gallery' },
     ((article.assets && article.assets.length > 0) || article.has_pdf) && { id: 'supplementary-assets', label: 'Supplementary Assets' },
     { id: 'citation', label: 'Citation' },
   ].filter(Boolean);
@@ -574,28 +601,12 @@ export default function ArticleDetail() {
             </div>
           )}
 
-          {articleImages.length > 0 && (
+          {articleGalleryImages.length > 0 && (
             <section id="gallery" className="scroll-mt-24 space-y-4 border-t border-zinc-100 pt-8 text-left dark:border-zinc-800/80">
               <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
                 Gallery
               </h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {articleImages.map((asset) => {
-                  const imageUrl = asset.download_url || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/articles/assets/${asset.id}/download`;
-                  return (
-                    <a key={asset.id} href={imageUrl} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-2xl border border-zinc-150 bg-white dark:border-zinc-850 dark:bg-zinc-950/30">
-                      <img src={imageUrl} alt={asset.title || asset.original_filename || article.title} className="h-64 w-full object-cover" />
-                      {(asset.title || asset.caption || asset.description) && (
-                        <span className="block space-y-1 p-4 text-left">
-                          {asset.title && <span className="block text-xs font-bold text-zinc-900 dark:text-zinc-100">{asset.title}</span>}
-                          {asset.caption && <span className="block text-xs text-zinc-600 dark:text-zinc-350">{asset.caption}</span>}
-                          {asset.description && <span className="block text-[11px] text-zinc-500 dark:text-zinc-450">{asset.description}</span>}
-                        </span>
-                      )}
-                    </a>
-                  );
-                })}
-              </div>
+              <ImageLightboxGallery images={articleGalleryImages} title="Article Images" />
             </section>
           )}
 
@@ -665,8 +676,8 @@ export default function ArticleDetail() {
                 )}
 
                 {/* Supplementary Assets files list */}
-                {article.assets && article.assets.map((asset) => {
-                  const downloadUrl = asset.download_url || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/articles/assets/${asset.id}/download`;
+                {supplementaryFiles.map((asset) => {
+                  const downloadUrl = assetDownloadUrl(asset);
                   return (
                     <div key={asset.id} className="space-y-3 rounded-2xl border border-zinc-200/60 bg-zinc-50/50 p-5 dark:border-zinc-800/80 dark:bg-zinc-900/20">
                       <div className="flex items-center justify-between gap-4">
