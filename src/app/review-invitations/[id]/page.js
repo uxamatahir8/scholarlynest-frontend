@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
 import api from '../../../utils/api';
@@ -17,6 +17,19 @@ export default function ReviewInvitationPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [declineReason, setDeclineReason] = useState('');
+  const [invitation, setInvitation] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id || !token) {
+      setLoading(false);
+      return;
+    }
+    api.get(`/reviewer-invitations/${id}`, { params: { token } })
+      .then((response) => setInvitation(response.data?.invitation || null))
+      .catch((err) => setError(safeApiMessage(err, 'This review invitation is invalid or expired.')))
+      .finally(() => setLoading(false));
+  }, [id, token]);
 
   const submit = async (action) => {
     setBusy(action);
@@ -48,6 +61,17 @@ export default function ReviewInvitationPage() {
         {message && <Alert tone="success" title="Response recorded">{message}</Alert>}
         {error && <Alert tone="danger" title="Invitation unavailable">{error}</Alert>}
 
+        {loading && <p className="mt-6 flex items-center gap-2 text-sm text-[var(--muted)]"><Loader2 className="h-4 w-4 animate-spin" /> Loading article details...</p>}
+        {invitation && (
+          <section className="mt-6 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-5">
+            <p className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">{invitation.article?.magazine || 'ScholarlyNest'}</p>
+            <h2 className="mt-1 text-lg font-bold text-[var(--foreground)]">{invitation.article?.title}</h2>
+            {(invitation.article?.article_type || invitation.article?.article_category) && <p className="mt-1 text-sm text-[var(--muted)]">{[invitation.article?.article_type, invitation.article?.article_category].filter(Boolean).join(' · ')}</p>}
+            <h3 className="mt-4 text-sm font-bold text-[var(--foreground)]">Abstract</h3>
+            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-[var(--muted)]">{invitation.article?.abstract}</p>
+          </section>
+        )}
+
         <div className="mt-6 space-y-3">
           <textarea
             value={declineReason}
@@ -57,10 +81,10 @@ export default function ReviewInvitationPage() {
             className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
           />
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button type="button" icon={CheckCircle2} disabled={!token || !!message} isLoading={busy === 'accept'} onClick={() => submit('accept')}>
+            <Button type="button" icon={CheckCircle2} disabled={!token || !!message || !invitation} isLoading={busy === 'accept'} onClick={() => submit('accept')}>
               Accept Review
             </Button>
-            <Button type="button" variant="danger" icon={XCircle} disabled={!token || !!message} isLoading={busy === 'decline'} onClick={() => submit('decline')}>
+            <Button type="button" variant="danger" icon={XCircle} disabled={!token || !!message || !invitation} isLoading={busy === 'decline'} onClick={() => submit('decline')}>
               Decline Review
             </Button>
           </div>
