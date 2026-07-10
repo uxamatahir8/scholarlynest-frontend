@@ -4,6 +4,7 @@ import { getStatusLabel, normalizeStatus } from '../../../utils/status';
 export const workflowMilestones = [
   { id: 'draft', label: 'Draft', statuses: ['draft'] },
   { id: 'submitted', label: 'Submitted', statuses: ['submitted', 'pending'] },
+  { id: 'transfer_screening', label: 'Screening', statuses: ['screening'] },
   { id: 'screening', label: 'Editorial screening', statuses: ['under_review'] },
   { id: 'sub_editor', label: 'Sub Editor review', statuses: ['assigned_to_sub_editor'] },
   { id: 'review', label: 'Peer review', statuses: ['reviewer_assigned', 'review_in_progress'] },
@@ -119,7 +120,7 @@ export function nextStepText(article, user, hasRole) {
   }
   if (hasRole('publisher') && ['accepted', 'ready_for_publication'].includes(status)) return 'Prepare publication metadata and issue placement.';
   if (hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor') || hasRole('super_admin') || hasRole('admin')) {
-    if (['submitted', 'pending'].includes(status)) return 'Complete editorial screening.';
+    if (['submitted', 'pending', 'screening'].includes(status)) return 'Complete editorial screening.';
     if (['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted'].includes(status)) return 'Continue editorial review or record a decision.';
     if (status === 'accepted') return 'Move the manuscript into production when ready.';
   }

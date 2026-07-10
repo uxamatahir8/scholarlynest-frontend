@@ -278,7 +278,7 @@ export default function WorkflowActionPanel({
   };
 
   const status = article.status;
-  const canScreen = canEditorial && ['submitted', 'pending'].includes(status);
+  const canScreen = canEditorial && ['submitted', 'pending', 'screening'].includes(status);
   const pendingTransferRequest = article?.pending_transfer_request;
   const canRequestTransfer = Boolean(article?.can_request_transfer) && canScreen;
   const canRespondTransferRequest = Boolean(article?.can_respond_transfer_request) && status === 'in_transit' && pendingTransferRequest;

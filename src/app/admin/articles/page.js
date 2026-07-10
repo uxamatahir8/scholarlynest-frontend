@@ -48,6 +48,7 @@ const getFullImageUrl = (path) => {
 const AUTHOR_STATUS_LABELS = {
   draft: 'Draft',
   submitted: 'Submitted',
+  screening: 'Screening',
   in_transit: 'In Transit',
   under_review: 'Under review',
   assigned_to_sub_editor: 'Under review',
@@ -74,6 +75,7 @@ const AUTHOR_MANUSCRIPT_STATUSES = [
   'minor_revision_required',
   'major_revision_required',
   'submitted',
+  'screening',
   'under_review',
   'assigned_to_sub_editor',
   'reviewer_assigned',
@@ -128,7 +130,7 @@ function AuthorManuscriptWorkspace({ articles, loading, error, getStatusBadge })
       title: 'Submitted Manuscripts',
       emptyTitle: 'No submitted manuscripts yet',
       emptyDescription: 'Submitted and in-review manuscripts will appear here after final submission.',
-      filter: (article) => ['submitted', 'under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted', 'accepted', 'copy_editing', 'proofreading', 'ready_for_publication'].includes(article.status),
+      filter: (article) => ['submitted', 'screening', 'under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted', 'accepted', 'copy_editing', 'proofreading', 'ready_for_publication'].includes(article.status),
     },
     {
       id: 'published',
