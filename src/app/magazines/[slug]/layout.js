@@ -23,11 +23,13 @@ export default function MagazinePublicLayout({ children }) {
   const params = useParams();
   const pathname = usePathname();
   const slug = params?.slug;
+  const isMagazineArticleRoute = Boolean(slug && pathname?.startsWith(`/magazines/${slug}/articles/`));
   const [magazine, setMagazine] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (isMagazineArticleRoute) return;
     if (!slug) return;
     let active = true;
 
@@ -49,7 +51,11 @@ export default function MagazinePublicLayout({ children }) {
     return () => {
       active = false;
     };
-  }, [slug]);
+  }, [isMagazineArticleRoute, slug]);
+
+  if (isMagazineArticleRoute) {
+    return children;
+  }
 
   if (loading) {
     return <main className="min-h-screen bg-[var(--background)] px-4 pt-32"><LoadingState label="Loading magazine..." /></main>;
