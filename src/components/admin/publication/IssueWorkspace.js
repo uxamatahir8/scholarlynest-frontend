@@ -18,6 +18,7 @@ import Pagination from '../../ui/Pagination';
 import PublicationStatusBadge from './PublicationStatusBadge';
 import { authorsLine, compactText, issueDate, issueLabel, issueStatusOptions, MONTHS } from './publicationUtils';
 import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
+import { issueArticlePublicationSchema, issueSchema, validateWithZod } from '../../../lib/validation';
 
 const emptyIssueForm = {
   id: null,
@@ -193,6 +194,11 @@ export default function IssueWorkspace() {
 
   const saveIssue = async (event) => {
     event.preventDefault();
+    const validation = validateWithZod(issueSchema, issueForm);
+    if (!validation.success) {
+      toast(Object.values(validation.errors)[0] || validation.message, 'error');
+      return;
+    }
     setSavingIssue(true);
     try {
       const payload = new FormData();
@@ -256,6 +262,19 @@ export default function IssueWorkspace() {
       ...publicationFormDefaults(article, selectedIssue),
       ...(articleForms[article.id] || {}),
     };
+    const validation = validateWithZod(issueArticlePublicationSchema, {
+      magazine_issue_id: selectedIssue?.id || '',
+      published_year: form.published_year,
+      published_month: form.published_month,
+      doi: form.doi,
+      page_start: form.page_start,
+      page_end: form.page_end,
+    });
+    if (!validation.success) {
+      toast(Object.values(validation.errors)[0] || validation.message, 'error');
+      setArticleAction(null);
+      return;
+    }
     setPublishingArticleId(article.id);
     try {
       const payload = new FormData();
@@ -394,7 +413,7 @@ export default function IssueWorkspace() {
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <label className="block">
                   <span className="text-sm font-semibold text-[var(--foreground)]">Magazine</span>
-                  <select value={issueForm.magazine_id} required onChange={(event) => setIssueForm({ ...issueForm, magazine_id: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                  <select value={issueForm.magazine_id} onChange={(event) => setIssueForm({ ...issueForm, magazine_id: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
                     <option value="">Select magazine</option>
                     {magazines.map((magazine) => <option key={magazine.id} value={magazine.id}>{magazine.title}</option>)}
                   </select>
@@ -416,11 +435,11 @@ export default function IssueWorkspace() {
                 )}
                 <label className="block">
                   <span className="text-sm font-semibold text-[var(--foreground)]">Volume</span>
-                  <input type="number" min="1" required value={issueForm.volume_number} onChange={(event) => setIssueForm({ ...issueForm, volume_number: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" />
+                  <input type="number" min="1" value={issueForm.volume_number} onChange={(event) => setIssueForm({ ...issueForm, volume_number: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" />
                 </label>
                 <label className="block">
                   <span className="text-sm font-semibold text-[var(--foreground)]">Issue number</span>
-                  <input type="number" min="1" required value={issueForm.issue_number} onChange={(event) => setIssueForm({ ...issueForm, issue_number: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" />
+                  <input type="number" min="1" value={issueForm.issue_number} onChange={(event) => setIssueForm({ ...issueForm, issue_number: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" />
                 </label>
                 <label className="block">
                   <span className="text-sm font-semibold text-[var(--foreground)]">Publication month</span>

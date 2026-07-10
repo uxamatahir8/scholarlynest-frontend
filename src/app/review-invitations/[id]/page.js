@@ -7,6 +7,7 @@ import api from '../../../utils/api';
 import { safeApiMessage } from '../../../utils/safeErrors';
 import { Button } from '../../../components/ui/Button';
 import Alert from '../../../components/ui/Alert';
+import { reviewerInvitationResponseSchema, validateWithZod } from '../../../lib/validation';
 
 export default function ReviewInvitationPage() {
   const params = useParams();
@@ -32,6 +33,16 @@ export default function ReviewInvitationPage() {
   }, [id, token]);
 
   const submit = async (action) => {
+    const validation = validateWithZod(reviewerInvitationResponseSchema, {
+      id: String(id || ''),
+      token,
+      action,
+      decline_reason: declineReason,
+    });
+    if (!validation.success) {
+      setError(Object.values(validation.errors)[0] || validation.message);
+      return;
+    }
     setBusy(action);
     setError('');
     setMessage('');

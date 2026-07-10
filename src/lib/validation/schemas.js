@@ -10,6 +10,14 @@ const strongPasswordField = z.string()
   .regex(/[@$!%*?&]/, 'Password must include a special symbol.');
 
 const sixDigitCode = (label = 'Code') => z.string().trim().regex(/^\d{6}$/, `Enter the 6-digit ${label.toLowerCase()}.`);
+const optionalPositiveInteger = (label) => z.preprocess(
+  (value) => (value === '' || value === null || value === undefined ? undefined : value),
+  z.coerce.number().int(`${label} must be a whole number.`).positive(`${label} must be greater than zero.`).optional()
+);
+const monthSchema = z.enum([
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]);
 
 const matchingPasswords = (passwordKey = 'password', confirmationKey = 'password_confirmation', message = 'Passwords do not match.') => (data, ctx) => {
   if (data[passwordKey] !== data[confirmationKey]) {
@@ -47,11 +55,38 @@ export const supportTicketSchema = z.object({ title: requiredString('Title'), is
 export const contactSchema = z.object({ name: requiredString('Name'), email: emailField(), subject: requiredString('Subject'), message: requiredString('Message', 10000) });
 export const newsletterSchema = z.object({ email: emailField() });
 export const magazineSchema = z.object({ title: requiredString('Magazine name'), slug: requiredString('Slug'), description: optionalString('Description', 10000) });
-export const issueSchema = z.object({ volume_number: optionalString('Volume'), issue_number: optionalString('Issue'), issue_year: z.coerce.number().int().min(1900).max(2200) });
+export const issueSchema = z.object({
+  magazine_id: idField,
+  volume_number: z.coerce.number().int('Volume must be a whole number.').positive('Volume must be greater than zero.'),
+  issue_number: z.coerce.number().int('Issue number must be a whole number.').positive('Issue number must be greater than zero.'),
+  issue_month: z.union([monthSchema, z.literal('')]).optional(),
+  issue_year: z.coerce.number().int('Publication year must be a whole number.').min(1900, 'Publication year must be 1900 or later.').max(new Date().getFullYear() + 5, 'Publication year is too far in the future.'),
+  special_title: optionalString('Issue title', 255),
+  description: optionalString('Issue description', 10000),
+  status: z.enum(['draft', 'published']).optional(),
+});
+export const issueArticlePublicationSchema = z.object({
+  magazine_issue_id: z.union([idField, z.literal(''), z.null()]).optional(),
+  published_year: z.coerce.number().int('Publication year must be a whole number.').min(1900, 'Publication year must be 1900 or later.').max(new Date().getFullYear() + 5, 'Publication year is too far in the future.'),
+  published_month: monthSchema,
+  doi: optionalString('DOI', 255),
+  page_start: optionalPositiveInteger('Start page'),
+  page_end: optionalPositiveInteger('End page'),
+}).superRefine((data, ctx) => {
+  if (data.page_start && data.page_end && data.page_end < data.page_start) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['page_end'], message: 'End page must be greater than or equal to start page.' });
+  }
+});
 export const articleBasicsSchema = z.object({ magazine_id: idField, title: requiredString('Title'), abstract: requiredString('Abstract', 100000) });
 export const articleDraftSchema = z.object({ magazine_id: z.union([idField, z.literal(''), z.null()]).optional(), title: optionalString('Title', 255), abstract: optionalString('Abstract', 100000), terms_accepted: z.boolean().optional() });
 export const articleSubmitSchema = articleBasicsSchema.extend({ terms_accepted: z.literal(true, { errorMap: () => ({ message: 'You must accept the terms and conditions before submitting.' }) }) });
 export const reviewerInvitationSchema = z.object({ token: requiredString('Invitation token', 500) });
+export const reviewerInvitationResponseSchema = z.object({
+  id: requiredString('Invitation id', 500),
+  token: requiredString('Invitation token', 500),
+  action: z.enum(['accept', 'decline']),
+  decline_reason: optionalString('Decline reason', 1000),
+});
 export const reviewerSubmitSchema = z.object({ recommendation: requiredString('Recommendation'), comments_for_author: optionalString('Comments', 10000), confidential_comments: optionalString('Confidential comments', 10000) });
 
 export const profileSchema = z.object({
