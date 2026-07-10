@@ -146,6 +146,51 @@ export default function WorkflowActionPanel({
     })
   ), [workflowContext, user, isAdmin, isCopyEditor]);
 
+  const allReviewersToShow = useMemo(() => {
+    const suggestedList = article?.reviewer_preferences?.suggested || [];
+    const assignmentsList = article?.reviewer_assignments || [];
+
+    const getAssignmentForEmail = (email) => {
+      const normalized = String(email || '').trim().toLowerCase();
+      if (!normalized) return null;
+      return assignmentsList.find((assignment) => (
+        String(assignment.invitee_email || '').trim().toLowerCase() === normalized
+      ));
+    };
+
+    const manualInvitations = assignmentsList.filter(
+      (assignment) => !suggestedList.some(
+        (suggested) => String(suggested.email || '').trim().toLowerCase() === String(assignment.invitee_email || '').trim().toLowerCase()
+      )
+    ).map((assignment) => ({
+      id: assignment.id,
+      name: assignment.invitee_name || assignment.reviewer?.name,
+      email: assignment.invitee_email || assignment.reviewer?.email,
+      affiliation: assignment.reviewer?.affiliation || '',
+      isManual: true,
+      status: assignment.invitation_state || assignment.status,
+    }));
+
+    return [
+      ...suggestedList.map((reviewer) => {
+        const existingAssignment = getAssignmentForEmail(reviewer.email);
+        const state = existingAssignment?.invitation_state || existingAssignment?.status;
+        return {
+          ...reviewer,
+          isManual: false,
+          state,
+          existingAssignment,
+        };
+      }),
+      ...manualInvitations.map((reviewer) => ({
+        ...reviewer,
+        isManual: true,
+        state: reviewer.status,
+        existingAssignment: assignmentsList.find(a => a.id === reviewer.id),
+      })),
+    ];
+  }, [article?.reviewer_preferences, article?.reviewer_assignments]);
+
   const loadAssignees = async (role) => {
     if (assignees[role] || !article?.magazine_id) return;
     try {
@@ -459,7 +504,7 @@ export default function WorkflowActionPanel({
               )}
               {canShowReviewerAssignment && (
                 <div className="space-y-4 md:col-span-2">
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2 max-w-md">
                   <Field label="Existing Reviewer">
                     <Select value={reviewerId} onChange={(event) => setReviewerId(event.target.value)}>
                       <option value="">Select Reviewer</option>
@@ -487,40 +532,51 @@ export default function WorkflowActionPanel({
                   </Button>
                   </div>
 
-                  {(article.reviewer_preferences?.suggested || []).length > 0 && (
+                  {allReviewersToShow.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Suggested Reviewers</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Suggested & Invited Reviewers</p>
                       <div className="grid gap-2">
-                        {article.reviewer_preferences.suggested.map((reviewer) => {
-                          const existingAssignment = reviewerAssignmentForEmail(reviewer.email);
-                          const state = existingAssignment?.invitation_state || existingAssignment?.status;
+                        {allReviewersToShow.map((reviewer) => {
                           return (
-                          <div key={reviewer.id || reviewer.email} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                          <div key={reviewer.isManual ? 'manual-' + reviewer.id : 'suggested-' + (reviewer.id || reviewer.email)} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                               <div>
                                 <p className="text-sm font-bold text-[var(--foreground)]">{reviewer.name}</p>
                                 <p className="text-xs text-[var(--muted)]">{reviewer.email}{reviewer.affiliation ? ` · ${reviewer.affiliation}` : ''}</p>
                               </div>
+                              {reviewer.isManual ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center rounded-lg bg-[var(--surface-muted)] border border-[var(--border)] px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+                                    Manual Invite
+                                  </span>
+                                  {reviewer.state && (
+                                    <span className="inline-flex items-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                      {labelize(reviewer.state)}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
 	                              <Button
-                                type="button"
-                                size="sm"
-                                icon={UserPlus}
+                                  type="button"
+                                  size="sm"
+                                  icon={UserPlus}
 	                                isLoading={busyAction === `suggested-${reviewer.id}`}
-	                                disabled={Boolean(existingAssignment)}
+	                                disabled={Boolean(reviewer.existingAssignment)}
 	                                onClick={() => {
 	                                  if (!validateAction(workflowSuggestedReviewerSchema, { suggested_preference_id: reviewer.id })) return;
 	                                  askConfirmation({
 	                                  key: `suggested-${reviewer.id}`,
-                                  title: 'Invite suggested reviewer?',
-                                  message: 'This will send a secure review invitation to the suggested reviewer.',
-                                  confirmText: 'Send Invitation',
-                                  variant: 'primary',
+                                   title: 'Invite suggested reviewer?',
+                                   message: 'This will send a secure review invitation to the suggested reviewer.',
+                                   confirmText: 'Send Invitation',
+                                   variant: 'primary',
 	                                  run: () => runAction(`suggested-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { suggested_preference_id: reviewer.id }), 'Reviewer invitation sent.'),
 	                                });
 	                                }}
                               >
-	                                {state ? labelize(state) : 'Invite'}
+	                                {reviewer.state ? labelize(reviewer.state) : 'Invite'}
 	                              </Button>
+                              )}
                             </div>
                           </div>
                         );
