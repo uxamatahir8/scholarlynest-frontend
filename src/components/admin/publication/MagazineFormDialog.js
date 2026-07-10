@@ -6,7 +6,7 @@ import { ImagePlus, Loader2, Pencil, Save, X } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import MagazineFormFields from '../MagazineFormFields';
 
-const QuillEditor = dynamic(() => import('../../ui/QuillEditor'), {
+const RichEditor = dynamic(() => import('../../ui/RichEditor'), {
   ssr: false,
   loading: () => (
     <div className="flex min-h-32 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] text-sm font-semibold text-[var(--muted)]">
@@ -121,12 +121,12 @@ export default function MagazineFormDialog({
                 </label>
                 <label className="block">
                   <span className="text-sm font-semibold text-[var(--foreground)]">About and overview</span>
-                  <div className="mt-2 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--background)]">
-                    <QuillEditor
+                  <div className={`mt-2 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--background)] ${readOnly ? 'pointer-events-none opacity-70' : ''}`}>
+                    <RichEditor
                       value={form.about_text}
                       onChange={(value) => update('about_text', value)}
-                      readOnly={readOnly}
                       placeholder="Describe magazine scope, editorial context, and publication focus."
+                      minHeight="180px"
                     />
                   </div>
                 </label>
