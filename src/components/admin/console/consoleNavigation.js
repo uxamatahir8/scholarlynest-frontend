@@ -82,7 +82,7 @@ export const consoleNavigation = [
         label: 'Proofreader Desk',
         href: '/admin/proofreader',
         icon: FileCheck2,
-        isVisible: ({ user, impersonationStatus }) => !userHasRole(user, 'super_admin') && hasAnyRole(user, ['admin', 'proofreader']) || (userHasRole(user, 'super_admin') && !impersonationStatus?.active),
+        isVisible: () => false,
       },
       {
         label: 'Publisher Desk',
@@ -105,7 +105,7 @@ export const consoleNavigation = [
         label: 'Issue Manager',
         href: '/admin/issues',
         icon: Newspaper,
-        isVisible: ({ user }) => hasAnyRole(user, ['super_admin', 'admin', 'publisher', 'editor', 'magazine_editor']),
+        isVisible: ({ user }) => hasAnyRole(user, ['super_admin', 'publisher']),
       },
       {
         label: 'Magazine Tags',
