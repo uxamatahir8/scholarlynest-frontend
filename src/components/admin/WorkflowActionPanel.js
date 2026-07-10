@@ -19,6 +19,19 @@ import {
   REVIEWABLE_STATUSES,
 } from './articleWorkflow';
 import { uploadAndAwaitClean } from '../../lib/mediaUploads/DirectUploadClient';
+import {
+  finalEditorialDecisionSchema,
+  postPublicationWorkflowSchema,
+  productionAssignmentSchema,
+  productionCompletionSchema,
+  reviewerWorkflowSubmitSchemaFor,
+  subEditorRecommendationSchema,
+  validateWithZod,
+  workflowAssigneeSchema,
+  workflowManualReviewerSchema,
+  workflowScreeningSchema,
+  workflowSuggestedReviewerSchema,
+} from '../../lib/validation';
 
 const recommendationOptions = [
   { value: 'accept', label: 'Accept' },
@@ -220,6 +233,34 @@ export default function WorkflowActionPanel({
     answer,
   }));
 
+  const validateAction = (schema, values) => {
+    const validation = validateWithZod(schema, values);
+    if (!validation.success) {
+      toast(Object.values(validation.errors)[0] || validation.message, 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const reviewSubmissionPayload = () => ({
+    recommendation: reviewForm.recommendation,
+    comments_for_author: reviewForm.comments_for_author,
+    confidential_comments: reviewForm.confidential_comments,
+    questionnaire_responses: questionnairePayload(),
+    scorecard: {
+      originality: reviewForm.originality,
+      methodology: reviewForm.methodology,
+      citation_accuracy: reviewForm.citation_accuracy,
+    },
+  });
+
+  const validateReviewSubmission = () => {
+    const requiredQuestionIds = (myReviewerAssignment?.questionnaire_instance?.questions || [])
+      .filter((question) => question.is_required)
+      .map((question) => question.id);
+    return validateAction(reviewerWorkflowSubmitSchemaFor(requiredQuestionIds), reviewSubmissionPayload());
+  };
+
   const status = article.status;
   const canScreen = canEditorial && ['submitted', 'pending'].includes(status);
   const canAssignSubEditor = canEditorial && ['under_review', 'resubmitted'].includes(status);
@@ -281,24 +322,27 @@ export default function WorkflowActionPanel({
               icon={ClipboardCheck}
               isLoading={busyAction === 'screen'}
               disabled={screenForm.decision === 'reject' && !screenForm.comments.trim()}
-              onClick={() => askConfirmation({
-                key: 'screen',
-                title: screenForm.decision === 'reject' ? 'Reject during screening?' : 'Send manuscript to review?',
-                message: screenForm.decision === 'reject'
+	              onClick={() => {
+	                if (!validateAction(workflowScreeningSchema, screenForm)) return;
+	                askConfirmation({
+	                key: 'screen',
+	                title: screenForm.decision === 'reject' ? 'Reject during screening?' : 'Send manuscript to review?',
+	                message: screenForm.decision === 'reject'
                   ? 'This will reject the manuscript during screening and notify the author-facing workflow with your reason.'
                   : 'This will move the manuscript into editorial review.',
                 confirmText: screenForm.decision === 'reject' ? 'Reject Manuscript' : 'Send to Review',
                 variant: screenForm.decision === 'reject' ? 'danger' : 'primary',
-                run: () => runAction('screen', async () => api.post(`/admin/articles/${article.id}/screen`, await buildDirectUploadFormData({
-                  ...screenForm,
-                  plagiarism_score: screenForm.plagiarism_score === '' ? null : Number(screenForm.plagiarism_score),
+	                run: () => runAction('screen', async () => api.post(`/admin/articles/${article.id}/screen`, await buildDirectUploadFormData({
+	                  ...screenForm,
+	                  plagiarism_score: screenForm.plagiarism_score === '' ? null : Number(screenForm.plagiarism_score),
                 }, {
                   plagiarism_report_upload_id: {
                     file: files.plagiarism_report,
                     purpose: 'article_plagiarism_report',
                   },
-                }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Screening result saved.'),
-              })}
+	                }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Screening result saved.'),
+	              });
+	              }}
             >
               Save Screening
             </Button>
@@ -321,14 +365,17 @@ export default function WorkflowActionPanel({
                     icon={UserPlus}
                     isLoading={busyAction === 'assign-sub-editor'}
                     disabled={!subEditorId}
-                    onClick={() => askConfirmation({
-                      key: 'assign-sub-editor',
-                      title: 'Assign Sub Editor?',
+	                    onClick={() => {
+	                      if (!validateAction(workflowAssigneeSchema, { assignee_id: subEditorId })) return;
+	                      askConfirmation({
+	                      key: 'assign-sub-editor',
+	                      title: 'Assign Sub Editor?',
                       message: 'This will assign the selected Sub Editor and move the manuscript into Sub Editor review.',
                       confirmText: 'Assign Sub Editor',
                       variant: 'primary',
-                      run: () => runAction('assign-sub-editor', () => api.post(`/admin/articles/${article.id}/assign-sub-editor`, { sub_editor_id: Number(subEditorId) }), 'Sub Editor assigned.'),
-                    })}
+	                      run: () => runAction('assign-sub-editor', () => api.post(`/admin/articles/${article.id}/assign-sub-editor`, { sub_editor_id: Number(subEditorId) }), 'Sub Editor assigned.'),
+	                    });
+	                    }}
                   >
                     Assign Sub Editor
                   </Button>
@@ -348,14 +395,17 @@ export default function WorkflowActionPanel({
                     icon={UserPlus}
                     isLoading={busyAction === 'assign-reviewer'}
                     disabled={!reviewerId}
-                    onClick={() => askConfirmation({
-                      key: 'assign-reviewer',
+	                    onClick={() => {
+	                      if (!validateAction(workflowAssigneeSchema, { assignee_id: reviewerId })) return;
+	                      askConfirmation({
+	                      key: 'assign-reviewer',
                       title: 'Assign Reviewer?',
                       message: 'This will request review from the selected reviewer and move the manuscript into the review stage.',
                       confirmText: 'Assign Reviewer',
                       variant: 'primary',
-                      run: () => runAction('assign-reviewer', () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { reviewer_id: Number(reviewerId) }), 'Reviewer assigned.'),
-                    })}
+	                      run: () => runAction('assign-reviewer', () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { reviewer_id: Number(reviewerId) }), 'Reviewer assigned.'),
+	                    });
+	                    }}
                   >
                     Assign Reviewer
                   </Button>
@@ -381,14 +431,17 @@ export default function WorkflowActionPanel({
                                 icon={UserPlus}
 	                                isLoading={busyAction === `suggested-${reviewer.id}`}
 	                                disabled={Boolean(existingAssignment)}
-                                onClick={() => askConfirmation({
-                                  key: `suggested-${reviewer.id}`,
+	                                onClick={() => {
+	                                  if (!validateAction(workflowSuggestedReviewerSchema, { suggested_preference_id: reviewer.id })) return;
+	                                  askConfirmation({
+	                                  key: `suggested-${reviewer.id}`,
                                   title: 'Invite suggested reviewer?',
                                   message: 'This will send a secure review invitation to the suggested reviewer.',
                                   confirmText: 'Send Invitation',
                                   variant: 'primary',
-                                  run: () => runAction(`suggested-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { suggested_preference_id: reviewer.id }), 'Reviewer invitation sent.'),
-                                })}
+	                                  run: () => runAction(`suggested-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { suggested_preference_id: reviewer.id }), 'Reviewer invitation sent.'),
+	                                });
+	                                }}
                               >
 	                                {state ? labelize(state) : 'Invite'}
 	                              </Button>
@@ -419,7 +472,7 @@ export default function WorkflowActionPanel({
                     <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Manual Reviewer Invitation</p>
                     <div className="grid gap-3 md:grid-cols-3">
                       <Field label="Name"><Input value={manualReviewer.name} onChange={(event) => setManualReviewer({ ...manualReviewer, name: event.target.value })} /></Field>
-                      <Field label="Email"><Input type="email" value={manualReviewer.email} onChange={(event) => setManualReviewer({ ...manualReviewer, email: event.target.value })} /></Field>
+	                    <Field label="Email"><Input type="text" value={manualReviewer.email} onChange={(event) => setManualReviewer({ ...manualReviewer, email: event.target.value })} /></Field>
                       <Field label="Affiliation"><Input value={manualReviewer.affiliation} onChange={(event) => setManualReviewer({ ...manualReviewer, affiliation: event.target.value })} /></Field>
                     </div>
                     <Button
@@ -428,14 +481,17 @@ export default function WorkflowActionPanel({
                       icon={UserPlus}
                       isLoading={busyAction === 'manual-reviewer'}
                       disabled={!manualReviewer.email.trim() || Boolean(reviewerAssignmentForEmail(manualReviewer.email))}
-                      onClick={() => askConfirmation({
-                        key: 'manual-reviewer',
+	                      onClick={() => {
+	                        if (!validateAction(workflowManualReviewerSchema, manualReviewer)) return;
+	                        askConfirmation({
+	                        key: 'manual-reviewer',
                         title: 'Invite manual reviewer?',
                         message: 'This will send a secure review invitation if backend conflict checks pass.',
                         confirmText: 'Send Invitation',
                         variant: 'primary',
-                        run: () => runAction('manual-reviewer', () => api.post(`/admin/articles/${article.id}/assign-reviewer`, manualReviewer), 'Reviewer invitation sent.'),
-                      })}
+	                        run: () => runAction('manual-reviewer', () => api.post(`/admin/articles/${article.id}/assign-reviewer`, manualReviewer), 'Reviewer invitation sent.'),
+	                      });
+	                      }}
                     >
                       {reviewerAssignmentForEmail(manualReviewer.email)?.invitation_state ? labelize(reviewerAssignmentForEmail(manualReviewer.email).invitation_state) : 'Send Manual Invitation'}
                     </Button>
@@ -464,20 +520,23 @@ export default function WorkflowActionPanel({
               type="button"
               icon={Send}
               isLoading={busyAction === 'sub-editor-recommendation'}
-              onClick={() => askConfirmation({
-                key: 'sub-editor-recommendation',
+	              onClick={() => {
+	                if (!validateAction(subEditorRecommendationSchema, subEditorForm)) return;
+	                askConfirmation({
+	                key: 'sub-editor-recommendation',
                 title: 'Submit recommendation?',
                 message: 'This will record your recommendation and return the manuscript to editorial review.',
                 confirmText: 'Submit Recommendation',
                 variant: 'primary',
-                run: () => runAction('sub-editor-recommendation', async () => api.post(`/admin/sub-editor-assignments/${mySubEditorAssignment.id}/submit-recommendation`, await buildDirectUploadFormData(subEditorForm, {
+	                run: () => runAction('sub-editor-recommendation', async () => api.post(`/admin/sub-editor-assignments/${mySubEditorAssignment.id}/submit-recommendation`, await buildDirectUploadFormData(subEditorForm, {
                   annotated_manuscript_upload_id: {
                     file: files.annotated_manuscript,
                     purpose: 'article_annotated_manuscript',
                     extra: { assignment_type: 'sub_editor_assignment', assignment_id: mySubEditorAssignment.id },
                   },
-                }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Recommendation submitted.'),
-              })}
+	                }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Recommendation submitted.'),
+	              });
+	              }}
             >
               Submit Recommendation
             </Button>
@@ -493,14 +552,17 @@ export default function WorkflowActionPanel({
                   type="button"
                   icon={CheckCircle2}
                   isLoading={busyAction === 'accept-review'}
-                  onClick={() => askConfirmation({
-                    key: 'accept-review',
+	                  onClick={() => {
+	                    if (!validateAction(productionCompletionSchema, { assignment_id: myReviewerAssignment.id })) return;
+	                    askConfirmation({
+	                    key: 'accept-review',
                     title: 'Accept review invitation?',
                     message: 'This will mark the review as accepted and move the manuscript into active review.',
                     confirmText: 'Accept Review',
                     variant: 'primary',
-                    run: () => runAction('accept-review', () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/accept`), 'Review assignment accepted.'),
-                  })}
+	                    run: () => runAction('accept-review', () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/accept`), 'Review assignment accepted.'),
+	                  });
+	                  }}
                 >
                   Accept Review
                 </Button>
@@ -570,30 +632,23 @@ export default function WorkflowActionPanel({
                   type="button"
                   icon={Send}
                   isLoading={busyAction === 'submit-review'}
-                  onClick={() => askConfirmation({
-                    key: 'submit-review',
+	                  onClick={() => {
+	                    if (!validateReviewSubmission()) return;
+	                    askConfirmation({
+	                    key: 'submit-review',
                     title: 'Submit review?',
                     message: 'This will mark your review as completed and return the manuscript to editorial review.',
                     confirmText: 'Submit Review',
                     variant: 'primary',
-                    run: () => runAction('submit-review', async () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/submit-review`, await buildDirectUploadFormData({
-                      recommendation: reviewForm.recommendation,
-                      comments_for_author: reviewForm.comments_for_author,
-                      confidential_comments: reviewForm.confidential_comments,
-                      questionnaire_responses: questionnairePayload(),
-                      scorecard: {
-                        originality: reviewForm.originality,
-                        methodology: reviewForm.methodology,
-                        citation_accuracy: reviewForm.citation_accuracy,
-                      },
-                    }, {
-                      reviewed_manuscript_upload_id: {
-                        file: files.reviewed_manuscript,
+	                    run: () => runAction('submit-review', async () => api.post(`/admin/reviewer-assignments/${myReviewerAssignment.id}/submit-review`, await buildDirectUploadFormData(reviewSubmissionPayload(), {
+	                      reviewed_manuscript_upload_id: {
+	                        file: files.reviewed_manuscript,
                         purpose: 'article_reviewed_manuscript',
                         extra: { assignment_type: 'reviewer_assignment', assignment_id: myReviewerAssignment.id },
                       },
-                    }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Review submitted.'),
-                  })}
+	                    }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Review submitted.'),
+	                  });
+	                  }}
                 >
                   Submit Review
                 </Button>
@@ -626,8 +681,10 @@ export default function WorkflowActionPanel({
               type="button"
               icon={FileCheck2}
               isLoading={busyAction === 'final-decision'}
-              onClick={() => askConfirmation({
-                key: 'final-decision',
+	              onClick={() => {
+	                if (!validateAction(finalEditorialDecisionSchema, decisionForm)) return;
+	                askConfirmation({
+	                key: 'final-decision',
                 title: 'Record editorial decision?',
                 message: decisionForm.decision === 'accepted'
                   ? 'This will mark the manuscript as accepted and make it available for production or publication handling.'
@@ -636,8 +693,9 @@ export default function WorkflowActionPanel({
                     : 'This will request a revision from the author and move the manuscript into the revision stage.',
                 confirmText: 'Record Decision',
                 variant: decisionForm.decision === 'rejected' ? 'danger' : 'primary',
-                run: () => runAction('final-decision', () => api.post(`/admin/articles/${article.id}/final-decision`, decisionForm), 'Final decision recorded.'),
-              })}
+	                run: () => runAction('final-decision', () => api.post(`/admin/articles/${article.id}/final-decision`, decisionForm), 'Final decision recorded.'),
+	              });
+	              }}
             >
               Record Decision
             </Button>
@@ -696,18 +754,21 @@ export default function WorkflowActionPanel({
               icon={UserPlus}
               isLoading={busyAction === 'assign-production'}
               disabled={!productionForm.user_id}
-              onClick={() => askConfirmation({
-                key: 'assign-production',
+	                onClick={() => {
+	                  if (!validateAction(productionAssignmentSchema, productionForm)) return;
+	                  askConfirmation({
+	                key: 'assign-production',
 	                title: 'Send to copyediting?',
 	                message: 'This will assign copyediting work and move the manuscript into copyediting.',
                 confirmText: 'Assign Production',
                 variant: 'primary',
-                run: () => runAction('assign-production', () => api.post(`/admin/articles/${article.id}/production-assignments`, {
-                  user_id: Number(productionForm.user_id),
+	                run: () => runAction('assign-production', () => api.post(`/admin/articles/${article.id}/production-assignments`, {
+	                  user_id: Number(productionForm.user_id),
                   role: productionForm.role,
                   due_date: productionForm.due_date || null,
-                }), 'Production assignment created.'),
-              })}
+	                }), 'Production assignment created.'),
+	              });
+	                }}
             >
               Assign Production
             </Button>
@@ -722,20 +783,23 @@ export default function WorkflowActionPanel({
               type="button"
               icon={Check}
               isLoading={busyAction === 'complete-production'}
-              onClick={() => askConfirmation({
-                key: 'complete-production',
+	              onClick={() => {
+	                if (!validateAction(productionCompletionSchema, { assignment_id: myProductionAssignment.id })) return;
+	                askConfirmation({
+	                key: 'complete-production',
                 title: `${productionCompleteLabel}?`,
                 message: productionCompleteMessage,
                 confirmText: productionCompleteLabel,
                 variant: 'primary',
-                run: () => runAction('complete-production', async () => api.post(`/admin/production-assignments/${myProductionAssignment.id}/complete`, await buildDirectUploadFormData({}, {
+	                run: () => runAction('complete-production', async () => api.post(`/admin/production-assignments/${myProductionAssignment.id}/complete`, await buildDirectUploadFormData({}, {
                   production_file_upload_id: {
                     file: files.production_file,
 	                    purpose: 'article_production_file',
                     extra: { assignment_type: 'production_assignment', assignment_id: myProductionAssignment.id },
                   },
-                }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Production task completed.'),
-              })}
+	                }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Production task completed.'),
+	              });
+	              }}
             >
               {productionCompleteLabel}
             </Button>
@@ -772,14 +836,17 @@ export default function WorkflowActionPanel({
               icon={FileCheck2}
               isLoading={busyAction === 'post-publication'}
               disabled={!postForm.reason.trim() || !postForm.notice_text.trim()}
-              onClick={() => askConfirmation({
-                key: 'post-publication',
+	              onClick={() => {
+	                if (!validateAction(postPublicationWorkflowSchema, postForm)) return;
+	                askConfirmation({
+	                key: 'post-publication',
                 title: 'Record post-publication action?',
                 message: 'This will record a public post-publication action and may change the publication state.',
                 confirmText: 'Record Action',
                 variant: postForm.action_type === 'retraction' || postForm.action_type === 'unpublish' ? 'danger' : 'primary',
-                run: () => runAction('post-publication', () => api.post(`/admin/articles/${article.id}/post-publication-actions`, postForm), 'Post-publication action recorded.'),
-              })}
+	                run: () => runAction('post-publication', () => api.post(`/admin/articles/${article.id}/post-publication-actions`, postForm), 'Post-publication action recorded.'),
+	              });
+	              }}
             >
               Record Action
             </Button>

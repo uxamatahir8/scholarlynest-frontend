@@ -14,10 +14,18 @@ const optionalPositiveInteger = (label) => z.preprocess(
   (value) => (value === '' || value === null || value === undefined ? undefined : value),
   z.coerce.number().int(`${label} must be a whole number.`).positive(`${label} must be greater than zero.`).optional()
 );
+const optionalPercent = z.preprocess(
+  (value) => (value === '' || value === null || value === undefined ? undefined : value),
+  z.coerce.number().min(0, 'Similarity score must be at least 0.').max(100, 'Similarity score must not exceed 100.').optional()
+);
 const monthSchema = z.enum([
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ]);
+const recommendationSchema = z.enum(['accept', 'minor_revision', 'major_revision', 'reject']);
+const finalDecisionSchema = z.enum(['accepted', 'minor_revision', 'major_revision', 'rejected']);
+const decisionSourceSchema = z.enum(['editor_personal_review', 'sub_editor_recommendation', 'reviewer_recommendation', 'mixed_editorial_decision']);
+const postPublicationActionSchema = z.enum(['correction', 'retraction', 'update', 'archive', 'unpublish']);
 
 const matchingPasswords = (passwordKey = 'password', confirmationKey = 'password_confirmation', message = 'Passwords do not match.') => (data, ctx) => {
   if (data[passwordKey] !== data[confirmationKey]) {
@@ -88,6 +96,117 @@ export const reviewerInvitationResponseSchema = z.object({
   decline_reason: optionalString('Decline reason', 1000),
 });
 export const reviewerSubmitSchema = z.object({ recommendation: requiredString('Recommendation'), comments_for_author: optionalString('Comments', 10000), confidential_comments: optionalString('Confidential comments', 10000) });
+
+export const workflowScreeningSchema = z.object({
+  decision: z.enum(['send_to_review', 'reject']),
+  plagiarism_status: optionalString('Similarity status', 255),
+  plagiarism_score: optionalPercent,
+  comments: optionalString('Screening notes', 10000),
+}).superRefine((data, ctx) => {
+  if (data.decision === 'reject' && !String(data.comments || '').trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['comments'], message: 'Reason for Author is required.' });
+  }
+});
+
+export const workflowAssigneeSchema = z.object({ assignee_id: idField });
+export const workflowSuggestedReviewerSchema = z.object({ suggested_preference_id: idField });
+export const workflowManualReviewerSchema = z.object({
+  name: optionalString('Reviewer name'),
+  email: emailField('Reviewer email'),
+  affiliation: optionalString('Affiliation'),
+});
+export const subEditorRecommendationSchema = z.object({
+  recommendation: recommendationSchema,
+  comments: optionalString('Comments for Author', 10000),
+  internal_notes: optionalString('Internal notes', 10000),
+});
+
+const questionnaireAnswerSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(z.union([z.string(), z.number(), z.boolean()])),
+]);
+
+const hasAnswer = (answer) => {
+  if (Array.isArray(answer)) return answer.length > 0;
+  return answer !== undefined && answer !== null && String(answer).trim() !== '';
+};
+
+export const reviewerWorkflowSubmitSchemaFor = (requiredQuestionIds = []) => z.object({
+  recommendation: recommendationSchema,
+  comments_for_author: optionalString('Comments for Author', 10000),
+  confidential_comments: optionalString('Confidential comments', 10000),
+  questionnaire_responses: z.array(z.object({
+    question_id: z.coerce.number().int().positive(),
+    answer: questionnaireAnswerSchema.optional(),
+  })).optional(),
+  scorecard: z.object({
+    originality: z.coerce.number().int().min(1).max(5),
+    methodology: z.coerce.number().int().min(1).max(5),
+    citation_accuracy: z.coerce.number().int().min(1).max(5),
+  }),
+}).superRefine((data, ctx) => {
+  requiredQuestionIds.forEach((questionId) => {
+    const response = (data.questionnaire_responses || []).find((item) => Number(item.question_id) === Number(questionId));
+    if (!response || !hasAnswer(response.answer)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['questionnaire_responses'], message: 'Answer all required reviewer questionnaire questions.' });
+    }
+  });
+});
+
+export const finalEditorialDecisionSchema = z.object({
+  decision: finalDecisionSchema,
+  decision_source: decisionSourceSchema,
+  comments_for_author: optionalString('Comments for Author', 10000),
+  internal_notes: optionalString('Internal notes', 10000),
+}).superRefine((data, ctx) => {
+  if (data.decision !== 'accepted' && !String(data.comments_for_author || '').trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['comments_for_author'], message: 'Comments for Author are required for revision or rejection decisions.' });
+  }
+});
+
+export const productionAssignmentSchema = z.object({
+  user_id: idField,
+  role: z.enum(['copy_editor']),
+  due_date: optionalString('Due date', 255),
+});
+export const productionCompletionSchema = z.object({ assignment_id: idField });
+export const postPublicationWorkflowSchema = z.object({
+  action_type: postPublicationActionSchema,
+  reason: requiredString('Reason', 10000),
+  notice_text: requiredString('Public Notice', 10000),
+});
+
+export const publishArticleModalSchema = z.object({
+  published_year: z.coerce.number().int('Publication year must be a whole number.').min(1900, 'Publication year must be 1900 or later.').max(new Date().getFullYear() + 5, 'Publication year is too far in the future.'),
+  published_month: monthSchema,
+  magazine_issue_id: z.union([idField, z.literal(''), z.null()]).optional(),
+  doi: optionalString('DOI', 255),
+  page_start: optionalPositiveInteger('Start page'),
+  page_end: optionalPositiveInteger('End page'),
+  metadata: z.object({
+    article_type: optionalString('Article type'),
+    article_category: optionalString('Article category'),
+    open_access_label: optionalString('Open access label'),
+    academic_editor: optionalString('Academic editor'),
+    license_statement: optionalString('Copyright / License', 10000),
+    data_availability_statement: optionalString('Data Availability', 10000),
+    funding_statement: optionalString('Funding', 10000),
+    competing_interests_statement: optionalString('Competing Interests', 10000),
+    abbreviations: optionalString('Abbreviations', 10000),
+    citation_text: optionalString('Citation Text', 10000),
+  }).passthrough(),
+  publication_sections: z.array(z.object({
+    title: requiredString('Section title'),
+    section_key: requiredString('Section key'),
+    content_html: optionalString('Section content', 100000),
+  }).passthrough()).min(1, 'At least one publication section is required.'),
+}).superRefine((data, ctx) => {
+  if (data.page_start && data.page_end && data.page_end < data.page_start) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['page_end'], message: 'End page must be greater than or equal to start page.' });
+  }
+});
 
 export const profileSchema = z.object({
   name: requiredString('Name'),
