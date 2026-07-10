@@ -45,7 +45,7 @@ export default function MagazinesRegistry() {
 
   return (
     <main className="min-h-screen bg-[var(--background)] px-4 pb-16 pt-16 sm:px-6 lg:px-8">
-      <title>Magazines - Scholarly Nest</title>
+      <title>Magazines - ScholarlyNest</title>
       <div className="mx-auto w-full max-w-[1440px]">
         <header className="grid gap-6 border-b border-[var(--border)] pb-10 lg:grid-cols-[0.58fr_0.42fr] lg:items-end">
           <div className="max-w-3xl">

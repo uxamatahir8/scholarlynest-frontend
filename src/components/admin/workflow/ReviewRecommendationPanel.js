@@ -27,6 +27,7 @@ export default function ReviewRecommendationPanel({ article, canSeeReviewerIdent
         actor: canSeeReviewerIdentity ? assignment.reviewer?.name || 'Assigned reviewer' : `Reviewer ${index + 1}`,
         recommendation: assignment.recommendation,
         comments: assignment.comments_for_author,
+        questionnaire: assignment.questionnaire_instance,
       });
     }
   });
@@ -62,6 +63,19 @@ export default function ReviewRecommendationPanel({ article, canSeeReviewerIdent
                 )}
               </div>
               {item.comments && <p className="mt-3 text-sm leading-relaxed text-[var(--foreground)]">{item.comments}</p>}
+              {item.questionnaire?.questions?.length > 0 && (
+                <div className="mt-3 rounded-md bg-[var(--surface)] p-3">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Questionnaire responses</p>
+                  <dl className="space-y-2">
+                    {item.questionnaire.questions.map((question) => (
+                      <div key={question.id}>
+                        <dt className="text-xs font-bold text-[var(--foreground)]">{question.prompt}</dt>
+                        <dd className="text-sm text-[var(--muted)]">{Array.isArray(question.answer) ? question.answer.join(', ') : (question.answer || 'No response')}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              )}
               {item.internal && <p className="mt-3 rounded-md bg-[var(--surface)] p-3 text-sm leading-relaxed text-[var(--muted)]">Internal note: {item.internal}</p>}
             </li>
           ))}

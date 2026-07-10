@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ImagePlus, Loader2, Save, X } from 'lucide-react';
+import { ImagePlus, Loader2, Pencil, Save, X } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import MagazineFormFields from '../MagazineFormFields';
 
@@ -73,12 +73,12 @@ export default function MagazineFormDialog({
       >
         <header className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-6 py-5">
           <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Journal Setup</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Magazine Setup</p>
             <h2 id="magazine-form-title" className="mt-1 text-xl font-bold text-[var(--foreground)]">
-              {mode === 'create' ? 'Create Journal' : readOnly ? 'Journal Settings' : 'Edit Journal'}
+              {mode === 'create' ? 'Create Magazine' : readOnly ? 'Magazine Settings' : 'Edit Magazine'}
             </h2>
           </div>
-          <Button type="button" variant="ghost" size="icon" aria-label="Close journal form" onClick={onClose}>
+          <Button type="button" variant="ghost" size="icon" aria-label="Close magazine form" onClick={onClose}>
             <X className="h-4 w-4" aria-hidden="true" />
           </Button>
         </header>
@@ -88,11 +88,11 @@ export default function MagazineFormDialog({
             <div className="space-y-6">
               <section className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-bold text-[var(--foreground)]">Journal Identity</h3>
-                  <p className="mt-1 text-sm text-[var(--muted)]">Name the journal and assign its editorial owner where supported.</p>
+                  <h3 className="text-sm font-bold text-[var(--foreground)]">Magazine Identity</h3>
+                  <p className="mt-1 text-sm text-[var(--muted)]">Name the magazine and assign its editorial owner where supported.</p>
                 </div>
                 <label className="block">
-                  <span className="text-sm font-semibold text-[var(--foreground)]">Journal title</span>
+                  <span className="text-sm font-semibold text-[var(--foreground)]">Magazine title</span>
                   <input
                     required
                     value={form.title}
@@ -107,7 +107,7 @@ export default function MagazineFormDialog({
               <section className="space-y-4">
                 <div>
                   <h3 className="text-sm font-bold text-[var(--foreground)]">Public Description and Scope</h3>
-                  <p className="mt-1 text-sm text-[var(--muted)]">This content appears in public journal discovery and overview areas.</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">This content appears in public magazine discovery and overview areas.</p>
                 </div>
                 <label className="block">
                   <span className="text-sm font-semibold text-[var(--foreground)]">Short description</span>
@@ -126,7 +126,7 @@ export default function MagazineFormDialog({
                       value={form.about_text}
                       onChange={(value) => update('about_text', value)}
                       readOnly={readOnly}
-                      placeholder="Describe journal scope, editorial context, and publication focus."
+                      placeholder="Describe magazine scope, editorial context, and publication focus."
                     />
                   </div>
                 </label>
@@ -137,10 +137,28 @@ export default function MagazineFormDialog({
               <section className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
                 <h3 className="text-sm font-bold text-[var(--foreground)]">Publication Appearance</h3>
                 <p className="mt-1 text-sm text-[var(--muted)]">Upload a cover image. Existing storage values are kept private.</p>
-                <label className={`mt-4 flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] p-4 text-center ${readOnly ? 'pointer-events-none opacity-60' : ''}`}>
-                  <ImagePlus className="h-6 w-6 text-[var(--muted)]" aria-hidden="true" />
-                  <span className="mt-2 text-sm font-semibold text-[var(--foreground)]">{fileName || 'Choose cover image'}</span>
-                  <span className="mt-1 text-xs text-[var(--muted)]">JPEG, PNG, GIF, SVG, or WebP</span>
+                <label className={`group relative mt-4 flex aspect-[4/3] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] text-center ${readOnly ? 'pointer-events-none opacity-60' : ''}`}>
+                  {fileName || magazine?.cover_image_url || magazine?.cover_image ? (
+                    <img
+                      src={fileName && form.cover_image_file ? URL.createObjectURL(form.cover_image_file) : (magazine?.cover_image_url || magazine?.cover_image)}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center p-4">
+                      <ImagePlus className="h-6 w-6 text-[var(--muted)]" aria-hidden="true" />
+                      <span className="mt-2 text-sm font-semibold text-[var(--foreground)]">Choose cover image</span>
+                      <span className="mt-1 text-xs text-[var(--muted)]">JPEG, PNG, GIF, SVG, or WebP</span>
+                    </div>
+                  )}
+                  {!readOnly && (
+                    <span className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow">
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </span>
+                  )}
+                  {fileName && (
+                    <span className="absolute inset-x-0 bottom-0 bg-black/65 px-3 py-2 text-xs font-semibold text-white">{fileName}</span>
+                  )}
                   <input
                     type="file"
                     accept="image/*"
@@ -179,7 +197,7 @@ export default function MagazineFormDialog({
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             {!readOnly && (
               <Button type="submit" disabled={saving} icon={saving ? Loader2 : Save}>
-                {saving ? 'Saving...' : mode === 'create' ? 'Create Journal' : 'Save Changes'}
+                {saving ? 'Saving...' : mode === 'create' ? 'Create Magazine' : 'Save Changes'}
               </Button>
             )}
           </footer>

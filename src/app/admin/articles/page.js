@@ -216,7 +216,7 @@ function AuthorManuscriptWorkspace({ articles, loading, error, getStatusBadge })
                           <div className="flex flex-wrap gap-3 text-[11px] font-semibold text-zinc-500">
                             <span className="inline-flex items-center gap-1">
                               <BookOpen className="h-3.5 w-3.5 text-amber-600" />
-                              {article.magazine?.title || 'Journal not selected'}
+                              {article.magazine?.title || 'Magazine not selected'}
                             </span>
                             <span className="inline-flex items-center gap-1">
                               <Calendar className="h-3.5 w-3.5 text-zinc-400" />
@@ -527,7 +527,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
           <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
             {isAdminOrEditor
               ? selectedQueue.description
-              : "Filter your manuscript submissions by journal, workflow status, or search text."}
+              : "Filter your manuscript submissions by magazine, workflow status, or search text."}
           </p>
         </div>
         {hasPermission('articles.create') && !observerMode && (
@@ -628,7 +628,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
               }}
               className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100 cursor-pointer appearance-none"
             >
-              <option value="all">{isAuthorWorkspace ? "All Journals" : "All Magazines"}</option>
+              <option value="all">{isAuthorWorkspace ? "All Magazines" : "All Magazines"}</option>
               {magazines.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.title}

@@ -46,11 +46,13 @@ export default function MagazineWorkspace() {
   const canEdit = hasPermission('magazines.edit') && !isEditor;
   const canDelete = hasRole('super_admin') && hasPermission('magazines.delete') && !isEditor;
   const canEditSeo = hasPermission('seo.magazines') && !isEditor;
+  const canManagePublicPages = hasRole('super_admin') || hasRole('admin') || isEditor || canEdit;
+  const canUseIssueManager = hasRole('super_admin') || hasRole('publisher');
 
   const pageSummary = useMemo(() => {
     const publishedArticles = magazines.reduce((sum, magazine) => sum + Number(magazine.articles_count || 0), 0);
     return [
-      { label: 'Visible Journals', value: magazines.length },
+      { label: 'Visible Magazines', value: magazines.length },
       { label: 'Published Articles', value: publishedArticles },
       { label: 'Current Page', value: totalPages > 1 ? `${page} of ${totalPages}` : '1' },
     ];
@@ -70,7 +72,7 @@ export default function MagazineWorkspace() {
       setTotalPages(response.data?.last_page || 1);
     } catch (err) {
       logError('Failed to load magazine workspace:', err);
-      setError(safeApiMessage(err, 'Unable to load journal workspace.'));
+      setError(safeApiMessage(err, 'Unable to load magazine workspace.'));
     } finally {
       setLoading(false);
     }
@@ -86,7 +88,7 @@ export default function MagazineWorkspace() {
 
   const saveMagazine = async (form) => {
     if (!form.title.trim()) {
-      toast('Journal title is required.', 'error');
+      toast('Magazine title is required.', 'error');
       return;
     }
 
@@ -109,18 +111,18 @@ export default function MagazineWorkspace() {
 
       if (dialogState.mode === 'create') {
         await api.post('/admin/magazines', payload);
-        toast('Journal created.', 'success');
+        toast('Magazine created.', 'success');
       } else {
         payload.append('_method', 'PUT');
         await api.post(`/admin/magazines/${dialogState.magazine.id}`, payload);
-        toast('Journal updated.', 'success');
+        toast('Magazine updated.', 'success');
       }
 
       closeDialog();
       await loadMagazines();
     } catch (err) {
       logError('Failed to save magazine:', err);
-      toast(safeApiMessage(err, 'Unable to save journal.'), 'error');
+      toast(safeApiMessage(err, 'Unable to save magazine.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -130,38 +132,38 @@ export default function MagazineWorkspace() {
     if (!deleteTarget) return;
     try {
       await api.delete(`/admin/magazines/${deleteTarget.id}`);
-      toast('Journal deleted.', 'success');
+      toast('Magazine deleted.', 'success');
       setDeleteTarget(null);
       await loadMagazines();
     } catch (err) {
       logError('Failed to delete magazine:', err);
-      toast(safeApiMessage(err, 'Unable to delete journal.'), 'error');
+      toast(safeApiMessage(err, 'Unable to delete magazine.'), 'error');
     }
   };
 
   if (authLoading || loading) {
-    return <LoadingState label="Loading journal workspace..." className="min-h-[420px]" />;
+    return <LoadingState label="Loading magazine workspace..." className="min-h-[420px]" />;
   }
 
   if (!user || !canView) {
-    return <ErrorState title="Access restricted">You do not have access to the journal management workspace.</ErrorState>;
+    return <ErrorState title="Access restricted">You do not have access to the magazine management workspace.</ErrorState>;
   }
 
   return (
     <main className="space-y-6">
-      <title>Journal Management - ScholarlyNest</title>
+      <title>Magazine Management - ScholarlyNest</title>
       <header className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Publication Operations</p>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-[var(--foreground)]">Journal Management</h1>
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-[var(--foreground)]">Magazine Management</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-              Manage journal identity, public scope, issue setup entry points, and publication configuration for journals available to your role.
+              Manage magazine identity, public scope, issue setup entry points, and publication configuration for magazines available to your role.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" icon={RefreshCw} onClick={loadMagazines}>Refresh</Button>
-            {canCreate && <Button type="button" icon={Plus} onClick={openCreate}>Create Journal</Button>}
+            {canCreate && <Button type="button" icon={Plus} onClick={openCreate}>Create Magazine</Button>}
           </div>
         </div>
         <dl className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -175,19 +177,19 @@ export default function MagazineWorkspace() {
       </header>
 
       {error ? (
-        <ErrorState title="Journal workspace could not be loaded">{error}</ErrorState>
+        <ErrorState title="Magazine workspace could not be loaded">{error}</ErrorState>
       ) : magazines.length === 0 ? (
         <EmptyState
           icon={BookOpen}
-          title="No journals are available in this workspace."
-          action={canCreate ? <Button type="button" icon={Plus} onClick={openCreate}>Create Journal</Button> : null}
+          title="No magazines are available in this workspace."
+          action={canCreate ? <Button type="button" icon={Plus} onClick={openCreate}>Create Magazine</Button> : null}
         >
-          Create a journal to begin setting up issues and publication workflows.
+          Create a magazine to begin setting up issues and publication workflows.
         </EmptyState>
       ) : (
         <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
           <div className="border-b border-[var(--border)] px-5 py-4">
-            <h2 className="text-sm font-bold text-[var(--foreground)]">Available Journals</h2>
+            <h2 className="text-sm font-bold text-[var(--foreground)]">Available Magazines</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">Compact operational view with public preview, issue work, and management actions.</p>
           </div>
           <div className="divide-y divide-[var(--border)]">
@@ -210,14 +212,18 @@ export default function MagazineWorkspace() {
                   <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">{compactText(magazine.description, 'No public description has been added yet.')}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Link href={`/magazines/${magazine.slug}`} target="_blank" className="inline-flex items-center gap-1 text-sm font-semibold text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] dark:text-amber-400">
-                      Public journal <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                      Public magazine <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                     </Link>
-                    <Link href={`/admin/magazines/${magazine.slug}/pages`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
-                      Public pages <Settings className="h-3.5 w-3.5" aria-hidden="true" />
-                    </Link>
-                    <Link href={`/admin/issues?magazine_id=${magazine.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
-                      Issues <FileText className="h-3.5 w-3.5" aria-hidden="true" />
-                    </Link>
+                    {canManagePublicPages && (
+                      <Link href={`/admin/magazines/${magazine.slug}/pages`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                        Public pages <Settings className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Link>
+                    )}
+                    {canUseIssueManager && (
+                      <Link href={`/admin/issues?magazine_id=${magazine.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                        Issues <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                      </Link>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">
@@ -226,9 +232,16 @@ export default function MagazineWorkspace() {
                       {canEdit || canEditSeo ? 'Edit' : 'View'}
                     </Button>
                   )}
-                  <Link href={`/admin/issues?magazine_id=${magazine.id}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] transition-all hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
-                    Manage Issues <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
+                  {canManagePublicPages && (
+                    <Link href={`/admin/magazines/${magazine.slug}/pages`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-all hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                      Public Pages <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  )}
+                  {canUseIssueManager && (
+                    <Link href={`/admin/issues?magazine_id=${magazine.id}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] transition-all hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                      Manage Issues <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  )}
                   {canDelete && (
                     <Button type="button" variant="danger" icon={Trash2} onClick={() => setDeleteTarget(magazine)}>Delete</Button>
                   )}
@@ -257,9 +270,9 @@ export default function MagazineWorkspace() {
       />
       <ConfirmationModal
         isOpen={Boolean(deleteTarget)}
-        title="Delete journal?"
-        message="This will permanently remove the journal and associated content. Continue only if this is an intended administrative action."
-        confirmText="Delete Journal"
+        title="Delete magazine?"
+        message="This will permanently remove the magazine and associated content. Continue only if this is an intended administrative action."
+        confirmText="Delete Magazine"
         cancelText="Cancel"
         variant="danger"
         onConfirm={deleteMagazine}

@@ -103,7 +103,7 @@ export default function MySubEditorsPage() {
           My Sub Editors
         </h1>
         <p className="mt-2 text-sm text-zinc-550">
-          Recruit or link Sub Editors to work under your desk. Invited accounts default to the password <span className="font-mono font-bold text-amber-600">Password123!</span>.
+          Recruit or link Sub Editors to work under your desk. New accounts receive a secure email link to set their own password.
         </p>
         <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-400 rounded-xl text-xs flex items-center gap-2">
           <Info className="h-4 w-4 text-blue-500 shrink-0" />

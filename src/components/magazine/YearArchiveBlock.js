@@ -25,7 +25,7 @@ const authorNames = (article) => {
     .filter(Boolean);
 
   if (names.length > 0) return names.join(', ');
-  return article.user?.name || 'Scholarly Nest Author';
+  return article.user?.name || 'ScholarlyNest Author';
 };
 
 const issueLabel = (article) => {

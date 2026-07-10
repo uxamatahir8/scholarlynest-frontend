@@ -75,6 +75,50 @@ export default function ArticleWorkflowPage() {
     if (publishData.doi) payload.append('doi', publishData.doi);
     if (publishData.page_start) payload.append('page_start', publishData.page_start);
     if (publishData.page_end) payload.append('page_end', publishData.page_end);
+    [
+      'article_type',
+      'article_category',
+      'open_access_label',
+      'academic_editor',
+      'received_at',
+      'accepted_at',
+      'published_at',
+      'license_statement',
+      'data_availability_statement',
+      'funding_statement',
+      'competing_interests_statement',
+      'abbreviations',
+      'citation_text',
+    ].forEach((key) => {
+      if (publishData[key] !== undefined && publishData[key] !== null && String(publishData[key]).trim() !== '') {
+        payload.append(key, publishData[key]);
+      }
+    });
+    if (publishData.is_peer_reviewed !== undefined) {
+      payload.append('is_peer_reviewed', publishData.is_peer_reviewed ? '1' : '0');
+    }
+    if (publishData.publication_sections) {
+      const publicationSections = [];
+      for (const section of publishData.publication_sections) {
+        let mediaUploadId = section.existing_media_upload_session_id || null;
+        if (section.image_file) {
+          const sectionImageUpload = await uploadAndAwaitClean({
+            file: section.image_file,
+            purpose: 'publication_section_image',
+            attachableId: article.id,
+          });
+          mediaUploadId = sectionImageUpload.id;
+        }
+        publicationSections.push({
+          section_key: section.section_key,
+          title: section.title,
+          content_html: section.content_html,
+          sort_order: section.sort_order,
+          media_upload_session_id: mediaUploadId,
+        });
+      }
+      payload.append('publication_sections', JSON.stringify(publicationSections));
+    }
     if (publishData.publication_pdf) {
       const pdfUpload = await uploadAndAwaitClean({
         file: publishData.publication_pdf,
@@ -134,7 +178,7 @@ export default function ArticleWorkflowPage() {
         <aside className="space-y-6">
           <WorkflowContextPanel article={article} />
           <AssignmentSummary article={article} canSeeReviewerIdentity={showReviewerIdentity} />
-          <ArticleFilesPanel files={article.files || []} />
+          <ArticleFilesPanel files={article.files || []} assets={article.assets || []} />
         </aside>
       </div>
 
@@ -146,6 +190,7 @@ export default function ArticleWorkflowPage() {
           onClose={() => setPublishOpen(false)}
           articleTitle={article.title}
           magazineId={article.magazine_id}
+          publicationSections={article.publication_sections || []}
           onSubmit={handlePublishSubmit}
         />
       )}

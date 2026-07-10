@@ -147,7 +147,7 @@ export default function DashboardStats({ stats, loading, isAdmin }) {
               {magazines}
             </div>
             <p className="text-[10px] text-zinc-455 dark:text-zinc-550 font-medium pt-1">
-              Total published journal catalog volumes
+              Total published magazine catalog volumes
             </p>
           </div>
         </div>

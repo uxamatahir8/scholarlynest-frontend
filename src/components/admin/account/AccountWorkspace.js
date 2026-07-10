@@ -61,7 +61,7 @@ export default function AccountWorkspace() {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const { toast } = useToast();
 
-  const [profile, setProfile] = useState({ name: '', email: '', university_name: '', profile_image: '' });
+  const [profile, setProfile] = useState({ name: '', email: '', university_name: '', profile_image: '', profile_image_upload_id: '' });
   const [profileErrors, setProfileErrors] = useState({});
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -100,6 +100,7 @@ export default function AccountWorkspace() {
       email: user.email || '',
       university_name: user.university_name || '',
       profile_image: user.profile_image || '',
+      profile_image_upload_id: '',
     });
   }, [user]);
 
@@ -126,7 +127,9 @@ export default function AccountWorkspace() {
       await api.put('/profile', {
         name: profile.name.trim(),
         university_name: profile.university_name.trim() || null,
-        profile_image: profile.profile_image || null,
+        ...(profile.profile_image_upload_id
+          ? { profile_image_upload_id: profile.profile_image_upload_id }
+          : { profile_image: profile.profile_image || null }),
       });
       await refreshUser();
       toast('Profile updated.', 'success');
@@ -153,7 +156,8 @@ export default function AccountWorkspace() {
     try {
       setUploadingImage(true);
       const upload = await uploadAndAwaitClean({ file, purpose: 'profile_image' });
-      setProfile((current) => ({ ...current, profile_image: upload.record?.media_url || '' }));
+      const previewUrl = URL.createObjectURL(file);
+      setProfile((current) => ({ ...current, profile_image: previewUrl, profile_image_upload_id: upload.id }));
       toast('Profile image uploaded. Save profile to apply it.', 'success');
     } catch (err) {
       logError('Failed to upload profile image:', err);
@@ -436,7 +440,7 @@ export default function AccountWorkspace() {
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="New password" helperText={passwordRuleText} error={passwordErrors.password}>
                   <div className="relative">
-                    <Input type={showPassword ? 'text' : 'password'} value={passwordState.password} autoComplete="new-password" onChange={(event) => setPasswordState((current) => ({ ...current, password: event.target.value }))} className="pr-11" />
+                    <Input disabled={!passwordState.codeVerified} type={showPassword ? 'text' : 'password'} value={passwordState.password} autoComplete="new-password" onChange={(event) => setPasswordState((current) => ({ ...current, password: event.target.value }))} className="pr-11" />
                     <button type="button" aria-label={showPassword ? 'Hide new password' : 'Show new password'} onClick={() => setShowPassword((value) => !value)} className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -444,7 +448,7 @@ export default function AccountWorkspace() {
                 </Field>
                 <Field label="Confirm new password" error={passwordErrors.password_confirmation}>
                   <div className="relative">
-                    <Input type={showConfirmPassword ? 'text' : 'password'} value={passwordState.password_confirmation} autoComplete="new-password" onChange={(event) => setPasswordState((current) => ({ ...current, password_confirmation: event.target.value }))} className="pr-11" />
+                    <Input disabled={!passwordState.codeVerified} type={showConfirmPassword ? 'text' : 'password'} value={passwordState.password_confirmation} autoComplete="new-password" onChange={(event) => setPasswordState((current) => ({ ...current, password_confirmation: event.target.value }))} className="pr-11" />
                     <button type="button" aria-label={showConfirmPassword ? 'Hide password confirmation' : 'Show password confirmation'} onClick={() => setShowConfirmPassword((value) => !value)} className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--muted)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
                       {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -452,7 +456,7 @@ export default function AccountWorkspace() {
                 </Field>
               </div>
               <div className="flex justify-end">
-                <Button type="submit" icon={KeyRound} isLoading={savingPassword}>Update Password</Button>
+                <Button type="submit" icon={KeyRound} isLoading={savingPassword} disabled={!passwordState.codeVerified}>Update Password</Button>
               </div>
             </form>
           </Section>
@@ -491,11 +495,6 @@ export default function AccountWorkspace() {
             </div>
           </Section>
 
-          <Section eyebrow="Settings Scope" title="Personal vs System Settings" description="This page is only for your account.">
-            <p className="text-sm leading-6 text-[var(--muted)]">
-              System settings, registration settings, classifications, and other platform controls remain in their authorized console areas.
-            </p>
-          </Section>
         </aside>
       </div>
 

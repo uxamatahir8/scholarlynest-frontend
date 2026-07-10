@@ -4,16 +4,18 @@ import { safeApiMessage } from '../../utils/safeErrors';
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Lock, ShieldAlert, Loader2, AlertCircle, Check, X, Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
 
 function ResetPasswordForm() {
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams.get('email') || '';
-  const codeParam = searchParams.get('code') || '';
+  const tokenParam = searchParams.get('token') || '';
   const errorRef = useRef(null);
 
   const [password, setPassword] = useState('');
@@ -37,7 +39,11 @@ function ResetPasswordForm() {
   const isPasswordStrong = hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSymbol;
 
   useEffect(() => {
-    if (!emailParam || !codeParam) {
+    if (!authLoading && user) router.replace('/admin');
+  }, [authLoading, user, router]);
+
+  useEffect(() => {
+    if (!emailParam || !tokenParam) {
       setVerifying(false);
       setVerificationFailed(true);
       return;
@@ -47,7 +53,7 @@ function ResetPasswordForm() {
       setVerifying(true);
       setError('');
       try {
-        await api.post('/password/verify-reset-code', { email: emailParam, code: codeParam });
+        await api.post('/password/verify-reset-code', { email: emailParam, token: tokenParam });
         setCodeVerified(true);
       } catch (err) {
         setVerificationFailed(true);
@@ -58,7 +64,7 @@ function ResetPasswordForm() {
       }
     };
     autoVerify();
-  }, [emailParam, codeParam]);
+  }, [emailParam, tokenParam]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -90,7 +96,7 @@ function ResetPasswordForm() {
     try {
       await api.post('/reset-password', {
         email: emailParam,
-        code: codeParam,
+        token: tokenParam,
         password,
         password_confirmation: passwordConfirmation,
       });

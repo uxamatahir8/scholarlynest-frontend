@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { CheckCircle2, KeyRound, Shield, UserRound } from 'lucide-react';
+import { CheckCircle2, MailCheck, Shield, UserRound } from 'lucide-react';
 import Alert from '../../ui/Alert';
 import Field from '../../ui/Field';
 import { Input, Select } from '../../ui/Input';
@@ -114,25 +114,14 @@ export default function UserForm({
         error={errors.magazine_ids}
       />
 
-      <Card className="border border-[var(--border)] bg-[var(--surface)]">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
-            <CardTitle>{mode === 'create' ? 'Account Setup' : 'Account Security'}</CardTitle>
-          </div>
-          <CardDescription>
-            {mode === 'create' ? 'Create a temporary password according to backend password policy.' : 'Leave password fields blank to preserve the existing password.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <Field label={mode === 'create' ? 'Password' : 'New Password'} required={mode === 'create'} error={errors.password}>
-            <Input type="password" value={values.password} onChange={(event) => setValue('password', event.target.value)} autoComplete="new-password" placeholder={mode === 'create' ? 'Enter password' : 'Leave unchanged'} />
-          </Field>
-          <Field label={mode === 'create' ? 'Confirm Password' : 'Confirm New Password'} required={mode === 'create'} error={errors.confirm_password || errors.password_confirmation}>
-            <Input type="password" value={values.password_confirmation} onChange={(event) => setValue('password_confirmation', event.target.value)} autoComplete="new-password" placeholder="Confirm password" />
-          </Field>
-        </CardContent>
-      </Card>
+      {mode === 'create' && (
+        <Alert tone="info" title="Password setup email">
+          <span className="inline-flex items-center gap-2">
+            <MailCheck className="h-4 w-4" aria-hidden="true" />
+            The user will receive a secure email link to set their own password. Administrators never enter or see user passwords.
+          </span>
+        </Alert>
+      )}
 
       <Card className="border border-[var(--border)] bg-[var(--surface)]">
         <CardHeader>
