@@ -38,7 +38,7 @@ const issueLabel = (article) => {
   return parts.join(' - ');
 };
 
-export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
+export default function YearArchiveBlock({ archive = {}, magazineSlug, onArticleClick }) {
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('');
 
@@ -184,7 +184,7 @@ export default function YearArchiveBlock({ archive = {}, onArticleClick }) {
         ) : (
           <div className="divide-y divide-[var(--border)]">
             {selectedArticles.map((article) => {
-              const articleLink = `/articles/${article.slug}`;
+              const articleLink = magazineSlug ? `/magazines/${magazineSlug}/articles/${article.slug}` : `/articles/${article.slug}`;
               const excerpt = plainText(article.abstract);
               const context = issueLabel(article);
 

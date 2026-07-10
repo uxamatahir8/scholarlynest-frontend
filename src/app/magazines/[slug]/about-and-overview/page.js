@@ -119,7 +119,7 @@ export default function MagazineAboutPage() {
             {latestArticles.map((article) => (
               <article key={article.id} className="py-5">
                 <h3 className="font-serif text-xl font-bold leading-snug text-zinc-950 dark:text-white">
-                  <Link href={`/articles/${article.slug}`} className="underline-offset-4 hover:text-amber-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:text-amber-300">
+                  <Link href={`/magazines/${slug}/articles/${article.slug}`} className="underline-offset-4 hover:text-amber-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:hover:text-amber-300">
                     {article.title}
                   </Link>
                 </h3>

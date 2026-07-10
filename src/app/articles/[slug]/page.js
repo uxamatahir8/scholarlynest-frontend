@@ -17,6 +17,7 @@ import ImageLightboxGallery from '../../../components/ui/ImageLightboxGallery';
 import SeoHead from '../../../components/SeoHead';
 import AuthorHeaderBlock from '../../../components/article/AuthorHeaderBlock';
 import { isArticleEditableStatus } from '../../../utils/status';
+import { publicArticlePath } from '../../../utils/articleLinks';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -76,7 +77,8 @@ const compactDate = (value) => {
 export default function ArticleDetail() {
   const params = useParams();
   const router = useRouter();
-  const articleSlug = params ? params.slug : null;
+  const routeMagazineSlug = params?.articleSlug ? params.slug : null;
+  const articleSlug = params?.articleSlug || params?.slug || null;
   
   const { toast } = useToast();
   const { user } = useAuth();
@@ -97,6 +99,7 @@ export default function ArticleDetail() {
     author => author.user_id === user.id && author.can_edit
   );
   const showEditButton = (isPrimaryAuthor || isCoAuthorEditor) && isArticleEditableStatus(article?.status);
+  const canonicalArticlePath = article ? publicArticlePath(article, articleSlug) : `/articles/${articleSlug || ''}`;
   
   const [downloading, setDownloading] = useState(false);
 
@@ -122,7 +125,7 @@ export default function ArticleDetail() {
 
   const getEmbedCode = () => {
     if (!article || typeof window === 'undefined') return '';
-    return `<iframe src="${window.location.origin}/articles/${article.slug || articleSlug}" width="100%" height="500" style="border: 1px solid #e4e4e7; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);" title="${article.title}"></iframe>`;
+    return `<iframe src="${window.location.origin}${canonicalArticlePath}" width="100%" height="500" style="border: 1px solid #e4e4e7; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);" title="${article.title}"></iframe>`;
   };
 
   const handleCopyEmbed = () => {
@@ -176,6 +179,11 @@ export default function ArticleDetail() {
 
     fetchArticleData();
   }, [articleSlug]);
+
+  useEffect(() => {
+    if (!article || routeMagazineSlug || !article.magazine?.slug) return;
+    router.replace(publicArticlePath(article, articleSlug));
+  }, [article, articleSlug, routeMagazineSlug, router]);
 
   const handlePdfDownload = async () => {
     if (!article?.has_pdf) {
@@ -363,7 +371,7 @@ export default function ArticleDetail() {
         description={article.seo_description}
         keywords={article.seo_keywords}
         ogImage={article.og_image}
-        ogUrl={`/articles/${article.slug || articleSlug}`}
+        ogUrl={canonicalArticlePath}
         ogType="article"
       />
 

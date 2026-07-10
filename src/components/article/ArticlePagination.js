@@ -15,7 +15,7 @@ export default function ArticlePagination({
 
   const handleNavigate = (id, slug) => {
     if (id && slug) {
-      router.push(`/articles/${slug}`);
+      router.push(magazineSlug ? `/magazines/${magazineSlug}/articles/${slug}` : `/articles/${slug}`);
     }
   };
 

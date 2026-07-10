@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { publicArticlePath } from '../../utils/articleLinks';
 
 const chunkArticles = (articles, size) => {
   const chunks = [];
@@ -168,7 +169,7 @@ export default function MagazineArticleCarousel({ articles = [], coverImage = ''
             <div key={`magazine-article-slide-${slideIndex}`} className="w-full shrink-0">
               <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${articlesPerSlide}, minmax(0, 1fr))` }}>
                 {slide.map((article) => {
-                  const articleLink = `/articles/${article.slug || ''}`;
+                  const articleLink = publicArticlePath(article);
                   const imageSrc = getImageUrl ? getImageUrl(article.featured_image || coverImage) : article.featured_image || coverImage;
                   const issueLabel = getIssueLabel(article);
                   const publishedDate = formatDate(article.published_at || article.created_at);

@@ -6,6 +6,7 @@ import { ArrowRight, Loader2 } from 'lucide-react';
 import api from '../../utils/api';
 import { logError } from '../../utils/safeLogger';
 import { formatDate } from '../../utils/date';
+import { publicArticlePath } from '../../utils/articleLinks';
 
 const stripHtml = (htmlString) => {
   if (!htmlString) return '';
@@ -91,7 +92,7 @@ export default function RecentArticles() {
 
         <div className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
           {articles.slice(0, 5).map((article) => {
-            const articleLink = `/articles/${article.slug || ''}`;
+            const articleLink = publicArticlePath(article);
             const excerpt = stripHtml(article.abstract);
             return (
               <article key={article.id} className="py-5">

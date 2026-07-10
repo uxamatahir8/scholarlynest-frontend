@@ -3,10 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
+import { publicArticlePath } from '../../utils/articleLinks';
 
 const buildItemHref = (item) => (
   item.type === 'article'
-    ? `/articles/${item.slug}`
+    ? publicArticlePath(item)
     : `/magazines/${item.slug}/about-and-overview`
 );
 
