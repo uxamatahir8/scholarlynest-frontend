@@ -66,6 +66,8 @@ export function canViewReviewerIdentity(user, hasRole) {
 
 export function eventLabel(event) {
   const labels = {
+    'article.submitted': 'Manuscript submitted',
+    'article.created': 'Manuscript created',
     'article.screened': 'Editorial screening completed',
     'sub_editor.assigned': 'Assigned to Sub Editor',
     'reviewer.assigned': 'Review requested',

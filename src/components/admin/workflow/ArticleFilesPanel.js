@@ -80,7 +80,8 @@ function DownloadRow({ item, title, meta }) {
       const requestUrl = item.download_url.startsWith(apiBase)
         ? item.download_url.slice(apiBase.length)
         : item.download_url.replace(/^\/api/, '');
-      const response = await api.get(requestUrl, { responseType: 'blob' });
+      const separator = requestUrl.includes('?') ? '&' : '?';
+      const response = await api.get(`${requestUrl}${separator}stream=1`, { responseType: 'blob' });
       const objectUrl = URL.createObjectURL(response.data);
       if (previewWindow) previewWindow.location.href = objectUrl;
       else window.location.assign(objectUrl);
