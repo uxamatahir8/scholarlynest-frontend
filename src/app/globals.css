@@ -327,6 +327,29 @@ select option {
   transition: background-color 0.5s ease, border-color 0.5s ease;
 }
 
+.tab-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab-scroller::-webkit-scrollbar {
+  height: 6px;
+}
+
+.tab-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tab-scroller::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.tab-scroller::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
 .console-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(107, 114, 128, 0.45) transparent;

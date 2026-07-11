@@ -3,7 +3,9 @@ import { FileText } from 'lucide-react';
 import WorkflowSection from './WorkflowSection';
 import { formatDate, labelize } from './workflowDisplay';
 
-export default function ArticleMetadataPanel({ article }) {
+export default function ArticleMetadataPanel({ article, user, hasRole }) {
+  const isReviewerOnly = user && hasRole && hasRole('reviewer') && !hasRole('admin') && !hasRole('super_admin') && !hasRole('editor') && !hasRole('sub_editor');
+
   const items = [
     ['Magazine', article.magazine?.title || 'Not assigned'],
     ['Current status', article.author_status || article.status || 'Not recorded'],
@@ -29,7 +31,7 @@ export default function ArticleMetadataPanel({ article }) {
           </div>
         ))}
       </dl>
-      {(article.article_authors || []).length > 0 && (
+      {!isReviewerOnly && (article.article_authors || []).length > 0 && (
         <div className="mt-5 border-t border-[var(--border)] pt-5">
           <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Authors and Affiliations</h3>
           <ul className="mt-3 grid gap-3">

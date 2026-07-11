@@ -821,7 +821,9 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
         onClose={() => setIsPublishModalOpen(false)}
         onSubmit={handlePublishSubmit}
         articleTitle={articleToPublish?.title}
+        articleAbstract={articleToPublish?.abstract || ''}
         magazineId={articleToPublish?.magazine_id}
+        publicationSections={articleToPublish?.publication_sections || []}
       />
 
     </div>

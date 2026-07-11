@@ -69,8 +69,9 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
 
   useEffect(() => {
     if (!isOpen) return;
-    if (publicationSections.length > 0) {
-      const loadedSections = publicationSections.map((section, index) => ({
+    const safeSections = publicationSections || [];
+    if (safeSections.length > 0) {
+      const loadedSections = safeSections.map((section, index) => ({
         client_id: makeClientId(),
         id: section.id,
         section_key: section.section_key || slugKey(section.title, `section_${index + 1}`),
@@ -82,9 +83,9 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
       }));
       setSections(loadedSections.some((section) => section.section_key === 'abstract')
         ? loadedSections
-        : [{ ...defaultSections(articleAbstract)[0] }, ...loadedSections].map((section, index) => ({ ...section, sort_order: index + 1 })));
+        : [{ ...defaultSections(articleAbstract || '')[0] }, ...loadedSections].map((section, index) => ({ ...section, sort_order: index + 1 })));
     } else {
-      setSections(defaultSections(articleAbstract));
+      setSections(defaultSections(articleAbstract || ''));
     }
   }, [isOpen, publicationSections, articleAbstract]);
 

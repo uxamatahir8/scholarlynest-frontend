@@ -16,7 +16,7 @@ const sheetMimes = new Set([
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ]);
 
-function fileDownloadUrl(path) {
+export function fileDownloadUrl(path) {
   if (!path) return '#';
   const apiBase = (api.defaults.baseURL || '').replace(/\/$/, '');
   const suffix = path.startsWith('/api/') ? path.replace(/^\/api/, '') : path;
@@ -32,11 +32,11 @@ function fileDownloadUrl(path) {
   return url;
 }
 
-function assetTitle(item) {
+export function assetTitle(item) {
   return item.title || item.original_filename || item.original_name || 'Supplementary asset';
 }
 
-function assetMeta(kind, item) {
+export function assetMeta(kind, item) {
   if (kind === 'file') {
     return `${fileTypeLabels[item.file_type] || labelize(item.file_type)} · ${formatDate(item.created_at)}`;
   }
@@ -49,7 +49,7 @@ function extensionFor(item) {
   return match?.[1] || '';
 }
 
-function supplementaryGroup(kind, item) {
+export function supplementaryGroup(kind, item) {
   const extension = extensionFor(item);
   const mime = String(item.mime_type || item.detected_mime_type || item.declared_mime_type || '').toLowerCase();
   if (item.asset_type === 'image' || imageExtensions.has(extension) || imageMimePrefixes.some((prefix) => mime.startsWith(prefix))) {
@@ -61,7 +61,7 @@ function supplementaryGroup(kind, item) {
   return 'files';
 }
 
-function galleryImage(entry) {
+export function galleryImage(entry) {
   const item = entry.item;
   return {
     src: fileDownloadUrl(item.download_url),
