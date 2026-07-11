@@ -161,6 +161,15 @@ export default function Login() {
     }
   };
 
+  if (authLoading || user) {
+    return (
+      <div className="flex-grow flex flex-col justify-center items-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-accent dark:text-accent-gold" />
+        <p className="text-xs text-muted mt-4 font-semibold">Verifying session...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
       <SeoHead

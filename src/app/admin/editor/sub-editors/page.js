@@ -22,7 +22,7 @@ export default function MySubEditorsPage() {
   const [form, setForm] = useState({ name: '', email: '' });
   const [formErrors, setFormErrors] = useState({});
 
-  const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const isEditor = hasRole('editor');
   const roleAllowed = isEditor;
 
   useEffect(() => {

@@ -113,7 +113,7 @@ export default function WorkflowActionPanel({
   });
 
   const isAdmin = hasRole('super_admin') || hasRole('admin');
-  const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const isEditor = hasRole('editor');
   const isSubEditor = hasRole('sub_editor');
   const isReviewer = hasRole('reviewer');
   const isPublisher = hasRole('publisher');

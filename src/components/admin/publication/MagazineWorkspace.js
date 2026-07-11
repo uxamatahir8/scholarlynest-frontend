@@ -40,7 +40,7 @@ export default function MagazineWorkspace() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const isEditor = hasRole('editor');
   const canView = hasPermission('magazines.view-any') || hasPermission('magazines.view-own');
   const canCreate = hasPermission('magazines.create') && !isEditor;
   const canEdit = hasPermission('magazines.edit') && !isEditor;

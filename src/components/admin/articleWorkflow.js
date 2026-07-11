@@ -100,5 +100,5 @@ export function normalizeRoleName(roleName) {
 }
 
 export function roleRequiresMagazineAssignment(roleName) {
-  return ['editor', 'magazine_editor', 'publisher', 'proofreader'].includes(normalizeRoleName(roleName));
+  return ['editor', 'publisher', 'proofreader'].includes(normalizeRoleName(roleName));
 }

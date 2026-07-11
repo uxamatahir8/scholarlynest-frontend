@@ -258,7 +258,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const isEditor = hasRole('editor');
 
   const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || hasPermission('articles.auto-approve') || isEditor) : false;
   const isAuthorWorkspace = !isAdminOrEditor;
@@ -818,7 +818,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
 
 export default function AdminArticlesBoard() {
   return (
-    <DeskObserverContext roles={['editor', 'magazine_editor']}>
+    <DeskObserverContext roles={['editor']}>
       {({ observerMode, observerParams }) => (
         <AdminArticlesBoardContent
           observerMode={observerMode}

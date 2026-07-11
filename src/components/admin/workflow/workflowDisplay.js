@@ -61,7 +61,7 @@ export function isAuthorViewer(user, article) {
 }
 
 export function canViewReviewerIdentity(user, hasRole) {
-  return hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor') || hasRole('sub_editor');
+  return hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('sub_editor');
 }
 
 export function eventLabel(event) {
@@ -119,7 +119,7 @@ export function nextStepText(article, user, hasRole) {
     return 'No proofreading action is assigned to you for this manuscript right now.';
   }
   if (hasRole('publisher') && ['accepted', 'ready_for_publication'].includes(status)) return 'Prepare publication metadata and issue placement.';
-  if (hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor') || hasRole('super_admin') || hasRole('admin')) {
+  if (hasRole('editor') || hasRole('super_admin') || hasRole('admin')) {
     if (['submitted', 'pending', 'screening'].includes(status)) return 'Complete editorial screening.';
     if (['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted'].includes(status)) return 'Continue editorial review or record a decision.';
     if (status === 'accepted') return 'Move the manuscript into production when ready.';

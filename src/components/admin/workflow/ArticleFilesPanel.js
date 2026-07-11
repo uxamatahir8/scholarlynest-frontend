@@ -1,5 +1,5 @@
-import React from 'react';
-import { Download, FileImage, Files, Sheet } from 'lucide-react';
+import React, { useState } from 'react';
+import { Download, FileImage, Files, Loader2, Sheet } from 'lucide-react';
 import EmptyState from '../../ui/EmptyState';
 import ImageLightboxGallery from '../../ui/ImageLightboxGallery';
 import WorkflowSection from './WorkflowSection';
@@ -65,6 +65,34 @@ function galleryImage(entry) {
 }
 
 function DownloadRow({ item, title, meta }) {
+  const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState('');
+
+  const openFile = async () => {
+    if (!item.download_url || opening) return;
+    setOpening(true);
+    setOpenError('');
+    const previewWindow = window.open('about:blank', '_blank');
+    if (previewWindow) previewWindow.opener = null;
+
+    try {
+      const apiBase = (api.defaults.baseURL || '').replace(/\/$/, '');
+      const requestUrl = item.download_url.startsWith(apiBase)
+        ? item.download_url.slice(apiBase.length)
+        : item.download_url.replace(/^\/api/, '');
+      const response = await api.get(requestUrl, { responseType: 'blob' });
+      const objectUrl = URL.createObjectURL(response.data);
+      if (previewWindow) previewWindow.location.href = objectUrl;
+      else window.location.assign(objectUrl);
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } catch {
+      previewWindow?.close();
+      setOpenError('Unable to open this file. Please try again.');
+    } finally {
+      setOpening(false);
+    }
+  };
+
   return (
     <li className="min-w-0 max-w-full overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-muted)] p-3">
       <div className="grid min-w-0 max-w-full gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
@@ -72,16 +100,17 @@ function DownloadRow({ item, title, meta }) {
           <p className="max-w-full truncate text-sm font-bold text-[var(--foreground)]" title={title}>{title}</p>
           <p className="mt-1 max-w-full truncate text-xs font-semibold text-[var(--muted)]" title={meta}>{meta}</p>
         </div>
-        <a
-          href={fileDownloadUrl(item.download_url)}
-          target="_blank"
-          rel="noreferrer"
+        <button
+          type="button"
+          onClick={openFile}
+          disabled={opening || !item.download_url}
           className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-bold text-[var(--foreground)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] sm:w-auto"
         >
-          <Download className="h-4 w-4" aria-hidden="true" />
-          Open
-        </a>
+          {opening ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
+          {opening ? 'Opening…' : 'Open'}
+        </button>
       </div>
+      {openError && <p className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400" role="alert">{openError}</p>}
     </li>
   );
 }

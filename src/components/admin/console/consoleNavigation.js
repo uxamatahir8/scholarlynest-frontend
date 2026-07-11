@@ -53,13 +53,13 @@ export const consoleNavigation = [
         label: 'Articles & Workflow',
         href: '/admin/articles',
         icon: Workflow,
-        isVisible: ({ user, hasPermission }) => can(hasPermission, 'articles.view-any') || hasAnyRole(user, ['super_admin', 'admin', 'editor', 'magazine_editor']),
+        isVisible: ({ user, hasPermission }) => can(hasPermission, 'articles.view-any') || hasAnyRole(user, ['super_admin', 'admin', 'editor']),
       },
       {
         label: 'My Sub Editors',
         href: '/admin/editor/sub-editors',
         icon: Users,
-        isVisible: ({ user }) => hasAnyRole(user, ['editor', 'magazine_editor']),
+        isVisible: ({ user }) => hasAnyRole(user, ['editor']),
       },
       {
         label: 'Sub Editor Desk',

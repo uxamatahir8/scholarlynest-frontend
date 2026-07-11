@@ -30,7 +30,7 @@ export default function AdminMagazinePages() {
   const slug = params ? params.slug : null;
   const { toast } = useToast();
   const { user, hasRole, loading: authLoading } = useAuth();
-  const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const isEditor = hasRole('editor');
   const canManageMagazinePages = hasRole('super_admin') || hasRole('admin') || isEditor;
   const canDeleteRecords = hasRole('super_admin');
 

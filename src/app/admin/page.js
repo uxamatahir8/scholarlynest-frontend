@@ -195,7 +195,6 @@ const authorQueues = [
 function primaryRoleForUser(user, hasRole) {
   const primary = normalizeRoleName(getPrimaryRole(user));
   if (primary) return primary;
-  if (hasRole?.('magazine_editor') || userHasRole(user, 'magazine_editor')) return 'magazine_editor';
   return 'author';
 }
 
@@ -247,7 +246,7 @@ export default function AdminOverview() {
     );
   }
 
-  if (role === 'editor' || role === 'magazine_editor') {
+  if (role === 'editor') {
     return (
       <ArticleDashboardWorkspace
         title="Editorial Workspace"

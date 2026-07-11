@@ -110,6 +110,15 @@ function ResetPasswordForm() {
     }
   };
 
+  if (authLoading || user) {
+    return (
+      <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md flex flex-col items-center justify-center min-h-[250px]">
+        <Loader2 className="w-8 h-8 text-amber-600 dark:text-accent-gold animate-spin" />
+        <p className="text-xs text-muted mt-4 font-semibold">Verifying session...</p>
+      </div>
+    );
+  }
+
   if (verifying) {
     return (
       <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md flex flex-col items-center justify-center min-h-[250px]">
