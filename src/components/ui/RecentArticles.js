@@ -62,7 +62,7 @@ export default function RecentArticles() {
   if (loading) {
     return (
       <section className="border-t border-[var(--border)] bg-[var(--background)] py-14">
-        <div className="mx-auto flex max-w-[1440px] items-center justify-center gap-3 px-4 text-sm font-semibold text-[var(--muted)] sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-[1440px] items-center justify-center gap-3 px-4 text-sm font-semibold text-[var(--muted)] sm:px-6 lg:px-8">
           <Loader2 className="h-4 w-4 animate-spin text-amber-700" aria-hidden="true" />
           Loading latest research...
         </div>

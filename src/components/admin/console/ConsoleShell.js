@@ -31,7 +31,10 @@ export default function ConsoleShell({ children, auth }) {
   const [stoppingImpersonation, setStoppingImpersonation] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) router.push('/login');
+    if (!authLoading && !user) {
+      const requestedPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      router.replace(`/login?redirect=${encodeURIComponent(requestedPath)}`);
+    }
   }, [authLoading, router, user]);
 
   useEffect(() => {

@@ -8,14 +8,6 @@ import api from '../../utils/api';
 import { logWarn } from '../../utils/safeLogger';
 import { newsletterSchema, validateWithZod } from '../../lib/validation';
 
-const EXPLORE_LINKS = [
-  { label: 'Home', href: '/' },
-  { label: 'About', href: '/about' },
-  { label: 'Magazines', href: '/magazines' },
-  { label: 'Search', href: '/search' },
-  { label: 'Contact', href: '/contact' },
-];
-
 const CONTRIBUTOR_LINKS = [
   { label: 'Submit an Article', href: '/admin/articles/new' },
   { label: 'Author Login', href: '/login' },
@@ -91,7 +83,7 @@ export default function Footer() {
 
   return (
     <footer className="mt-auto w-full border-t border-zinc-200 bg-zinc-50 text-left dark:border-zinc-850 dark:bg-zinc-950">
-      <div className="mx-auto w-full max-w-[1440px] px-4 py-14 sm:px-6 lg:px-8 lg:py-16">
+      <div className="w-full px-4 py-14 sm:px-8 lg:px-12 lg:py-16">
         <div className="grid gap-10 lg:grid-cols-[1.2fr_1.4fr_1fr] lg:gap-14">
           <section className="space-y-5" aria-labelledby="footer-brand-heading">
             <Image src="/logo.png" alt="ScholarlyNest" width={690} height={362} className="h-10 w-auto object-contain" />
@@ -106,19 +98,6 @@ export default function Footer() {
 
           <nav className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3" aria-label="Footer navigation">
             <div>
-              <h3 className="text-sm font-bold text-zinc-950 dark:text-white">Explore</h3>
-              <ul className="mt-4 space-y-3">
-                {EXPLORE_LINKS.map((link) => (
-                  <li key={link.href}>
-                    <Link href={link.href} className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-zinc-350 dark:hover:text-white">
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
               <h3 className="text-sm font-bold text-zinc-950 dark:text-white">For Contributors</h3>
               <ul className="mt-4 space-y-3">
                 {CONTRIBUTOR_LINKS.map((link) => (
@@ -131,11 +110,11 @@ export default function Footer() {
               </ul>
             </div>
 
-            {cmsCategories.slice(0, 2).map((category) => (
+            {cmsCategories.map((category) => (
               <div key={category.id || category.name}>
                 <h3 className="text-sm font-bold text-zinc-950 dark:text-white">{category.name}</h3>
                 <ul className="mt-4 space-y-3">
-                  {category.pages.slice(0, 5).map((page) => (
+                  {category.pages.map((page) => (
                     <li key={page.id || page.slug}>
                       <Link href={`/${page.slug}`} className="text-sm font-medium text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-zinc-350 dark:hover:text-white">
                         {page.title}

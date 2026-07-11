@@ -212,12 +212,14 @@ export default function FooterCmsAdmin() {
               <span>Refresh</span>
             </button>
             <button
+              type="button"
               onClick={() => {
                 setActiveEditingPageData(null);
                 setIsEditingPage(true);
               }}
               disabled={categories.length === 0}
-              className="inline-flex items-center gap-1.5 bg-zinc-950 hover:bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
+              title={categories.length === 0 ? 'Create a category before adding a custom page' : 'Add a custom footer page'}
+              className="inline-flex items-center gap-1.5 bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Custom Page</span>

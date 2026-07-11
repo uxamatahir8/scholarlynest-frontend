@@ -233,7 +233,7 @@ function SearchResultsContent() {
       />
 
       <div className="relative pt-32 pb-16 border-b border-zinc-100 dark:border-zinc-900/60 bg-white/60 dark:bg-zinc-900/20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-30 space-y-6 text-center">
+        <div className="relative z-30 mx-auto w-full max-w-[1440px] space-y-6 px-4 text-center sm:px-6 lg:px-8">
 
           <div className="flex justify-center">
             <Link
@@ -271,7 +271,7 @@ function SearchResultsContent() {
       </div>
 
       {/* 2. Main Search Results Area */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
+      <div className="mx-auto mt-10 w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
 
         {q ? (
           <div className="space-y-6">

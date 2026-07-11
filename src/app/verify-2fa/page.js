@@ -9,6 +9,7 @@ import { useToast } from '../../context/ToastContext';
 import { ShieldCheck, Mail, Loader2, AlertCircle } from 'lucide-react';
 import api from '../../utils/api';
 import { twoFactorVerificationSchema, validateWithZod } from '../../lib/validation';
+import { resolveDashboardRedirect } from '../../utils/authRedirect';
 
 function Verify2FAForm() {
   const { loginWithPayload } = useAuth();
@@ -16,6 +17,7 @@ function Verify2FAForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams.get('email') || '';
+  const requestedPath = searchParams.get('redirect');
   const errorRef = useRef(null);
 
   const [email, setEmail] = useState(emailParam);
@@ -45,7 +47,7 @@ function Verify2FAForm() {
       const res = await api.post('/2fa/verify', { email, code });
       toast('Two-Factor Authentication successful. Welcome back!', 'success');
       loginWithPayload(res.data.user, res.data.access_token);
-      router.push('/admin');
+      router.replace(resolveDashboardRedirect(requestedPath, res.data.user));
     } catch (err) {
       const msg = safeApiMessage(err, 'Authentication failed. Please verify the code.');
       setError(msg);

@@ -378,7 +378,7 @@ export default function ArticleDetail() {
       <div className="w-full pt-4 sm:pt-6">
         
         {/* Navigation & Admin Action Header */}
-        <div className="max-w-4xl mx-auto flex items-center justify-between mb-8">
+        <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between mb-8">
           <Link 
             href={article.magazine?.slug ? `/magazines/${article.magazine.slug}` : '/magazines'}
             className="group inline-flex items-center space-x-2 text-[10px] font-sans font-bold uppercase tracking-widest text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
@@ -397,7 +397,7 @@ export default function ArticleDetail() {
           )}
         </div>
 
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <div className="mx-auto grid w-full max-w-[1440px] gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
           <aside className="hidden pt-[192px] lg:block">
             <nav className="sticky top-24 rounded-2xl border border-zinc-150 bg-white/80 p-4 text-left shadow-sm dark:border-zinc-850 dark:bg-zinc-900/50" aria-label="Article sections">
               <p className="mb-3 text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Sections</p>

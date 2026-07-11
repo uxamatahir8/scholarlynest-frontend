@@ -9,6 +9,7 @@ import { useToast } from '../../context/ToastContext';
 import { ShieldCheck, Mail, Loader2, AlertCircle } from 'lucide-react';
 import api from '../../utils/api';
 import { emailVerificationSchema, forgotPasswordSchema, validateWithZod } from '../../lib/validation';
+import { resolveDashboardRedirect } from '../../utils/authRedirect';
 
 function VerifyForm() {
   const { loginWithPayload } = useAuth();
@@ -16,6 +17,7 @@ function VerifyForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams.get('email') || '';
+  const requestedPath = searchParams.get('redirect');
   const errorRef = useRef(null);
 
   const [email, setEmail] = useState(emailParam);
@@ -46,7 +48,7 @@ function VerifyForm() {
       const res = await api.post('/verify', { email, code });
       toast('Email verified successfully! Welcome to ScholarlyNest.', 'success');
       loginWithPayload(res.data.user, res.data.access_token);
-      router.push('/admin');
+      router.replace(resolveDashboardRedirect(requestedPath, res.data.user));
     } catch (err) {
       const msg = safeApiMessage(err, 'Verification failed. Please check the code.');
       setError(msg);
