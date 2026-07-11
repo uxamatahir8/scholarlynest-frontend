@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Lock, Plus, RefreshCw, Shield, Trash2 } from 'lucide-react';
+import { ChevronDown, Plus, RefreshCw, Shield, Trash2 } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { useToast } from '../../../../context/ToastContext';
 import api from '../../../../utils/api';
@@ -54,6 +54,7 @@ export default function RolesPermissionsPage() {
   const [creatingRole, setCreatingRole] = useState(false);
   const [deleteRole, setDeleteRole] = useState(null);
   const [deletingRole, setDeletingRole] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState(() => new Set());
 
   const selectedRole = useMemo(() => roles.find((role) => role.id === selectedRoleId) || roles[0] || null, [roles, selectedRoleId]);
 
@@ -65,6 +66,21 @@ export default function RolesPermissionsPage() {
       return groups;
     }, {});
   }, [permissions]);
+  const permissionCategories = useMemo(() => Object.keys(groupedPermissions), [groupedPermissions]);
+
+  useEffect(() => {
+    if (permissionCategories.length === 0) return;
+    setExpandedCategories((current) => current.size > 0 ? current : new Set([permissionCategories[0]]));
+  }, [permissionCategories]);
+
+  const toggleCategory = (category) => {
+    setExpandedCategories((current) => {
+      const next = new Set(current);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  };
 
   const selectedPermissionIds = useMemo(() => new Set((selectedRole?.permissions || []).map((permission) => permission.id)), [selectedRole]);
   const selectedAreas = selectedRole ? roleAccessAreas(selectedRole, selectedRole.permissions) : [];
@@ -267,14 +283,34 @@ export default function RolesPermissionsPage() {
               </CardContent>
             </Card>
 
-            <div className="grid gap-4">
-              {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => (
-                <Card key={category} className="border border-[var(--border)] bg-[var(--surface)]">
-                  <CardHeader>
-                    <CardTitle>{category}</CardTitle>
-                    <CardDescription>{categoryPermissions.length} permission{categoryPermissions.length === 1 ? '' : 's'} in this access area.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-2">
+            <div className="space-y-3">
+              <div className="flex justify-end gap-2">
+                <Button type="button" size="sm" variant="ghost" onClick={() => setExpandedCategories(new Set(permissionCategories))}>Expand all</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setExpandedCategories(new Set())}>Collapse all</Button>
+              </div>
+              {Object.entries(groupedPermissions).map(([category, categoryPermissions]) => {
+                const expanded = expandedCategories.has(category);
+                const assignedCount = categoryPermissions.filter((permission) => selectedPermissionIds.has(permission.id)).length;
+                const panelId = `permission-category-${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
+                return (
+                <Card key={category} className="overflow-hidden border border-[var(--border)] bg-[var(--surface)]">
+                  <button
+                    type="button"
+                    onClick={() => toggleCategory(category)}
+                    aria-expanded={expanded}
+                    aria-controls={panelId}
+                    className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--focus-ring)]"
+                  >
+                    <span className="min-w-0">
+                      <span className="block font-serif text-xl font-bold text-[var(--foreground)]">{category}</span>
+                      <span className="mt-1 block text-sm text-[var(--muted)]">
+                        {categoryPermissions.length} permission{categoryPermissions.length === 1 ? '' : 's'} · {assignedCount} assigned
+                      </span>
+                    </span>
+                    <ChevronDown className={`h-5 w-5 shrink-0 text-[var(--muted)] transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
+                  </button>
+                  {expanded && <CardContent id={panelId} className="grid gap-2 border-t border-[var(--border)] pt-4">
                     {categoryPermissions.map((permission) => {
                       const assigned = selectedPermissionIds.has(permission.id);
                       const protectedPermission = isProtectedPermission(permission.name);
@@ -298,9 +334,10 @@ export default function RolesPermissionsPage() {
                         </label>
                       );
                     })}
-                  </CardContent>
+                  </CardContent>}
                 </Card>
-              ))}
+                );
+              })}
             </div>
           </section>
         </div>
