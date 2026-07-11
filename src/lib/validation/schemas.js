@@ -151,6 +151,7 @@ export const reviewerWorkflowSubmitSchemaFor = (requiredQuestionIds = []) => z.o
   questionnaire_responses: z.array(z.object({
     question_id: z.coerce.number().int().positive(),
     answer: questionnaireAnswerSchema.optional(),
+    comment: optionalString('Question comment', 10000),
   })).optional(),
   scorecard: z.object({
     originality: z.coerce.number().int().min(1).max(5),

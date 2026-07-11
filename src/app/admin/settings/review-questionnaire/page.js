@@ -14,7 +14,7 @@ import Alert from '../../../../components/ui/Alert';
 import LoadingState from '../../../../components/ui/LoadingState';
 import ErrorState from '../../../../components/ui/ErrorState';
 
-const emptyQuestion = () => ({ prompt: '', response_type: 'radio', is_required: true, options: ['Yes', 'No'] });
+const emptyQuestion = () => ({ prompt: '', comment_helper: '', response_type: 'radio', is_required: true, options: ['Yes', 'No'] });
 const optionTypes = new Set(['radio', 'checkbox', 'dropdown']);
 
 export default function ReviewQuestionnaireSettingsPage() {
@@ -45,6 +45,7 @@ export default function ReviewQuestionnaireSettingsPage() {
           if (active.length > 0) {
             setQuestions(active.map((question) => ({
               prompt: question.prompt || '',
+              comment_helper: question.comment_helper || '',
               response_type: question.response_type || 'radio',
               is_required: !!question.is_required,
               options: question.options?.length ? question.options : [''],
@@ -107,6 +108,11 @@ export default function ReviewQuestionnaireSettingsPage() {
             <Field label="Question Text" required>
               <Textarea value={question.prompt} onChange={(event) => updateQuestion(index, 'prompt', event.target.value)} rows={2} placeholder="e.g. Does this manuscript require major revisions?" />
             </Field>
+            <div className="mt-3">
+              <Field label="Optional Comment Helper">
+                <Input value={question.comment_helper || ''} onChange={(event) => updateQuestion(index, 'comment_helper', event.target.value)} placeholder="e.g. If No, suggest modification." />
+              </Field>
+            </div>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <Field label="Answer Type">
                 <Select

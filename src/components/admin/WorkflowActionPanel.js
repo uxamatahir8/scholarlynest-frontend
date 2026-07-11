@@ -102,6 +102,7 @@ export default function WorkflowActionPanel({
   const [subEditorForm, setSubEditorForm] = useState({ recommendation: 'minor_revision', comments: '', internal_notes: '' });
   const [reviewForm, setReviewForm] = useState({ recommendation: 'minor_revision', comments_for_author: '', confidential_comments: '', originality: 3, methodology: 3, citation_accuracy: 3 });
   const [questionnaireResponses, setQuestionnaireResponses] = useState({});
+  const [questionnaireComments, setQuestionnaireComments] = useState({});
   const [decisionForm, setDecisionForm] = useState({ decision: 'accepted', decision_source: 'mixed_editorial_decision', comments_for_author: '', internal_notes: '' });
   const [postForm, setPostForm] = useState({ action_type: 'correction', reason: '', notice_text: '' });
   const [files, setFiles] = useState({
@@ -129,6 +130,8 @@ export default function WorkflowActionPanel({
   const myReviewerAssignment = useMemo(() => (
     (workflowContext?.reviewer_assignments || []).find((item) => Number(item.reviewer_id) === Number(user?.id))
   ), [workflowContext, user]);
+  const reviewerQuestions = myReviewerAssignment?.questionnaire_instance?.questions || [];
+  const hasQuestionnaireFinalDecision = reviewerQuestions.some((question) => question.prompt?.toLowerCase() === 'final decision');
 
   const myProductionAssignment = useMemo(() => (
     (workflowContext?.production_assignments || []).find((item) => {
@@ -279,6 +282,12 @@ export default function WorkflowActionPanel({
 
   const updateQuestionnaireAnswer = (question, value) => {
     setQuestionnaireResponses((prev) => ({ ...prev, [question.id]: value }));
+    if (question.prompt?.toLowerCase() === 'final decision') {
+      setReviewForm((prev) => ({
+        ...prev,
+        recommendation: value === 'moderate_revision' ? 'major_revision' : value,
+      }));
+    }
   };
 
   const reviewerAssignmentForEmail = (email) => {
@@ -289,9 +298,10 @@ export default function WorkflowActionPanel({
     ));
   };
 
-  const questionnairePayload = () => Object.entries(questionnaireResponses).map(([questionId, answer]) => ({
-    question_id: Number(questionId),
-    answer,
+  const questionnairePayload = () => reviewerQuestions.map((question) => ({
+    question_id: Number(question.id),
+    answer: questionnaireResponses[question.id] ?? question.answer ?? '',
+    comment: questionnaireComments[question.id] ?? question.comment ?? '',
   }));
 
   const validateAction = (schema, values) => {
@@ -701,11 +711,13 @@ export default function WorkflowActionPanel({
               </>
             ) : (
               <>
-                <Field label="Recommendation" required>
-                  <Select value={reviewForm.recommendation} onChange={(event) => setReviewForm({ ...reviewForm, recommendation: event.target.value })}>
-                    {recommendationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </Select>
-                </Field>
+                {!hasQuestionnaireFinalDecision && (
+                  <Field label="Recommendation" required>
+                    <Select value={reviewForm.recommendation} onChange={(event) => setReviewForm({ ...reviewForm, recommendation: event.target.value })}>
+                      {recommendationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </Select>
+                  </Field>
+                )}
                 <div className="grid gap-3 md:grid-cols-3">
                   {['originality', 'methodology', 'citation_accuracy'].map((key) => (
                     <Field key={key} label={key.replaceAll('_', ' ')}>
@@ -723,7 +735,8 @@ export default function WorkflowActionPanel({
                   <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
                     <p className="text-sm font-bold text-[var(--foreground)]">Reviewer Questionnaire</p>
                     {myReviewerAssignment.questionnaire_instance.questions.map((question) => (
-                      <Field key={question.id} label={question.prompt} required={question.is_required}>
+                      <div key={question.id} className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+                      <Field label={question.prompt} required={question.is_required}>
                         {question.response_type === 'textarea' ? (
                           <Textarea value={questionnaireResponses[question.id] || question.answer || ''} onChange={(event) => updateQuestionnaireAnswer(question, event.target.value)} rows={3} />
                         ) : question.response_type === 'single_line' ? (
@@ -782,6 +795,17 @@ export default function WorkflowActionPanel({
                           </Select>
                         )}
                       </Field>
+                      {question.comment_helper && (
+                        <Field label="Comment or suggested modification">
+                          <Textarea
+                            value={questionnaireComments[question.id] ?? question.comment ?? ''}
+                            onChange={(event) => setQuestionnaireComments((prev) => ({ ...prev, [question.id]: event.target.value }))}
+                            rows={2}
+                            placeholder={question.comment_helper}
+                          />
+                        </Field>
+                      )}
+                      </div>
                     ))}
                   </div>
                 )}

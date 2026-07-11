@@ -28,6 +28,7 @@ export default function ReviewRecommendationPanel({ article, canSeeReviewerIdent
         recommendation: assignment.recommendation,
         comments: assignment.comments_for_author,
         questionnaire: assignment.questionnaire_instance,
+        submittedAt: assignment.questionnaire_instance?.submitted_at || assignment.completed_at,
       });
     }
   });
@@ -63,6 +64,7 @@ export default function ReviewRecommendationPanel({ article, canSeeReviewerIdent
                 )}
               </div>
               {item.comments && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--foreground)]">{item.comments}</p>}
+              {item.submittedAt && <p className="mt-2 text-xs font-medium text-[var(--muted)]">Submitted {new Date(item.submittedAt).toLocaleString()}</p>}
               {item.questionnaire?.questions?.length > 0 && (
                 <div className="mt-3 min-w-0 overflow-hidden rounded-md bg-[var(--surface)] p-3">
                   <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Questionnaire responses</p>
@@ -70,7 +72,11 @@ export default function ReviewRecommendationPanel({ article, canSeeReviewerIdent
                     {item.questionnaire.questions.map((question) => (
                       <div key={question.id} className="min-w-0">
                         <dt className="break-words text-xs font-bold text-[var(--foreground)]">{question.prompt}</dt>
-                        <dd className="break-words text-sm text-[var(--muted)]">{Array.isArray(question.answer) ? question.answer.join(', ') : (question.answer || 'No response')}</dd>
+                        <dd className="break-words text-sm text-[var(--muted)]">{(() => {
+                          const answers = Array.isArray(question.answer) ? question.answer : [question.answer];
+                          return answers.filter(Boolean).map((answer) => question.options?.find((option) => option.value === answer)?.label || labelize(answer)).join(', ') || 'No response';
+                        })()}</dd>
+                        {question.comment && <dd className="mt-1 whitespace-pre-wrap break-words rounded-md border-l-2 border-amber-500 bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--foreground)]">{question.comment}</dd>}
                       </div>
                     ))}
                   </dl>
