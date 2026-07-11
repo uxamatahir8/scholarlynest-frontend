@@ -703,11 +703,23 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
                           )}
                         </div>
                         {/* Title details */}
-                        <div className="space-y-0.5 min-w-0 flex-grow">
+                        <div className="space-y-1 min-w-0 flex-grow">
                           <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-150 truncate leading-snug font-serif" title={art.title}>{art.title}</h4>
-                          <div className="flex items-center space-x-1.5 text-[9px] text-zinc-400 font-semibold font-mono uppercase tracking-wider">
-                            <Calendar className="w-3 h-3" />
-                            <span>Submitted: {new Date(art.created_at).toLocaleDateString()}</span>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] text-zinc-400 font-semibold font-mono uppercase tracking-wider">
+                            {(art.latest_tracking_code || art.tracking_code) && (
+                              <span className="px-1.5 py-0.5 bg-zinc-100/80 dark:bg-zinc-800/80 text-zinc-650 dark:text-zinc-300 rounded font-bold border border-zinc-200/50 dark:border-zinc-700/50">
+                                {art.latest_tracking_code || art.tracking_code}
+                              </span>
+                            )}
+                            {art.latest_revision_number && (
+                              <span className="px-1.5 py-0.5 rounded border border-amber-500/20 bg-amber-500/10 font-bold text-amber-700 dark:text-amber-300">
+                                Revision {art.latest_revision_number}
+                              </span>
+                            )}
+                            <div className="flex items-center space-x-1 shrink-0">
+                              <Calendar className="w-3 h-3" />
+                              <span>{art.latest_revision_number ? 'Latest submission' : 'Submitted'}: {new Date(art.latest_submission_at || art.created_at).toLocaleDateString()}</span>
+                            </div>
                           </div>
                         </div>
                       </div>

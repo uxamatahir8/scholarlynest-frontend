@@ -25,10 +25,15 @@ export function assignmentQueueItem(assignment, actionLabel = 'Open Task') {
   else if (assignment.primary_action === 'view_submitted_review') primaryActionLabel = 'View Submitted Review';
   else if (assignment.primary_action === 'view_recommendation') primaryActionLabel = 'View Recommendation';
 
+  let displayStatus = assignment.status || article.status;
+  if (displayStatus === 'accepted') {
+    displayStatus = 'awaiting_review';
+  }
+
   return {
     id: assignment.id,
     title: article.title,
-    status: assignment.status || article.status,
+    status: displayStatus,
     context: article.magazine?.title || 'Assigned manuscript',
     dueDate: assignment.due_date,
     href: article.id ? `/admin/articles/${article.id}/workflow` : undefined,

@@ -83,12 +83,22 @@ function AttachmentPicker({ files, setFiles, disabled }) {
 
 function AttachmentList({ attachments = [] }) {
   if (!attachments.length) return null;
+
+  const getDownloadUrl = (url) => {
+    if (!url) return '#';
+    if (typeof window === 'undefined') return url;
+    const token = localStorage.getItem('auth_token');
+    if (!token) return url;
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}token=${token}`;
+  };
+
   return (
     <div className="mt-3 flex flex-wrap gap-2">
       {attachments.map((attachment) => (
         <a
           key={attachment.id}
-          href={attachment.download_url}
+          href={getDownloadUrl(attachment.download_url)}
           target="_blank"
           rel="noreferrer"
           className="inline-flex max-w-full items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-bold text-zinc-700 hover:border-amber-400 hover:text-amber-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200"

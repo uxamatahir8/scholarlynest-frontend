@@ -173,8 +173,8 @@ export default function ArticleWorkflowPage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
         <div className="space-y-6">
           <ArticleMetadataPanel article={article} />
-          <ReviewRecommendationPanel article={article} canSeeReviewerIdentity={showReviewerIdentity} />
-          <ArticleFilesPanel files={article.files || []} assets={article.assets || []} />
+          <ReviewRecommendationPanel article={article} canSeeReviewerIdentity={showReviewerIdentity} files={article.files || []} />
+          <ArticleFilesPanel files={article.files || []} assets={article.assets || []} versions={article.versions || []} />
         </div>
         <aside className="space-y-6">
           <WorkflowContextPanel article={article} />
@@ -189,6 +189,7 @@ export default function ArticleWorkflowPage() {
           isOpen={publishOpen}
           onClose={() => setPublishOpen(false)}
           articleTitle={article.title}
+          articleAbstract={article.abstract || ''}
           magazineId={article.magazine_id}
           publicationSections={article.publication_sections || []}
           onSubmit={handlePublishSubmit}

@@ -1,11 +1,15 @@
 import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, BookOpen, CalendarDays } from 'lucide-react';
+import { ArrowLeft, BookOpen, CalendarDays, PencilLine } from 'lucide-react';
 import StatusBadge from '../../ui/StatusBadge';
 import { Button } from '../../ui/Button';
-import { formatDate, labelize, nextStepText, roleContext } from './workflowDisplay';
+import { formatDate, isAuthorViewer, labelize, nextStepText, roleContext } from './workflowDisplay';
+
+const revisionStatuses = new Set(['revision_required', 'minor_revision_required', 'major_revision_required']);
 
 export default function ManuscriptHeader({ article, user, hasRole, onPublish, canPublish }) {
+  const canResubmit = isAuthorViewer(user, article) && revisionStatuses.has(article.status);
+
   return (
     <header className="border-b border-[var(--border)] pb-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -43,11 +47,22 @@ export default function ManuscriptHeader({ article, user, hasRole, onPublish, ca
             </p>
           </div>
         </div>
-        {canPublish && (
-          <Button type="button" variant="primary" onClick={onPublish}>
-            Publish Manuscript
-          </Button>
-        )}
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {canResubmit && (
+            <Link
+              href={`/admin/articles/${article.id}/edit`}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--primary)] bg-[var(--primary)] px-4 py-2 text-sm font-semibold tracking-wide text-[var(--primary-foreground)] shadow-sm transition-all duration-200 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2"
+            >
+              <PencilLine className="h-4 w-4" aria-hidden="true" />
+              Resubmit Manuscript
+            </Link>
+          )}
+          {canPublish && (
+            <Button type="button" variant="primary" onClick={onPublish}>
+              Publish Manuscript
+            </Button>
+          )}
+        </div>
       </div>
     </header>
   );

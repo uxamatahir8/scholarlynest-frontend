@@ -12,7 +12,7 @@ import { resetPasswordFormSchema, validateWithZod } from '../../lib/validation';
 
 function ResetPasswordForm() {
   const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, loginWithPayload } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams.get('email') || '';
@@ -92,12 +92,18 @@ function ResetPasswordForm() {
     setLoading(true);
 
     try {
-      await api.post('/reset-password', {
+      const response = await api.post('/reset-password', {
         email: emailParam,
         token: tokenParam,
         password,
         password_confirmation: passwordConfirmation,
       });
+      if (response.data?.access_token && response.data?.user) {
+        loginWithPayload(response.data.user, response.data.access_token);
+        toast('Password set successfully. Welcome to ScholarlyNest!', 'success');
+        router.replace('/admin');
+        return;
+      }
       toast('Password has been reset successfully! Please log in.', 'success');
       router.push('/login');
     } catch (err) {

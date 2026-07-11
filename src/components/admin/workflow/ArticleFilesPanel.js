@@ -18,10 +18,18 @@ const sheetMimes = new Set([
 
 function fileDownloadUrl(path) {
   if (!path) return '#';
-  if (path.startsWith('http')) return path;
   const apiBase = (api.defaults.baseURL || '').replace(/\/$/, '');
   const suffix = path.startsWith('/api/') ? path.replace(/^\/api/, '') : path;
-  return `${apiBase}${suffix}`;
+  let url = path.startsWith('http') ? path : `${apiBase}${suffix}`;
+
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      const separator = url.includes('?') ? '&' : '?';
+      url = `${url}${separator}token=${token}`;
+    }
+  }
+  return url;
 }
 
 function assetTitle(item) {
@@ -64,7 +72,7 @@ function galleryImage(entry) {
   };
 }
 
-function DownloadRow({ item, title, meta }) {
+export function DownloadRow({ item, title, meta }) {
   const [opening, setOpening] = useState(false);
   const [openError, setOpenError] = useState('');
 
@@ -116,103 +124,98 @@ function DownloadRow({ item, title, meta }) {
   );
 }
 
-export default function ArticleFilesPanel({ files = [], assets = [] }) {
-  const manuscriptFiles = files.filter((file) => file.file_type === 'manuscript');
-  const supplementaryFileRecords = files.filter((file) => file.file_type === 'supplementary');
-  const workflowFiles = files.filter((file) => !['manuscript', 'supplementary'].includes(file.file_type));
-  const supplementaryItems = [
-    ...supplementaryFileRecords.map((file) => ({ kind: 'file', item: file })),
-    ...assets.map((asset) => ({ kind: 'asset', item: asset })),
-  ];
-  const groupedSupplementaryItems = supplementaryItems.reduce((groups, entry) => {
-    groups[supplementaryGroup(entry.kind, entry.item)].push(entry);
-    return groups;
-  }, { images: [], sheets: [], files: [] });
-  const supplementaryGroups = [
-    { id: 'images', title: 'Images', icon: FileImage, items: groupedSupplementaryItems.images },
-    { id: 'sheets', title: 'Sheets and Data', icon: Sheet, items: groupedSupplementaryItems.sheets },
-    { id: 'files', title: 'Files and Documents', icon: Files, items: groupedSupplementaryItems.files },
-  ].filter((group) => group.items.length > 0);
+export default function ArticleFilesPanel({ files = [], assets = [], versions = [] }) {
+  const generalFiles = files.filter((file) => file.file_type !== 'reviewed_manuscript');
+  const orderedVersions = [...versions].sort((a, b) => Number(b.version_number || 0) - Number(a.version_number || 0));
+  const fallbackVersionId = orderedVersions.at(-1)?.id;
+  const fileForAsset = new Map(generalFiles
+    .filter((file) => file.source_asset_id)
+    .map((file) => [Number(file.source_asset_id), file]));
+  const versionGroups = orderedVersions.map((version) => {
+    const versionFiles = generalFiles.filter((file) => Number(file.article_version_id || fallbackVersionId) === Number(version.id));
+    const versionAssets = assets.filter((asset) => {
+      const sourceFile = fileForAsset.get(Number(asset.id));
+      return Number(sourceFile?.article_version_id || fallbackVersionId) === Number(version.id);
+    });
+    const assetIds = new Set(versionAssets.map((asset) => Number(asset.id)));
+    const primaryFiles = versionFiles.filter((file) => file.file_type !== 'supplementary');
+    const supplementaryItems = [
+      ...versionFiles
+        .filter((file) => file.file_type === 'supplementary' && !assetIds.has(Number(file.source_asset_id)))
+        .map((file) => ({ kind: 'file', item: file })),
+      ...versionAssets.map((asset) => ({ kind: 'asset', item: asset })),
+    ];
+    const grouped = supplementaryItems.reduce((groups, entry) => {
+      groups[supplementaryGroup(entry.kind, entry.item)].push(entry);
+      return groups;
+    }, { images: [], sheets: [], files: [] });
+    return { version, primaryFiles, grouped };
+  }).filter((group) => group.primaryFiles.length > 0 || Object.values(group.grouped).some((items) => items.length > 0));
+
+  const versionTitle = (version) => version.revision_number
+    ? `Revision ${version.revision_number}`
+    : Number(version.version_number) === 1 ? 'Initial Submission' : `Version ${version.version_number}`;
 
   return (
     <WorkflowSection
       title="Files"
       description="Files available through the existing secured download routes."
       icon={Download}
-      aside={<span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{files.length} visible</span>}
+      aside={<span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{generalFiles.length} visible</span>}
     >
-      {files.length === 0 && assets.length === 0 ? (
+      {versionGroups.length === 0 ? (
         <EmptyState title="No visible files">No manuscript files are available to your role right now.</EmptyState>
       ) : (
         <div className="min-w-0 max-w-full space-y-5">
-          <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Manuscript File</h3>
-              <span className="text-xs font-bold text-[var(--muted)]">{manuscriptFiles.length} file{manuscriptFiles.length === 1 ? '' : 's'}</span>
-            </div>
-            {manuscriptFiles.length === 0 ? (
-              <EmptyState title="No manuscript file">The original manuscript file is not visible to your role right now.</EmptyState>
-            ) : (
-              <ul className="grid min-w-0 max-w-full gap-2">
-                {manuscriptFiles.map((file) => (
-                  <DownloadRow
-                    key={file.id}
-                    item={file}
-                    title={file.original_name || 'Original manuscript'}
-                    meta={`${fileTypeLabels[file.file_type] || labelize(file.file_type)} · ${formatDate(file.created_at)}`}
-                  />
-                ))}
-              </ul>
-            )}
-          </section>
-
-          {workflowFiles.length > 0 && (
-            <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-              <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Workflow Files</h3>
-              <ul className="grid min-w-0 max-w-full gap-2">
-                {workflowFiles.map((file) => (
-                  <DownloadRow
-                    key={file.id}
-                    item={file}
-                    title={file.original_name || fileTypeLabels[file.file_type] || 'Workflow file'}
-                    meta={`${fileTypeLabels[file.file_type] || labelize(file.file_type)} · ${formatDate(file.created_at)}`}
-                  />
-                ))}
-              </ul>
-            </section>
-          )}
-        </div>
-      )}
-      {supplementaryItems.length > 0 && (
-        <div className="mt-5 min-w-0 max-w-full overflow-hidden border-t border-[var(--border)] pt-5">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Supplementary Assets</h3>
-          <div className="mt-3 grid min-w-0 max-w-full gap-4">
-            {supplementaryGroups.map((group) => (
-              <section key={group.id} className="min-w-0 max-w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <group.icon className="h-4 w-4 shrink-0 text-[var(--muted)]" aria-hidden="true" />
-                    <h4 className="truncate text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{group.title}</h4>
+          {versionGroups.map(({ version, primaryFiles, grouped }, index) => {
+            const supplementaryGroups = [
+              { id: 'images', title: 'Images', icon: FileImage, items: grouped.images },
+              { id: 'sheets', title: 'Sheets and Data', icon: Sheet, items: grouped.sheets },
+              { id: 'files', title: 'Supplementary Files', icon: Files, items: grouped.files },
+            ].filter((group) => group.items.length > 0);
+            return (
+              <section key={version.id} className="min-w-0 max-w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--foreground)]">{versionTitle(version)}</h3>
+                    <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
+                      {version.revision_tracking_code || `Version ${version.version_number}`} · {formatDate(version.created_at)}
+                    </p>
                   </div>
-                  <span className="shrink-0 text-xs font-bold text-[var(--muted)]">{group.items.length} item{group.items.length === 1 ? '' : 's'}</span>
+                  {index === 0 && <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">Latest</span>}
                 </div>
-                {group.id === 'images' ? (
-                  <ImageLightboxGallery images={group.items.map(galleryImage)} title="Images" showHeader={false} />
-                ) : (
-                  <ul className="grid min-w-0 max-w-full gap-2">
-                    {group.items.map(({ kind, item }) => (
-                      <DownloadRow
-                        key={`${kind}-${item.id}`}
-                        item={item}
-                        title={assetTitle(item)}
-                        meta={assetMeta(kind, item)}
-                      />
-                    ))}
-                  </ul>
-                )}
+                <div className="space-y-4">
+                  {primaryFiles.length > 0 && (
+                    <div>
+                      <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Manuscript and Response Files</h4>
+                      <ul className="grid min-w-0 max-w-full gap-2">
+                        {primaryFiles.map((file) => (
+                          <DownloadRow key={file.id} item={file} title={file.original_name || fileTypeLabels[file.file_type] || 'File'} meta={`${fileTypeLabels[file.file_type] || labelize(file.file_type)} · ${formatDate(file.created_at)}`} />
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {supplementaryGroups.map((group) => (
+                    <div key={group.id}>
+                      <div className="mb-2 flex items-center gap-2">
+                        <group.icon className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{group.title}</h4>
+                      </div>
+                      {group.id === 'images' ? (
+                        <ImageLightboxGallery images={group.items.map(galleryImage)} title="Images" showHeader={false} />
+                      ) : (
+                        <ul className="grid min-w-0 max-w-full gap-2">
+                          {group.items.map(({ kind, item }) => (
+                            <DownloadRow key={`${kind}-${item.id}`} item={item} title={assetTitle(item)} meta={assetMeta(kind, item)} />
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </section>
-            ))}
-          </div>
+            );
+          })}
         </div>
       )}
     </WorkflowSection>

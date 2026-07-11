@@ -15,6 +15,7 @@ const STATUS_LABELS = {
   major_revision_required: 'Major Revision Required',
   resubmitted: 'Resubmitted',
   accepted: 'Accepted',
+  awaiting_review: 'Awaiting Review',
   rejected: 'Rejected',
   copy_editing: 'Copy Editing',
   proofreading: 'Proofreading',
@@ -27,6 +28,7 @@ const STATUS_TONES = {
   active: 'success',
   completed: 'success',
   accepted: 'success',
+  awaiting_review: 'success',
   published: 'success',
   pending: 'warning',
   submitted: 'info',
@@ -53,7 +55,6 @@ const EDITABLE_ARTICLE_STATUSES = new Set([
   'revision_required',
   'minor_revision_required',
   'major_revision_required',
-  'resubmitted',
   'ready_for_publication',
 ]);
 

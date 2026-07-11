@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRightLeft, Check, CheckCircle2, ClipboardCheck, FileCheck2, Loader2, Send, Upload, UserPlus, XCircle } from 'lucide-react';
+import { ArrowRightLeft, Bell, Check, CheckCircle2, ClipboardCheck, FileCheck2, Loader2, Send, Upload, UserPlus, XCircle } from 'lucide-react';
 import api from '../../utils/api';
 import { safeApiMessage } from '../../utils/safeErrors';
 import { logError } from '../../utils/safeLogger';
@@ -121,7 +121,7 @@ export default function WorkflowActionPanel({
   const canEditorial = isAdmin || isEditor;
   const canAssignReviewer = isAdmin || isEditor || isSubEditor;
   const canPublish = isAdmin || isPublisher;
-  const canAssignProduction = isAdmin || isEditor || isPublisher;
+  const canAssignProduction = isAdmin || isPublisher;
 
   const mySubEditorAssignment = useMemo(() => (
     (workflowContext?.sub_editor_assignments || []).find((item) => Number(item.sub_editor_id) === Number(user?.id))
@@ -547,6 +547,8 @@ export default function WorkflowActionPanel({
                       <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Suggested & Invited Reviewers</p>
                       <div className="grid gap-2">
                         {allReviewersToShow.map((reviewer) => {
+                          const assignment = reviewer.existingAssignment;
+                          const showReminder = assignment && reviewer.state === 'invited';
                           return (
                           <div key={reviewer.isManual ? 'manual-' + reviewer.id : 'suggested-' + (reviewer.id || reviewer.email)} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -564,28 +566,78 @@ export default function WorkflowActionPanel({
                                       {labelize(reviewer.state)}
                                     </span>
                                   )}
+                                  {showReminder && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="secondary"
+                                      icon={Bell}
+                                      isLoading={busyAction === `remind-${assignment.id}`}
+                                      onClick={() => {
+                                        askConfirmation({
+                                          key: `remind-${assignment.id}`,
+                                          title: 'Send reminder?',
+                                          message: 'This will send a reminder email to the reviewer about this review invitation.',
+                                          confirmText: 'Send Reminder',
+                                          variant: 'primary',
+                                          run: () => runAction(`remind-${assignment.id}`, () => api.post(`/admin/reviewer-assignments/${assignment.id}/remind`), 'Reminder email sent.'),
+                                        });
+                                      }}
+                                    >
+                                      Send Reminder
+                                    </Button>
+                                  )}
                                 </div>
                               ) : (
-	                              <Button
-                                  type="button"
-                                  size="sm"
-                                  icon={UserPlus}
-	                                isLoading={busyAction === `suggested-${reviewer.id}`}
-	                                disabled={Boolean(reviewer.existingAssignment)}
-	                                onClick={() => {
-	                                  if (!validateAction(workflowSuggestedReviewerSchema, { suggested_preference_id: reviewer.id })) return;
-	                                  askConfirmation({
-	                                  key: `suggested-${reviewer.id}`,
-                                   title: 'Invite suggested reviewer?',
-                                   message: 'This will send a secure review invitation to the suggested reviewer.',
-                                   confirmText: 'Send Invitation',
-                                   variant: 'primary',
-	                                  run: () => runAction(`suggested-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { suggested_preference_id: reviewer.id }), 'Reviewer invitation sent.'),
-	                                });
-	                                }}
-                              >
-	                                {reviewer.state ? labelize(reviewer.state) : 'Invite'}
-	                              </Button>
+                                <div className="flex items-center gap-2">
+                                  {reviewer.state && (
+                                    <span className="inline-flex items-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                      {labelize(reviewer.state)}
+                                    </span>
+                                  )}
+                                  {showReminder && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="secondary"
+                                      icon={Bell}
+                                      isLoading={busyAction === `remind-${assignment.id}`}
+                                      onClick={() => {
+                                        askConfirmation({
+                                          key: `remind-${assignment.id}`,
+                                          title: 'Send reminder?',
+                                          message: 'This will send a reminder email to the reviewer about this review invitation.',
+                                          confirmText: 'Send Reminder',
+                                          variant: 'primary',
+                                          run: () => runAction(`remind-${assignment.id}`, () => api.post(`/admin/reviewer-assignments/${assignment.id}/remind`), 'Reminder email sent.'),
+                                        });
+                                      }}
+                                    >
+                                      Send Reminder
+                                    </Button>
+                                  )}
+                                  {!reviewer.existingAssignment && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      icon={UserPlus}
+                                      isLoading={busyAction === `suggested-${reviewer.id}`}
+                                      onClick={() => {
+                                        if (!validateAction(workflowSuggestedReviewerSchema, { suggested_preference_id: reviewer.id })) return;
+                                        askConfirmation({
+                                          key: `suggested-${reviewer.id}`,
+                                          title: 'Invite suggested reviewer?',
+                                          message: 'This will send a secure review invitation to the suggested reviewer.',
+                                          confirmText: 'Send Invitation',
+                                          variant: 'primary',
+                                          run: () => runAction(`suggested-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { suggested_preference_id: reviewer.id }), 'Reviewer invitation sent.'),
+                                        });
+                                      }}
+                                    >
+                                      Invite
+                                    </Button>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </div>
@@ -944,9 +996,9 @@ export default function WorkflowActionPanel({
         )}
 
         {canAuthorFinalReview && (
-          <ActionBlock title="Author Final Review" description="Approve the accepted manuscript so production can begin.">
-            <Alert tone="info" title="Accepted manuscript">
-              The editorial decision is complete. Approval is limited to the manuscript owner or corresponding author.
+          <ActionBlock title="Author Final Review" description="Approve the proofread manuscript for publication.">
+            <Alert tone="info" title="Proofreading complete">
+              Review the final proof before publication. Approval is limited to the manuscript owner or corresponding author.
             </Alert>
             <Button
               type="button"
@@ -955,7 +1007,7 @@ export default function WorkflowActionPanel({
               onClick={() => askConfirmation({
                 key: 'author-final-review',
                 title: 'Approve final review?',
-                message: 'This confirms the accepted manuscript may move to copyediting.',
+                message: 'This confirms the final proof may move to ready for publication.',
                 confirmText: 'Approve Final Review',
                 variant: 'primary',
                 run: () => runAction('author-final-review', () => api.post(`/admin/articles/${article.id}/author-final-review`), 'Final review approved.'),

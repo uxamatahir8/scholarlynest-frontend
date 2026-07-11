@@ -22,6 +22,7 @@ export const fileTypeLabels = {
   plagiarism_report: 'Similarity Report',
   annotated_manuscript: 'Annotated Manuscript',
   reviewed_manuscript: 'Reviewed Manuscript',
+  revision_response: 'Response to Revision Request',
   copy_edited_file: 'Copyedited Manuscript',
   proof_file: 'Proof File',
   publication_pdf: 'Published PDF',
