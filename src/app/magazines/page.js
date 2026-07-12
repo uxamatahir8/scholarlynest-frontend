@@ -22,6 +22,10 @@ export function PublicationRegistry({ publicationType = 'magazine' }) {
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
+    document.title = `${plural} | ScholarlyNest`;
+  }, [plural]);
+
+  useEffect(() => {
     let active = true;
 
     const fetchMagazines = async () => {
@@ -49,7 +53,7 @@ export function PublicationRegistry({ publicationType = 'magazine' }) {
 
   return (
     <main className="min-h-screen bg-[var(--background)] pb-16 pt-16">
-      <title>{plural} - ScholarlyNest</title>
+      <title>{plural} | ScholarlyNest</title>
       <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
         <header className="grid gap-6 border-b border-[var(--border)] pb-10 lg:grid-cols-[0.58fr_0.42fr] lg:items-end">
           <div className="max-w-3xl">

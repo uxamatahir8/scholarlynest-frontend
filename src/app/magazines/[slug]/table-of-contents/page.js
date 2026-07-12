@@ -54,9 +54,12 @@ export default function MagazineTableOfContentsPage() {
     return <ErrorState title="Archive could not be loaded">{error || 'Table of contents could not be resolved.'}</ErrorState>;
   }
 
+  const publicationLabel = routePrefix === 'journals' ? 'Journal' : 'Magazine';
+  const pageTitle = data.seo?.title || `Table of Contents | ${data.magazine.title} | ${publicationLabel} | ScholarlyNest`;
+
   return (
     <div>
-      <SeoHead title={data.seo?.title} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/table-of-contents`} />
+      <SeoHead title={pageTitle} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/table-of-contents`} />
       <TableOfContents archive={data.table_of_contents || {}} magazineSlug={slug} onArticleClick={handleTrackClick} />
     </div>
   );
