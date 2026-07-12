@@ -22,11 +22,25 @@ export default function MagazineAssignmentSection({
   selectedUserId,
   onChange,
   error,
+  roleName,
 }) {
   const [query, setQuery] = useState('');
   const [expandedIds, setExpandedIds] = useState([]);
 
   const selectedIds = useMemo(() => selectedMagazineIds.map((id) => Number(id)), [selectedMagazineIds]);
+
+  const typeLabel = useMemo(() => {
+    if (roleName === 'magazine_editor') return 'Magazine';
+    if (roleName === 'journal_editor') return 'Journal';
+    return 'Publication';
+  }, [roleName]);
+
+  const typePluralLabel = useMemo(() => {
+    if (roleName === 'magazine_editor') return 'Magazines';
+    if (roleName === 'journal_editor') return 'Journals';
+    return 'Publications';
+  }, [roleName]);
+
   const filteredMagazines = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return magazines.filter((magazine) => (
@@ -55,22 +69,22 @@ export default function MagazineAssignmentSection({
       <CardHeader>
         <div className="flex items-center gap-2">
           <BookOpenCheck className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
-          <CardTitle>Magazine Access</CardTitle>
+          <CardTitle>{typeLabel} Access</CardTitle>
         </div>
-        <CardDescription>Select the magazines this user may manage or work on.</CardDescription>
+        <CardDescription>Select the {typePluralLabel.toLowerCase()} this user may manage or work on.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {magazines.length === 0 ? (
-          <Alert tone="warning" title="No magazines available">
-            Create a magazine before assigning this role.
+          <Alert tone="warning" title={`No ${typePluralLabel.toLowerCase()} available`}>
+            Create a {typeLabel.toLowerCase()} before assigning this role.
           </Alert>
         ) : (
           <>
             <Field
-              label="Assigned Magazine(s)"
+              label={`Assigned ${typeLabel}(s)`}
               required
               error={error}
-              helperText="Select at least one magazine. Backend authorization uses these role-aware assignments."
+              helperText={`Select at least one ${typeLabel.toLowerCase()}. Backend authorization uses these role-aware assignments.`}
             >
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" aria-hidden="true" />
@@ -78,7 +92,7 @@ export default function MagazineAssignmentSection({
                   type="search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search magazines by title"
+                  placeholder={`Search ${typePluralLabel.toLowerCase()} by title`}
                   className="pl-9"
                 />
               </div>
@@ -86,7 +100,7 @@ export default function MagazineAssignmentSection({
 
             <div className="grid max-h-[28rem] gap-3 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-2">
               {filteredMagazines.length === 0 ? (
-                <p className="p-3 text-sm text-[var(--muted)]">No matching magazines are available.</p>
+                <p className="p-3 text-sm text-[var(--muted)]">No matching {typePluralLabel.toLowerCase()} are available.</p>
               ) : filteredMagazines.map((magazine) => {
                 const isSelected = selectedIds.includes(Number(magazine.id));
                 const isExpanded = expandedIds.includes(Number(magazine.id));
@@ -110,7 +124,9 @@ export default function MagazineAssignmentSection({
                       />
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-bold text-[var(--foreground)]">{magazine.title}</span>
+                          <span className="text-sm font-bold text-[var(--foreground)]">
+                            {magazine.publication_type === 'journal' ? 'Journal' : 'Magazine'} · {magazine.title}
+                          </span>
                           {isSelected && <Badge variant="success">Selected</Badge>}
                         </span>
                         <span className="mt-1 block text-xs text-[var(--muted)]">{summaryText}</span>
@@ -150,8 +166,8 @@ export default function MagazineAssignmentSection({
             </div>
 
             {selectedIds.length === 0 && (
-              <Alert tone="warning" title="Magazine access required">
-                This role cannot be saved without at least one magazine assignment.
+              <Alert tone="warning" title={`${typeLabel} access required`}>
+                This role cannot be saved without at least one {typeLabel.toLowerCase()} assignment.
               </Alert>
             )}
           </>

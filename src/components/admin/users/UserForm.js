@@ -119,6 +119,7 @@ export default function UserForm({
         selectedUserId={selectedUserId}
         onChange={(magazineIds) => setValue('magazine_ids', magazineIds)}
         error={errors.magazine_ids}
+        roleName={selectedRoleName}
       />
 
       {mode === 'create' && (
