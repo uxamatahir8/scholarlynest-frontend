@@ -16,6 +16,7 @@ import {
   Inbox,
   Languages,
   LibraryBig,
+  NotebookTabs,
   ListChecks,
   Microscope,
   Network,
@@ -122,6 +123,12 @@ export const consoleNavigation = [
         label: 'Magazines',
         href: '/admin/magazines',
         icon: LibraryBig,
+        isVisible: ({ user, hasPermission }) => (can(hasPermission, 'magazines.view-any') || can(hasPermission, 'magazines.view-own')) && !userHasRole(user, 'author') && !userHasRole(user, 'sub_editor') && !userHasRole(user, 'reviewer'),
+      },
+      {
+        label: 'Journals',
+        href: '/admin/journals',
+        icon: NotebookTabs,
         isVisible: ({ user, hasPermission }) => (can(hasPermission, 'magazines.view-any') || can(hasPermission, 'magazines.view-own')) && !userHasRole(user, 'author') && !userHasRole(user, 'sub_editor') && !userHasRole(user, 'reviewer'),
       },
       {

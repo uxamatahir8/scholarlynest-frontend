@@ -22,8 +22,9 @@ const getFullImageUrl = (path) => {
 export default function MagazinePublicLayout({ children }) {
   const params = useParams();
   const pathname = usePathname();
+  const routePrefix = pathname?.startsWith('/journals/') ? 'journals' : 'magazines';
   const slug = params?.slug;
-  const isMagazineArticleRoute = Boolean(slug && pathname?.startsWith(`/magazines/${slug}/articles/`));
+  const isMagazineArticleRoute = Boolean(slug && pathname?.startsWith(`/${routePrefix}/${slug}/articles/`));
   const [magazine, setMagazine] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,7 +38,7 @@ export default function MagazinePublicLayout({ children }) {
       try {
         setLoading(true);
         setError(null);
-        const response = await api.get(`/magazines/${slug}`);
+        const response = await api.get(`/${routePrefix}/${slug}`);
         if (active) setMagazine(response.data);
       } catch (err) {
         logWarn('Magazine shell unavailable', err.message);
@@ -51,7 +52,7 @@ export default function MagazinePublicLayout({ children }) {
     return () => {
       active = false;
     };
-  }, [isMagazineArticleRoute, slug]);
+  }, [isMagazineArticleRoute, routePrefix, slug]);
 
   if (isMagazineArticleRoute) {
     return children;
@@ -66,9 +67,9 @@ export default function MagazinePublicLayout({ children }) {
       <main className="min-h-screen bg-[var(--background)] px-4 pt-32 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-xl">
           <ErrorState title="Magazine not available">{error || 'Magazine could not be resolved.'}</ErrorState>
-          <Link href="/magazines" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300">
+          <Link href={`/${routePrefix}`} className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Back to magazines
+            Back to {routePrefix}
           </Link>
         </div>
       </main>
@@ -76,10 +77,10 @@ export default function MagazinePublicLayout({ children }) {
   }
 
   const navItems = [
-    { href: `/magazines/${slug}/about-and-overview`, label: 'Overview' },
-    { href: `/magazines/${slug}/table-of-contents`, label: 'Table of Contents' },
+    { href: `/${routePrefix}/${slug}/about-and-overview`, label: 'Overview' },
+    { href: `/${routePrefix}/${slug}/table-of-contents`, label: 'Table of Contents' },
     ...(magazine.pages || []).map((page) => ({
-      href: `/magazines/${slug}/${page.slug}`,
+      href: `/${routePrefix}/${slug}/${page.slug}`,
       label: page.title,
     })),
   ];
@@ -101,9 +102,9 @@ export default function MagazinePublicLayout({ children }) {
         <div className="absolute inset-0 bg-zinc-950/55" aria-hidden="true" />
         <div className="relative mx-auto flex min-h-[340px] w-full max-w-[1440px] items-end px-4 py-12 sm:min-h-[380px] sm:px-6 lg:px-8">
           <div className="max-w-4xl">
-            <Link href="/magazines" className="inline-flex items-center gap-2 text-sm font-bold text-amber-200 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">
+            <Link href={`/${routePrefix}`} className="inline-flex items-center gap-2 text-sm font-bold text-amber-200 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              All magazines
+              All {routePrefix}
             </Link>
             <h1 id="magazine-title" className="mt-5 font-serif text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
               {magazine.title}

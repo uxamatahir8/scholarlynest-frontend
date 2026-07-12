@@ -28,7 +28,12 @@ const getFullImageUrl = (path) => {
   return `${domain}${cleanPath}`;
 };
 
-export default function MagazineWorkspace() {
+export default function MagazineWorkspace({ publicationType = 'magazine' }) {
+  const isJournal = publicationType === 'journal';
+  const label = isJournal ? 'Journal' : 'Magazine';
+  const plural = `${label}s`;
+  const endpoint = isJournal ? '/admin/journals' : '/admin/magazines';
+  const publicPrefix = isJournal ? 'journals' : 'magazines';
   const { user, loading: authLoading, hasPermission, hasRole } = useAuth();
   const { toast } = useToast();
   const [magazines, setMagazines] = useState([]);
@@ -52,7 +57,7 @@ export default function MagazineWorkspace() {
   const pageSummary = useMemo(() => {
     const publishedArticles = magazines.reduce((sum, magazine) => sum + Number(magazine.articles_count || 0), 0);
     return [
-      { label: 'Visible Magazines', value: magazines.length },
+      { label: `Visible ${plural}`, value: magazines.length },
       { label: 'Published Articles', value: publishedArticles },
       { label: 'Current Page', value: totalPages > 1 ? `${page} of ${totalPages}` : '1' },
     ];
@@ -67,7 +72,7 @@ export default function MagazineWorkspace() {
     try {
       setLoading(true);
       setError('');
-      const response = await api.get('/admin/magazines', { params: { page, per_page: 10 } });
+      const response = await api.get(endpoint, { params: { page, per_page: 10, publication_type: publicationType } });
       setMagazines(response.data?.data || []);
       setTotalPages(response.data?.last_page || 1);
     } catch (err) {
@@ -88,7 +93,7 @@ export default function MagazineWorkspace() {
 
   const saveMagazine = async (form) => {
     if (!form.title.trim()) {
-      toast('Magazine title is required.', 'error');
+      toast(`${label} title is required.`, 'error');
       return;
     }
 
@@ -96,6 +101,7 @@ export default function MagazineWorkspace() {
       setSaving(true);
       const payload = new FormData();
       payload.append('title', form.title);
+      payload.append('publication_type', publicationType);
       payload.append('description', form.description || '');
       payload.append('about_text', form.about_text || '');
       payload.append('editor_id', form.editor_id || '');
@@ -110,12 +116,12 @@ export default function MagazineWorkspace() {
       }
 
       if (dialogState.mode === 'create') {
-        await api.post('/admin/magazines', payload);
-        toast('Magazine created.', 'success');
+        await api.post(endpoint, payload);
+        toast(`${label} created.`, 'success');
       } else {
         payload.append('_method', 'PUT');
-        await api.post(`/admin/magazines/${dialogState.magazine.id}`, payload);
-        toast('Magazine updated.', 'success');
+        await api.post(`${endpoint}/${dialogState.magazine.id}`, payload);
+        toast(`${label} updated.`, 'success');
       }
 
       closeDialog();
@@ -131,8 +137,8 @@ export default function MagazineWorkspace() {
   const deleteMagazine = async () => {
     if (!deleteTarget) return;
     try {
-      await api.delete(`/admin/magazines/${deleteTarget.id}`);
-      toast('Magazine deleted.', 'success');
+      await api.delete(`${endpoint}/${deleteTarget.id}`);
+      toast(`${label} deleted.`, 'success');
       setDeleteTarget(null);
       await loadMagazines();
     } catch (err) {
@@ -151,19 +157,19 @@ export default function MagazineWorkspace() {
 
   return (
     <main className="space-y-6">
-      <title>Magazine Management - ScholarlyNest</title>
+      <title>{label} Management - ScholarlyNest</title>
       <header className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Publication Operations</p>
-            <h1 className="mt-2 text-2xl font-bold tracking-tight text-[var(--foreground)]">Magazine Management</h1>
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-[var(--foreground)]">{label} Management</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-              Manage magazine identity, public scope, issue setup entry points, and publication configuration for magazines available to your role.
+              Manage {label.toLowerCase()} identity, public scope, issue setup entry points, and publication configuration for {plural.toLowerCase()} available to your role.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" icon={RefreshCw} onClick={loadMagazines}>Refresh</Button>
-            {canCreate && <Button type="button" icon={Plus} onClick={openCreate}>Create Magazine</Button>}
+            {canCreate && <Button type="button" icon={Plus} onClick={openCreate}>Create {label}</Button>}
           </div>
         </div>
         <dl className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -177,19 +183,19 @@ export default function MagazineWorkspace() {
       </header>
 
       {error ? (
-        <ErrorState title="Magazine workspace could not be loaded">{error}</ErrorState>
+        <ErrorState title={`${label} workspace could not be loaded`}>{error}</ErrorState>
       ) : magazines.length === 0 ? (
         <EmptyState
           icon={BookOpen}
-          title="No magazines are available in this workspace."
-          action={canCreate ? <Button type="button" icon={Plus} onClick={openCreate}>Create Magazine</Button> : null}
+          title={`No ${plural.toLowerCase()} are available in this workspace.`}
+          action={canCreate ? <Button type="button" icon={Plus} onClick={openCreate}>Create {label}</Button> : null}
         >
           Create a magazine to begin setting up issues and publication workflows.
         </EmptyState>
       ) : (
         <section className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)]">
           <div className="border-b border-[var(--border)] px-5 py-4">
-            <h2 className="text-sm font-bold text-[var(--foreground)]">Available Magazines</h2>
+            <h2 className="text-sm font-bold text-[var(--foreground)]">Available {plural}</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">Compact operational view with public preview, issue work, and management actions.</p>
           </div>
           <div className="divide-y divide-[var(--border)]">
@@ -211,8 +217,8 @@ export default function MagazineWorkspace() {
                   </div>
                   <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">{compactText(magazine.description, 'No public description has been added yet.')}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Link href={`/magazines/${magazine.slug}`} target="_blank" className="inline-flex items-center gap-1 text-sm font-semibold text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] dark:text-amber-400">
-                      Public magazine <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                    <Link href={`/${publicPrefix}/${magazine.slug}`} target="_blank" className="inline-flex items-center gap-1 text-sm font-semibold text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] dark:text-amber-400">
+                      Public {label.toLowerCase()} <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                     </Link>
                     {canManagePublicPages && (
                       <Link href={`/admin/magazines/${magazine.slug}/pages`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
@@ -267,12 +273,13 @@ export default function MagazineWorkspace() {
         saving={saving}
         onClose={closeDialog}
         onSubmit={saveMagazine}
+        publicationType={publicationType}
       />
       <ConfirmationModal
         isOpen={Boolean(deleteTarget)}
-        title="Delete magazine?"
-        message="This will permanently remove the magazine and associated content. Continue only if this is an intended administrative action."
-        confirmText="Delete Magazine"
+        title={`Delete ${label.toLowerCase()}?`}
+        message={`This will permanently remove the ${label.toLowerCase()} and associated content. Continue only if this is an intended administrative action.`}
+        confirmText={`Delete ${label}`}
         cancelText="Cancel"
         variant="danger"
         onConfirm={deleteMagazine}

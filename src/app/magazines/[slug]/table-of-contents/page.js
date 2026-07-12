@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import api from '../../../../utils/api';
 import { logWarn } from '../../../../utils/safeLogger';
 import SeoHead from '../../../../components/SeoHead';
@@ -11,6 +11,8 @@ import ErrorState from '../../../../components/ui/ErrorState';
 
 export default function MagazineTableOfContentsPage() {
   const params = useParams();
+  const pathname = usePathname();
+  const routePrefix = pathname?.startsWith('/journals/') ? 'journals' : 'magazines';
   const slug = params?.slug;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +25,7 @@ export default function MagazineTableOfContentsPage() {
       try {
         setLoading(true);
         setError(null);
-        const response = await api.get(`/magazines/${slug}/table-of-contents`);
+        const response = await api.get(`/${routePrefix}/${slug}/table-of-contents`);
         setData(response.data);
       } catch (err) {
         logWarn('Magazine table of contents unavailable', err.message);
@@ -34,7 +36,7 @@ export default function MagazineTableOfContentsPage() {
     };
 
     fetchPage();
-  }, [slug]);
+  }, [routePrefix, slug]);
 
   const handleTrackClick = async (articleId) => {
     try {
@@ -54,7 +56,7 @@ export default function MagazineTableOfContentsPage() {
 
   return (
     <div>
-      <SeoHead title={data.seo?.title} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/magazines/${slug}/table-of-contents`} />
+      <SeoHead title={data.seo?.title} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/table-of-contents`} />
       <TableOfContents archive={data.table_of_contents || {}} magazineSlug={slug} onArticleClick={handleTrackClick} />
     </div>
   );

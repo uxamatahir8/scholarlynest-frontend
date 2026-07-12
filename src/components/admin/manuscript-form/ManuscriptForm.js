@@ -169,6 +169,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [loadingTags, setLoadingTags] = useState(false);
 
   const [magazineId, setMagazineId] = useState('');
+  const [publicationType, setPublicationType] = useState('');
   const [title, setTitle] = useState('');
   const [abstract, setAbstract] = useState('');
   const [authors, setAuthors] = useState([]);
@@ -205,7 +206,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     return normalizeAuthorRows([currentUserAuthor(user), ...authors]);
   }, [authors, isSuperAdmin, user]);
 
-  const selectedMagazine = magazines.find((magazine) => String(magazine.id) === String(magazineId));
+  const availablePublications = magazines.filter((publication) => publication.publication_type === publicationType);
+  const selectedMagazine = availablePublications.find((magazine) => String(magazine.id) === String(magazineId));
+  const publicationLabel = publicationType === 'journal' ? 'Journal' : 'Magazine';
   const owner = visibleAuthors.find((author) => author.is_owner);
   const correspondingAuthors = visibleAuthors.filter((author) => author.is_corresponding);
   const hasExistingPdf = Boolean(article?.has_pdf);
@@ -214,13 +217,14 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     const missing = [];
     if (!title.trim()) missing.push({ key: 'title', label: 'Add a manuscript title', target: '#manuscript-basics' });
     if (!cleanRichText(abstract)) missing.push({ key: 'abstract', label: 'Add an abstract', target: '#manuscript-basics' });
-    if (!magazineId) missing.push({ key: 'magazineId', label: 'Choose a magazine', target: '#magazine-selection' });
+    if (!publicationType) missing.push({ key: 'publicationType', label: 'Choose a publication type', target: '#magazine-selection' });
+    if (!magazineId) missing.push({ key: 'magazineId', label: 'Choose a destination', target: '#magazine-selection' });
     if (visibleAuthors.length === 0) missing.push({ key: 'authors', label: 'Add at least one author', target: '#authors-affiliations' });
     if (!owner) missing.push({ key: 'owner', label: 'Choose one article owner', target: '#authors-affiliations' });
     if (correspondingAuthors.length === 0) missing.push({ key: 'corresponding', label: 'Choose a corresponding author', target: '#authors-affiliations' });
     if (isRevision && !revisionResponseFile) missing.push({ key: 'revisionResponse', label: 'Upload a response to the revision request', target: '#revision-response' });
     return missing;
-  }, [abstract, correspondingAuthors.length, isRevision, magazineId, owner, revisionResponseFile, title, visibleAuthors.length]);
+  }, [abstract, correspondingAuthors.length, isRevision, magazineId, owner, publicationType, revisionResponseFile, title, visibleAuthors.length]);
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -264,6 +268,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
         if (articleRes?.data) {
           const nextArticle = articleRes.data;
           setArticle(nextArticle);
+          setPublicationType(nextArticle.publication_type || nextArticle.magazine?.publication_type || 'magazine');
           if (Number.isInteger(Number(nextArticle.resume_step))) {
             setCurrentStep(Math.max(0, Math.min(4, Number(nextArticle.resume_step) - 1)));
           }
@@ -296,8 +301,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
             setAuthors(normalizeAuthorRows(articleAuthors.filter((author) => author.email.trim().toLowerCase() !== currentEmail)));
           }
         } else {
-          const defaultMagazine = nextMagazines[0]?.id ? String(nextMagazines[0].id) : '';
-          setMagazineId(defaultMagazine);
+          setMagazineId('');
           setAcademicMetadata((prev) => ({
             ...prev,
             articleType: nextTypes[0]?.name || prev.articleType,
@@ -380,7 +384,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   };
 
   const stepForError = (key) => {
-    if (['title', 'abstract', 'magazineId'].includes(key)) return 0;
+    if (['title', 'abstract', 'magazineId', 'publicationType', 'publication_type'].includes(key)) return 0;
     if (['authors', 'coAuthors', 'owner', 'corresponding'].includes(key)) return 1;
     if (['suggestedReviewers', 'opposedReviewers'].includes(key)) return 2;
     if (['revisionResponse'].includes(key)) return 4;
@@ -392,10 +396,11 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const validateForm = ({ scope = 'submit' } = {}) => {
     const errors = {};
     const zodResult = scope === 'submit'
-      ? articleSubmitSchema.safeParse({ magazine_id: magazineId, title, abstract: cleanRichText(abstract), terms_accepted: termsAccepted })
-      : articleDraftSchema.safeParse({ magazine_id: magazineId || '', title, abstract: cleanRichText(abstract), terms_accepted: termsAccepted });
+      ? articleSubmitSchema.safeParse({ publication_type: publicationType, magazine_id: magazineId, title, abstract: cleanRichText(abstract), terms_accepted: termsAccepted })
+      : articleDraftSchema.safeParse({ publication_type: publicationType || undefined, magazine_id: magazineId || '', title, abstract: cleanRichText(abstract), terms_accepted: termsAccepted });
     if (!zodResult.success) Object.assign(errors, normalizeZodErrors(zodResult.error));
-    if (!magazineId) errors.magazineId = 'Please choose a magazine.';
+    if (!publicationType) errors.publicationType = 'Please choose Magazine or Journal.';
+    if (!magazineId) errors.magazineId = 'Please choose a destination.';
     if (!title.trim()) errors.title = 'Please add a manuscript title.';
     if (!cleanRichText(abstract)) errors.abstract = 'Please add an abstract.';
     if (isRevision && !revisionResponseFile) errors.revisionResponse = 'Please upload a PDF, DOC, or DOCX response to the revision request.';
@@ -432,6 +437,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
       ? (intent === 'submit' ? 'submitted' : 'draft')
       : (status === 'draft' ? (intent === 'submit' ? 'submitted' : 'draft') : status);
     formData.append('magazine_id', magazineId);
+    formData.append('publication_type', publicationType);
     formData.append('title', title);
     formData.append('abstract', abstract);
     formData.append('status', nextStatus);
@@ -669,12 +675,36 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
             id="manuscript-basics"
             eyebrow="Step 1"
             title="Article Basics"
-            description="Start with the core article record. Title, magazine, and abstract are required before submission."
+            description="Choose a publication type and destination, then provide the article title and abstract."
           >
             <div className="space-y-7">
+              <fieldset id="magazine-selection">
+                <legend className={labelClass}>Publication Type <span className="text-amber-700">*</span></legend>
+                <p className={helpClass}>Choose whether this manuscript should be submitted to a Magazine or Journal.</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {['magazine', 'journal'].map((type) => (
+                    <label key={type} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 font-bold ${publicationType === type ? 'border-amber-500 bg-amber-500/10' : 'border-[var(--border)] bg-[var(--surface-muted)]'}`}>
+                      <input
+                        type="radio"
+                        name="publication_type"
+                        value={type}
+                        checked={publicationType === type}
+                        onChange={() => {
+                          setPublicationType(type);
+                          setMagazineId('');
+                          setSelectedTags([]);
+                        }}
+                      />
+                      {type === 'journal' ? 'Journal' : 'Magazine'}
+                    </label>
+                  ))}
+                </div>
+                <FieldError id="publication-type-error">{validationErrors.publicationType}</FieldError>
+              </fieldset>
+              {publicationType && (
               <div className="grid gap-5 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
                 <div>
-                  <label htmlFor="magazine-select" className={labelClass}>Magazine <span className="text-amber-700">*</span></label>
+                  <label htmlFor="magazine-select" className={labelClass}>Select {publicationLabel} <span className="text-amber-700">*</span></label>
                   <select
                     id="magazine-select"
                     value={magazineId}
@@ -686,8 +716,8 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                     aria-describedby={validationErrors.magazineId ? 'magazine-select-error' : undefined}
                     className={selectClass}
                   >
-                    <option value="">Choose a magazine</option>
-                    {magazines.map((magazine) => (
+                    <option value="">Choose a {publicationLabel.toLowerCase()}</option>
+                    {availablePublications.map((magazine) => (
                       <option key={magazine.id} value={magazine.id}>{magazine.title}</option>
                     ))}
                   </select>
@@ -699,15 +729,16 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                       <BookOpen className="h-5 w-5" aria-hidden="true" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Selected magazine</p>
-                      <h3 className="mt-1 text-lg font-bold text-[var(--foreground)]">{selectedMagazine?.title || 'No magazine selected'}</h3>
+                      <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Selected {publicationLabel.toLowerCase()}</p>
+                      <h3 className="mt-1 text-lg font-bold text-[var(--foreground)]">{selectedMagazine?.title || `No ${publicationLabel.toLowerCase()} selected`}</h3>
                       <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-[var(--muted)]">
-                        {selectedMagazine?.description || 'Choose the magazine where this article should enter editorial review.'}
+                        {selectedMagazine?.description || `Choose the ${publicationLabel.toLowerCase()} where this article should enter editorial review.`}
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
+              )}
 
               <div>
                 <label htmlFor="manuscript-title" className={labelClass}>Article title <span className="text-amber-700">*</span></label>
