@@ -42,6 +42,22 @@ export default function AdvertisementWorkspace({ initialId = null }) {
   }, [initialId]);
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const changeTargetArea = (targetArea) => {
+    setArticles([]); setPages([]);
+    setForm((current) => ({ ...current, target_area: targetArea, target_mode: targetArea === 'website' ? 'single_page' : targetArea === 'article' ? 'all_articles' : 'all_pages', publication_id: '', page_key: targetArea === 'website' ? 'home' : '', article_id: '' }));
+  };
+  const changePublicationType = (publicationType) => {
+    setOptions([]); setArticles([]); setPages([]);
+    setForm((current) => ({ ...current, publication_type: publicationType, publication_id: '', page_key: '', article_id: '' }));
+  };
+  const changePublication = (publicationId) => {
+    setArticles([]); setPages([]);
+    setForm((current) => ({ ...current, publication_id: publicationId, page_key: '', article_id: '' }));
+  };
+  const changeTargetMode = (targetMode) => {
+    setArticles([]); setPages([]);
+    setForm((current) => ({ ...current, target_mode: targetMode, page_key: '', article_id: '' }));
+  };
   const beginEdit = (ad) => { const t = ad.targets?.[0] || {}; setEditingId(ad.id); setForm({ ...emptyForm, ...ad, ...t, starts_at: ad.starts_at?.slice(0, 16) || '', ends_at: ad.ends_at?.slice(0, 16) || '' }); window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const reset = () => { setEditingId(null); setForm(emptyForm); setError(''); };
 
@@ -76,10 +92,11 @@ export default function AdvertisementWorkspace({ initialId = null }) {
         <Select label="Placement" value={form.placement} onChange={(v) => update('placement', v)} options={[['sidebar_sticky','Sticky sidebar (300×250)'],['content_top','Top banner (970×250 / 728×90)'],['content_middle','Inline content (728×90)'],['content_bottom','Bottom banner (970×250 / 728×90)'],['header_banner','Header banner'],['footer_banner','Footer banner']]} />
         <Select label="Status" value={form.status} onChange={(v) => update('status', v)} options={['draft','active','inactive','expired'].map((v) => [v,v])} />
         <label className="text-sm font-semibold">Priority<input type="number" value={form.priority} onChange={(e) => update('priority', e.target.value)} className="mt-2 w-full rounded-lg border p-3 dark:bg-zinc-950" /></label>
-        <Select label="Target area" value={form.target_area} onChange={(v) => update('target_area', v)} options={[['website','Website page'],['publication','Magazine / Journal pages'],['article','Magazine / Journal articles']]} />
-        {form.target_area !== 'website' && <><Select label="Publication type" value={form.publication_type} onChange={(v) => update('publication_type', v)} options={[['magazine','Magazine'],['journal','Journal']]} /><Select label="Publication" value={form.publication_id} onChange={(v) => update('publication_id', v)} options={options.map((o) => [o.id,o.title])} /><Select label="Target mode" value={form.target_mode} onChange={(v) => update('target_mode', v)} options={(form.target_area === 'article' ? [['all_articles','All published articles'],['specific_articles','Specific published article']] : [['all_pages','All pages'],['specific_pages','Specific page']])} /></>}
+        <Select label="Target area" value={form.target_area} onChange={changeTargetArea} options={[['website','Website page'],['publication','Magazine / Journal pages'],['article','Magazine / Journal articles']]} />
+        {form.target_area !== 'website' && <><Select label="Publication type" value={form.publication_type} onChange={changePublicationType} options={[['magazine','Magazine'],['journal','Journal']]} /><Select label="Publication" value={form.publication_id} onChange={changePublication} options={options.map((o) => [o.id,o.title])} /><Select label="Target mode" value={form.target_mode} onChange={changeTargetMode} options={(form.target_area === 'article' ? [['all_articles','All published articles'],['specific_articles','Specific published articles']] : [['all_pages','All pages'],['specific_pages','Specific page']])} /></>}
+        {form.target_area === 'article' && <p className="self-end rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">Advertisements can only be attached to published article pages.</p>}
         {(form.target_area === 'website' || form.target_mode === 'specific_pages') && <Select label="Page" value={form.page_key} onChange={(v) => update('page_key', v)} options={pages.map((p) => [p.page_key,p.label])} />}
-        {form.target_mode === 'specific_articles' && <Select label="Published article" value={form.article_id} onChange={(v) => update('article_id', v)} options={articles.map((a) => [a.id,a.title])} />}
+        {form.target_mode === 'specific_articles' && <Select label="Published Articles" value={form.article_id} onChange={(v) => update('article_id', v)} options={articles.map((a) => [a.id,a.title])} emptyMessage={form.publication_id ? 'No published articles are available for this publication.' : ''} />}
         <label className="text-sm font-semibold">Starts at<input type="datetime-local" value={form.starts_at} onChange={(e) => update('starts_at', e.target.value)} className="mt-2 w-full rounded-lg border p-3 dark:bg-zinc-950" /></label>
         <label className="text-sm font-semibold">Ends at<input type="datetime-local" value={form.ends_at} onChange={(e) => update('ends_at', e.target.value)} className="mt-2 w-full rounded-lg border p-3 dark:bg-zinc-950" /></label>
         <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.open_in_new_tab} onChange={(e) => update('open_in_new_tab', e.target.checked)} /> Open redirect in a new tab</label>
@@ -90,4 +107,4 @@ export default function AdvertisementWorkspace({ initialId = null }) {
   </div>;
 }
 
-function Select({ label, value, onChange, options }) { return <label className="text-sm font-semibold">{label}<select required value={value} onChange={(e) => onChange(e.target.value)} className="mt-2 w-full rounded-lg border p-3 dark:bg-zinc-950"><option value="">Select…</option>{options.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></label>; }
+function Select({ label, value, onChange, options, emptyMessage = '' }) { return <label className="text-sm font-semibold">{label}<select required value={value} onChange={(e) => onChange(e.target.value)} className="mt-2 w-full rounded-lg border p-3 dark:bg-zinc-950"><option value="">Select…</option>{options.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select>{emptyMessage && options.length === 0 && <span className="mt-2 block text-xs font-normal text-zinc-500">{emptyMessage}</span>}</label>; }
