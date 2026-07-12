@@ -423,6 +423,8 @@ export default function ArticleDetail() {
           </aside>
 
         {/* Centralized Reading Column */}
+        <div className="min-w-0 space-y-8">
+        <AdvertisementSlot placement="content_top" context={advertisementContext} />
         <article className="min-w-0 bg-white/80 dark:bg-zinc-900/35 border border-zinc-100 dark:border-zinc-900/60 rounded-3xl p-6 sm:p-10 lg:p-12 shadow-sm space-y-10">
           
           {/* 1. Magazine Context Banner */}
@@ -742,7 +744,9 @@ export default function ArticleDetail() {
           </div>
 
         </article>
+        <AdvertisementSlot placement="content_bottom" context={advertisementContext} />
         <AdvertisementSlot placement="sidebar_sticky" context={advertisementContext} className="lg:hidden" />
+        </div>
         </div>
 
       </div>
