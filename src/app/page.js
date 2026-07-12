@@ -8,6 +8,7 @@ import { logWarn } from '../utils/safeLogger';
 import { useAuth } from '../context/AuthContext';
 import SeoHead from '../components/SeoHead';
 import MagazineCarousel from '../components/ui/MagazineCarousel';
+import JournalCarousel from '../components/ui/JournalCarousel';
 import RecentArticles from '../components/ui/RecentArticles';
 import GlobalSearchInput from '../components/home/GlobalSearchInput';
 
@@ -92,6 +93,7 @@ export default function Home() {
   const [stats, setStats] = useState(null);
   const [latestArticles, setLatestArticles] = useState([]);
   const [latestMagazines, setLatestMagazines] = useState([]);
+  const [latestJournals, setLatestJournals] = useState([]);
   const [faqs, setFaqs] = useState([]);
   const [faqsLoading, setFaqsLoading] = useState(true);
 
@@ -102,8 +104,9 @@ export default function Home() {
       api.get('/public/homepage-stats'),
       api.get('/articles/latest', { params: { limit: 10 } }),
       api.get('/public/magazines', { params: { per_page: 5 } }),
+      api.get('/public/journals', { params: { per_page: 5 } }),
       api.get('/public/faqs'),
-    ]).then(([statsResult, articlesResult, magazinesResult, faqResult]) => {
+    ]).then(([statsResult, articlesResult, magazinesResult, journalsResult, faqResult]) => {
       if (!active) return;
 
       if (statsResult.status === 'fulfilled') {
@@ -128,6 +131,13 @@ export default function Home() {
         logWarn('Homepage magazines unavailable', magazinesResult.reason?.message);
       }
 
+      if (journalsResult.status === 'fulfilled') {
+        const journals = journalsResult.value.data?.data;
+        setLatestJournals(Array.isArray(journals) ? journals : []);
+      } else {
+        logWarn('Homepage journals unavailable', journalsResult.reason?.message);
+      }
+
       if (faqResult.status === 'fulfilled') {
         setFaqs(Array.isArray(faqResult.value.data?.data) ? faqResult.value.data.data : []);
       } else {
@@ -147,6 +157,7 @@ export default function Home() {
     return [
       ['Published Articles', stats.published_articles_count],
       ['Academic Magazines', stats.active_magazines_count],
+      ['Academic Journals', stats.active_journals_count],
       ['Research Contributors', stats.public_contributors_count],
       ['Published Issues', stats.published_issues_count],
     ].filter(([, value]) => Number.isFinite(Number(value)));
@@ -207,7 +218,7 @@ export default function Home() {
 
       {counters.length > 0 && (
         <section className="border-b border-[var(--border)] bg-[var(--surface)] py-8">
-          <div className="mx-auto grid w-full max-w-[1440px] grid-cols-2 gap-px px-4 sm:px-6 md:grid-cols-4 lg:px-8">
+          <div className="mx-auto grid w-full max-w-[1440px] grid-cols-2 gap-px px-4 sm:px-6 md:grid-cols-5 lg:px-8">
             {counters.map(([label, value]) => (
               <div key={label} className="py-4 md:py-5">
                 <p className="font-serif text-3xl font-bold text-zinc-950 dark:text-white">{Number(value).toLocaleString()}</p>
@@ -219,14 +230,16 @@ export default function Home() {
       )}
 
       <MagazineCarousel />
-      <RecentArticles />
+      <RecentArticles publicationType="magazine" />
+      <JournalCarousel />
+      <RecentArticles publicationType="journal" />
 
       <section className="border-t border-[var(--border)] bg-[var(--surface)] py-16 lg:py-20">
         <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 sm:px-6 lg:grid-cols-[0.34fr_0.66fr] lg:px-8">
           <div>
             <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Browse by subject</p>
             <h2 className="mt-2 font-serif text-3xl font-bold text-zinc-950 dark:text-white sm:text-4xl">
-              Start with the publication that fits your field
+              Start with the magazine that fits your field
             </h2>
             <p className="mt-3 text-base leading-7 text-zinc-600 dark:text-zinc-350">
               Public subject taxonomies are not exposed as a separate homepage API, so this section points readers to magazine discovery instead of hardcoded disciplines.
@@ -246,6 +259,36 @@ export default function Home() {
             <Link href="/magazines" className="group border-t border-[var(--border)] pt-4 focus:outline-none focus:ring-2 focus:ring-amber-500">
               <span className="font-serif text-xl font-bold text-zinc-950 group-hover:text-amber-700 dark:text-white dark:group-hover:text-amber-300">All academic magazines</span>
               <span className="mt-2 block text-sm leading-6 text-zinc-600 dark:text-zinc-350">Browse the complete public magazine directory.</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-[var(--border)] bg-[var(--surface)] py-16 lg:py-20">
+        <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 sm:px-6 lg:grid-cols-[0.34fr_0.66fr] lg:px-8">
+          <div>
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Browse by subject</p>
+            <h2 className="mt-2 font-serif text-3xl font-bold text-zinc-950 dark:text-white sm:text-4xl">
+              Start with the journal that fits your field
+            </h2>
+            <p className="mt-3 text-base leading-7 text-zinc-600 dark:text-zinc-350">
+              Public subject taxonomies are not exposed as a separate homepage API, so this section points readers to journal discovery instead of hardcoded disciplines.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {latestJournals.slice(0, 4).map((journal) => (
+              <Link
+                key={journal.id || journal.slug}
+                href={`/journals/${journal.slug}/about-and-overview`}
+                className="group border-t border-[var(--border)] pt-4 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              >
+                <span className="font-serif text-xl font-bold text-zinc-950 group-hover:text-amber-700 dark:text-white dark:group-hover:text-amber-300">{journal.title}</span>
+                <span className="mt-2 block text-sm leading-6 text-zinc-600 dark:text-zinc-350">{journal.description || 'Open the public overview and archive for this journal.'}</span>
+              </Link>
+            ))}
+            <Link href="/journals" className="group border-t border-[var(--border)] pt-4 focus:outline-none focus:ring-2 focus:ring-amber-500">
+              <span className="font-serif text-xl font-bold text-zinc-950 group-hover:text-amber-700 dark:text-white dark:group-hover:text-amber-300">All academic journals</span>
+              <span className="mt-2 block text-sm leading-6 text-zinc-600 dark:text-zinc-350">Browse the complete public journal directory.</span>
             </Link>
           </div>
         </div>
