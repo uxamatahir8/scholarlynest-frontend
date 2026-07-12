@@ -18,6 +18,7 @@ import SeoHead from '../../../components/SeoHead';
 import AuthorHeaderBlock from '../../../components/article/AuthorHeaderBlock';
 import { isArticleEditableStatus } from '../../../utils/status';
 import { publicArticlePath } from '../../../utils/articleLinks';
+import AdvertisementSlot from '../../../components/advertising/AdvertisementSlot';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -366,6 +367,12 @@ export default function ArticleDetail() {
     ((article.assets && article.assets.length > 0) || article.has_pdf) && { id: 'supplementary-assets', label: 'Supplementary Assets' },
     { id: 'citation', label: 'Citation' },
   ].filter(Boolean);
+  const advertisementContext = {
+    context: 'article',
+    publication_type: article.magazine?.publication_type || 'magazine',
+    publication_slug: article.magazine?.slug,
+    article_slug: article.slug,
+  };
 
   return (
     <div className="min-h-screen bg-zinc-50/20 dark:bg-zinc-950/10 pb-24 px-4 sm:px-6 lg:px-8 text-left">
@@ -401,8 +408,8 @@ export default function ArticleDetail() {
         </div>
 
         <div className="mx-auto grid w-full max-w-[1440px] gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
-          <aside className="hidden pt-[192px] lg:block">
-            <nav className="sticky top-24 rounded-2xl border border-zinc-150 bg-white/80 p-4 text-left shadow-sm dark:border-zinc-850 dark:bg-zinc-900/50" aria-label="Article sections">
+          <aside className="hidden space-y-6 pt-[192px] lg:sticky lg:top-24 lg:block lg:self-start">
+            <nav className="rounded-2xl border border-zinc-150 bg-white/80 p-4 text-left shadow-sm dark:border-zinc-850 dark:bg-zinc-900/50" aria-label="Article sections">
               <p className="mb-3 text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Sections</p>
               <div className="space-y-1">
                 {contentNav.map((item) => (
@@ -412,6 +419,7 @@ export default function ArticleDetail() {
                 ))}
               </div>
             </nav>
+            <AdvertisementSlot placement="sidebar_sticky" context={advertisementContext} />
           </aside>
 
         {/* Centralized Reading Column */}
@@ -734,6 +742,7 @@ export default function ArticleDetail() {
           </div>
 
         </article>
+        <AdvertisementSlot placement="sidebar_sticky" context={advertisementContext} className="lg:hidden" />
         </div>
 
       </div>

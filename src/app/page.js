@@ -11,6 +11,7 @@ import MagazineCarousel from '../components/ui/MagazineCarousel';
 import JournalCarousel from '../components/ui/JournalCarousel';
 import RecentArticles from '../components/ui/RecentArticles';
 import GlobalSearchInput from '../components/home/GlobalSearchInput';
+import AdvertisementSlot from '../components/advertising/AdvertisementSlot';
 
 const WORKFLOW_STEPS = [
   ['Discover', 'Browse magazines and published research by topic, publication, or author.'],
@@ -175,6 +176,7 @@ export default function Home() {
         description="Discover academic magazines, published articles, and public research archives on ScholarlyNest."
         ogUrl="/"
       />
+      <AdvertisementSlot placement="content_top" context={{ context: 'website', page_key: 'home' }} className="mx-auto max-w-[1440px] px-4 py-6" />
 
       <section className="relative isolate overflow-hidden bg-zinc-950">
         <div
@@ -424,6 +426,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      <AdvertisementSlot placement="content_bottom" context={{ context: 'website', page_key: 'home' }} className="mx-auto max-w-[1440px] px-4 py-8" />
     </div>
   );
 }

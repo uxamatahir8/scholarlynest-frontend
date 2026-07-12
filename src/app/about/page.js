@@ -4,6 +4,7 @@ import React from 'react';
 import { BookOpen, ShieldCheck, Globe, Star, Users, Award, Landmark } from 'lucide-react';
 import PageBanner from '../../components/PageBanner';
 import SeoHead from '../../components/SeoHead';
+import AdvertisementSlot from '../../components/advertising/AdvertisementSlot';
 
 export default function AboutPage() {
   return (
@@ -18,6 +19,7 @@ export default function AboutPage() {
         description="ScholarlyNest is a state-of-the-art academic publishing platform designed to bridge the gap between rigorous peer-reviewed research and rapid interdisciplinary collaboration."
         customLabels={{ about: 'About Us' }}
       />
+      <AdvertisementSlot placement="content_top" context={{ context: 'website', page_key: 'about' }} className="mx-auto max-w-[1440px] px-4 py-6" />
       
       <div className="mx-auto w-full max-w-[1440px] px-4 pb-16 sm:px-6 lg:px-8">
 
@@ -170,6 +172,7 @@ export default function AboutPage() {
         </div>
 
       </div>
+      <AdvertisementSlot placement="content_bottom" context={{ context: 'website', page_key: 'about' }} className="mx-auto max-w-[1440px] px-4 pb-10" />
     </div>
   );
 }

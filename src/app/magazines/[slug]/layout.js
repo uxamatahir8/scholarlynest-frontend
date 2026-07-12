@@ -8,6 +8,7 @@ import api from '../../../utils/api';
 import { logWarn } from '../../../utils/safeLogger';
 import LoadingState from '../../../components/ui/LoadingState';
 import ErrorState from '../../../components/ui/ErrorState';
+import AdvertisementSlot from '../../../components/advertising/AdvertisementSlot';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -85,6 +86,8 @@ export default function MagazinePublicLayout({ children }) {
     })),
   ];
   const coverImage = magazine.cover_image_url || getFullImageUrl(magazine.cover_image);
+  const pageKey = pathname?.split('/').filter(Boolean).at(-1) === slug ? 'about-and-overview' : pathname?.split('/').filter(Boolean).at(-1);
+  const advertisementContext = { context: 'publication', publication_type: routePrefix === 'journals' ? 'journal' : 'magazine', publication_slug: slug, page_key: pageKey };
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
@@ -147,9 +150,14 @@ export default function MagazinePublicLayout({ children }) {
               );
             })}
           </nav>
+          <AdvertisementSlot placement="sidebar_sticky" context={advertisementContext} className="mt-6" />
         </aside>
 
-        <main className="min-w-0">{children}</main>
+        <main className="min-w-0 space-y-8">
+          <AdvertisementSlot placement="content_top" context={advertisementContext} />
+          {children}
+          <AdvertisementSlot placement="content_bottom" context={advertisementContext} />
+        </main>
       </div>
     </div>
   );
