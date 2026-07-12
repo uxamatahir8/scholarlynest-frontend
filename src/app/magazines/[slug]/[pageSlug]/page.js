@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import DOMPurify from 'dompurify';
 import { ArrowLeft } from 'lucide-react';
 import api from '../../../../utils/api';
@@ -13,6 +13,8 @@ import ErrorState from '../../../../components/ui/ErrorState';
 
 export default function MagazineCustomPage() {
   const params = useParams();
+  const pathname = usePathname();
+  const routePrefix = pathname?.startsWith('/journals/') ? 'journals' : 'magazines';
   const slug = params?.slug;
   const pageSlug = params?.pageSlug;
   const [data, setData] = useState(null);
@@ -27,7 +29,7 @@ export default function MagazineCustomPage() {
       try {
         setLoading(true);
         setError(null);
-        const response = await api.get(`/magazines/${slug}/pages/${pageSlug}`);
+        const response = await api.get(`/${routePrefix}/${slug}/pages/${pageSlug}`);
         setData(response.data);
         setContent(DOMPurify.sanitize(response.data?.page?.content || ''));
       } catch (err) {
@@ -39,7 +41,7 @@ export default function MagazineCustomPage() {
     };
 
     fetchPage();
-  }, [slug, pageSlug]);
+  }, [routePrefix, slug, pageSlug]);
 
   if (loading) {
     return <LoadingState label="Loading page..." className="min-h-[320px]" />;
@@ -49,7 +51,7 @@ export default function MagazineCustomPage() {
     return (
       <div className="space-y-6">
         <ErrorState title="Page could not be loaded">{error || 'Page could not be resolved.'}</ErrorState>
-        <Link href={`/magazines/${slug}/about-and-overview`} className="inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300">
+        <Link href={`/${routePrefix}/${slug}/about-and-overview`} className="inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300">
           <ArrowLeft className="w-4 h-4" />
           <span>Back to magazine overview</span>
         </Link>
@@ -59,7 +61,7 @@ export default function MagazineCustomPage() {
 
   return (
     <article className="space-y-8">
-      <SeoHead title={data.seo?.title} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/magazines/${slug}/${pageSlug}`} />
+      <SeoHead title={data.seo?.title} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/${pageSlug}`} />
       <div className="border-b border-[var(--border)] pb-6">
         <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Magazine page</p>
         <h2 className="mt-2 font-serif text-4xl font-bold leading-tight text-zinc-950 dark:text-white">{data.page.title}</h2>

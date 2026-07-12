@@ -87,8 +87,9 @@ export const issueArticlePublicationSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['page_end'], message: 'End page must be greater than or equal to start page.' });
   }
 });
-export const articleBasicsSchema = z.object({ magazine_id: idField, title: requiredString('Title'), abstract: requiredString('Abstract', 100000) });
-export const articleDraftSchema = z.object({ magazine_id: z.union([idField, z.literal(''), z.null()]).optional(), title: optionalString('Title', 255), abstract: optionalString('Abstract', 100000), terms_accepted: z.boolean().optional() });
+const publicationTypeSchema = z.enum(['magazine', 'journal']);
+export const articleBasicsSchema = z.object({ publication_type: publicationTypeSchema, magazine_id: idField, title: requiredString('Title'), abstract: requiredString('Abstract', 100000) });
+export const articleDraftSchema = z.object({ publication_type: publicationTypeSchema.optional(), magazine_id: z.union([idField, z.literal(''), z.null()]).optional(), title: optionalString('Title', 255), abstract: optionalString('Abstract', 100000), terms_accepted: z.boolean().optional() });
 export const articleSubmitSchema = articleBasicsSchema.extend({ terms_accepted: z.literal(true, { errorMap: () => ({ message: 'You must accept the terms and conditions before submitting.' }) }) });
 export const reviewerInvitationSchema = z.object({ token: requiredString('Invitation token', 500) });
 export const reviewerInvitationResponseSchema = z.object({
