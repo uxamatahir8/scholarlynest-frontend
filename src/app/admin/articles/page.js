@@ -259,6 +259,8 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isEditor = hasRole('editor');
+  const isMagazineEditor = hasRole('magazine_editor');
+  const isJournalEditor = hasRole('journal_editor');
 
   const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || hasPermission('articles.auto-approve') || isEditor) : false;
   const isAuthorWorkspace = !isAdminOrEditor;
@@ -315,6 +317,8 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
   const [authorFilter, setAuthorFilter] = useState(searchParams.get('author_id') || 'all');
   const [authorOptions, setAuthorOptions] = useState([]);
   const [selectedMagazineId, setSelectedMagazineId] = useState(searchParams.get('magazine_id') || 'all');
+  const defaultPublicationType = isMagazineEditor ? 'magazine' : isJournalEditor ? 'journal' : 'all';
+  const [publicationType, setPublicationType] = useState(searchParams.get('publication_type') || defaultPublicationType);
   const [selectedStatus, setSelectedStatus] = useState(searchParams.get('status') || 'all');
   const [magazines, setMagazines] = useState([]);
   const [loadingMagazines, setLoadingMagazines] = useState(false);
@@ -368,8 +372,9 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
     setSearchQuery(nextSearch);
     setDebouncedSearchQuery(nextSearch);
     setSelectedMagazineId(nextMagazineId);
+    setPublicationType(searchParams.get('publication_type') || defaultPublicationType);
     setSelectedStatus(nextStatus);
-  }, [searchParams]);
+  }, [defaultPublicationType, searchParams]);
 
   useEffect(() => {
     const fetchAuthorOptions = async () => {
@@ -436,7 +441,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, selectedMagazineId, selectedStatus, queueId, authorFilter]);
+  }, [debouncedSearchQuery, selectedMagazineId, selectedStatus, queueId, authorFilter, publicationType]);
 
   // Fetch articles based on filter
   const fetchArticles = async () => {
@@ -453,6 +458,9 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
 
       if (selectedMagazineId !== 'all') {
         params.magazine_id = selectedMagazineId;
+      }
+      if (publicationType !== 'all') {
+        params.publication_type = publicationType;
       }
       if (debouncedSearchQuery.trim()) {
         params.search = debouncedSearchQuery.trim();
@@ -500,7 +508,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
     if (!authLoading && user) {
       fetchArticles();
     }
-  }, [currentPage, queueId, selectedMagazineId, selectedStatus, debouncedSearchQuery, user, authLoading, observerParams, searchParams]);
+  }, [currentPage, queueId, selectedMagazineId, selectedStatus, debouncedSearchQuery, user, authLoading, observerParams, publicationType, searchParams]);
 
   const getStatusBadge = (status) => {
     const [label, tone = 'zinc'] = STATUS_META[status] || [(status || 'Unknown').replaceAll('_', ' '), 'zinc'];
@@ -618,6 +626,14 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
           </div>
 
           {!isAuthorWorkspace && (
+            <select value={publicationType} onChange={(event) => { setPublicationType(event.target.value); setSelectedMagazineId('all'); updateQuery({ publication_type: event.target.value, magazine_id: 'all' }); }} aria-label="Filter by publication type" className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 sm:w-48">
+              {!isMagazineEditor && !isJournalEditor && <option value="all">All Publications</option>}
+              {!isJournalEditor && <option value="magazine">Magazines</option>}
+              {!isMagazineEditor && <option value="journal">Journals</option>}
+            </select>
+          )}
+
+          {!isAuthorWorkspace && (
             <select value={authorFilter} onChange={(event) => { setAuthorFilter(event.target.value); updateQuery({ author_id: event.target.value }); }} aria-label="Filter by author" className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 sm:w-56">
               <option value="all">All Authors</option>
               {authorOptions.map((author) => <option key={author.id} value={author.id}>{author.name}</option>)}
@@ -656,8 +672,8 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
               }}
               className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100 cursor-pointer appearance-none"
             >
-              <option value="all">{isAuthorWorkspace ? "All Magazines" : "All Magazines"}</option>
-              {magazines.map((m) => (
+              <option value="all">All Destinations</option>
+              {magazines.filter((m) => publicationType === 'all' || m.publication_type === publicationType).map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.title}
                 </option>
@@ -702,7 +718,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
               <thead>
                 <tr className="bg-zinc-50/50 dark:bg-zinc-900/10 border-b border-zinc-150 dark:border-zinc-850 text-[10px] font-bold uppercase tracking-wider text-zinc-455">
                   <th className="px-6 py-4">Article Details</th>
-                  <th className="px-6 py-4">Magazine Issues</th>
+                  <th className="px-6 py-4">Publication</th>
                   {isAdminOrEditor && <th className="px-6 py-4">Author Details</th>}
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Actions</th>
@@ -752,7 +768,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center space-x-1.5 px-2 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/60 dark:border-zinc-800 font-bold text-[9px] uppercase text-zinc-650 dark:text-zinc-300">
                         <BookOpen className="w-3.5 h-3.5 text-amber-500" />
-                        <span>{art.magazine?.title}</span>
+                        <span>{art.publication_label || (art.publication_type === 'journal' ? 'Journal' : 'Magazine')} · {art.publication_name || art.magazine?.title}</span>
                       </span>
                     </td>
                     {isAdminOrEditor && (

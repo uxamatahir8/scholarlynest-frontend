@@ -11,6 +11,7 @@ import UserRoleSummary from './UserRoleSummary';
 import SubEditorAssignmentSection from './SubEditorAssignmentSection';
 import MagazineAssignmentSection from './MagazineAssignmentSection';
 import { isMagazineAssignmentRole, isSubEditorRole, rolePurpose } from '../../../utils/userManagement';
+import { normalizeRoleName } from '../../../utils/roles';
 
 export default function UserForm({
   mode,
@@ -29,6 +30,12 @@ export default function UserForm({
   const selectedRole = useMemo(() => roles.find((role) => String(role.id) === String(values.role_id)) || null, [roles, values.role_id]);
   const isSubEditor = isSubEditorRole(selectedRole);
   const needsMagazineAssignment = isMagazineAssignmentRole(selectedRole);
+  const selectedRoleName = normalizeRoleName(selectedRole);
+  const assignablePublications = useMemo(() => magazines.filter((publication) => {
+    if (selectedRoleName === 'magazine_editor') return publication.publication_type === 'magazine';
+    if (selectedRoleName === 'journal_editor') return publication.publication_type === 'journal';
+    return true;
+  }), [magazines, selectedRoleName]);
 
   const setValue = (field, value) => onChange({ ...values, [field]: value });
 
@@ -107,7 +114,7 @@ export default function UserForm({
 
       <MagazineAssignmentSection
         visible={needsMagazineAssignment}
-        magazines={magazines}
+        magazines={assignablePublications}
         selectedMagazineIds={values.magazine_ids}
         selectedUserId={selectedUserId}
         onChange={(magazineIds) => setValue('magazine_ids', magazineIds)}
@@ -133,7 +140,7 @@ export default function UserForm({
         </CardHeader>
         <CardContent className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>Cancel</Button>
-          <Button type="submit" variant="primary" isLoading={submitting} disabled={submitting || (isSubEditor && editors.length === 0) || (needsMagazineAssignment && magazines.length === 0)}>
+          <Button type="submit" variant="primary" isLoading={submitting} disabled={submitting || (isSubEditor && editors.length === 0) || (needsMagazineAssignment && assignablePublications.length === 0)}>
             {mode === 'create' ? 'Create User' : 'Save Changes'}
           </Button>
         </CardContent>

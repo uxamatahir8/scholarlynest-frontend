@@ -335,6 +335,7 @@ export default function WorkflowActionPanel({
   const status = article.status;
   const canScreen = canEditorial && ['submitted', 'pending', 'screening'].includes(status);
   const pendingTransferRequest = article?.pending_transfer_request;
+  const publicationLabel = article?.publication_type === 'journal' || article?.magazine?.publication_type === 'journal' ? 'Journal' : 'Magazine';
   const canRequestTransfer = Boolean(article?.can_request_transfer) && canScreen;
   const canRespondTransferRequest = Boolean(article?.can_respond_transfer_request) && status === 'in_transit' && pendingTransferRequest;
   const canAssignSubEditor = canEditorial && ['under_review', 'resubmitted'].includes(status);
@@ -382,7 +383,7 @@ export default function WorkflowActionPanel({
         )}
 
         {canScreen && (
-          <ActionBlock title="Editorial Screening" description="Decide whether this manuscript moves into review, is rejected during screening, or should be transferred to another magazine.">
+          <ActionBlock title="Editorial Screening" description={`Decide whether this manuscript moves into review, is rejected during screening, or should be transferred to another ${publicationLabel}.`}>
             <div className="grid gap-3 md:grid-cols-3">
               <Field label="Decision" required>
                 <Select value={screenForm.decision} onChange={(event) => setScreenForm({ ...screenForm, decision: event.target.value })}>
@@ -405,11 +406,11 @@ export default function WorkflowActionPanel({
             {screenForm.decision === 'transfer' ? (
               <>
                 <Alert tone="info" title="Transfer requires author approval">
-                  The author will receive a request to accept or reject the proposed magazine transfer. The manuscript will move to In Transit while waiting.
+                  The author will receive a request to accept or reject the proposed {publicationLabel.toLowerCase()} transfer. The manuscript will move to In Transit while waiting.
                 </Alert>
-                <Field label="Target Magazine" required>
+                <Field label={`Target ${publicationLabel}`} required>
                   <Select value={transferForm.to_magazine_id} onChange={(event) => setTransferForm({ ...transferForm, to_magazine_id: event.target.value })}>
-                    <option value="">Select target magazine</option>
+                    <option value="">Select target {publicationLabel.toLowerCase()}</option>
                     {transferTargets.map((magazine) => (
                       <option key={magazine.id} value={magazine.id}>{magazine.name || magazine.title}</option>
                     ))}

@@ -69,14 +69,14 @@ export const consoleNavigation = [
         label: 'Articles & Workflow',
         href: '/admin/articles',
         icon: Network,
-        isVisible: ({ user, hasPermission }) => can(hasPermission, 'articles.view-any') || hasAnyRole(user, ['super_admin', 'admin', 'editor']),
+        isVisible: ({ user, hasPermission }) => can(hasPermission, 'articles.view-any') || hasAnyRole(user, ['super_admin', 'admin', 'editor', 'super_editor', 'magazine_editor', 'journal_editor']),
       },
       {
         label: 'Editor Desk',
         href: '/admin/editor',
         icon: PenLine,
         exact: true,
-        isVisible: ({ user, hasPermission }) => can(hasPermission, 'articles.view-any') || hasAnyRole(user, ['super_admin', 'admin', 'editor']),
+        isVisible: ({ user, hasPermission }) => can(hasPermission, 'articles.view-any') || hasAnyRole(user, ['super_admin', 'admin', 'editor', 'super_editor', 'magazine_editor', 'journal_editor']),
       },
       {
         label: 'My Sub Editors',
@@ -123,13 +123,13 @@ export const consoleNavigation = [
         label: 'Magazines',
         href: '/admin/magazines',
         icon: LibraryBig,
-        isVisible: ({ user, hasPermission }) => (can(hasPermission, 'magazines.view-any') || can(hasPermission, 'magazines.view-own')) && !userHasRole(user, 'author') && !userHasRole(user, 'sub_editor') && !userHasRole(user, 'reviewer'),
+        isVisible: ({ user, hasPermission }) => (can(hasPermission, 'magazines.view-any') || can(hasPermission, 'magazines.view-own')) && !userHasRole(user, 'author') && !userHasRole(user, 'sub_editor') && !userHasRole(user, 'reviewer') && !userHasRole(user, 'journal_editor'),
       },
       {
         label: 'Journals',
         href: '/admin/journals',
         icon: NotebookTabs,
-        isVisible: ({ user, hasPermission }) => (can(hasPermission, 'magazines.view-any') || can(hasPermission, 'magazines.view-own')) && !userHasRole(user, 'author') && !userHasRole(user, 'sub_editor') && !userHasRole(user, 'reviewer'),
+        isVisible: ({ user, hasPermission }) => (can(hasPermission, 'magazines.view-any') || can(hasPermission, 'magazines.view-own')) && !userHasRole(user, 'author') && !userHasRole(user, 'sub_editor') && !userHasRole(user, 'reviewer') && !userHasRole(user, 'magazine_editor'),
       },
       {
         label: 'Issue Manager',

@@ -1,7 +1,9 @@
 const ROLE_PRECEDENCE = [
   'super_admin',
   'admin',
-  'editor',
+  'super_editor',
+  'magazine_editor',
+  'journal_editor',
   'publisher',
   'sub_editor',
   'reviewer',
@@ -13,7 +15,10 @@ const ROLE_PRECEDENCE = [
 const ROLE_LABELS = {
   super_admin: 'Super Admin',
   admin: 'Admin',
-  editor: 'Editor',
+  editor: 'Super Editor',
+  super_editor: 'Super Editor',
+  magazine_editor: 'Magazine Editor',
+  journal_editor: 'Journal Editor',
   publisher: 'Publisher',
   sub_editor: 'Sub Editor',
   reviewer: 'Reviewer',
@@ -71,7 +76,11 @@ export function getRoleDisplayName(userOrRole) {
 export function hasRole(user, role) {
   const expected = normalizeRoleName(role);
   if (!expected) return false;
-  return collectRoles(user).some((item) => normalizeRoleName(item) === expected);
+  const editorFamily = ['editor', 'super_editor', 'magazine_editor', 'journal_editor'];
+  return collectRoles(user).some((item) => {
+    const actual = normalizeRoleName(item);
+    return actual === expected || (expected === 'editor' && editorFamily.includes(actual));
+  });
 }
 
 export { ROLE_PRECEDENCE, ROLE_LABELS };

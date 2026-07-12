@@ -24,7 +24,10 @@ export function rolePurpose(role) {
   const purposes = {
     super_admin: 'Full platform governance and access control.',
     admin: 'Legacy administrative access with limited authority.',
-    editor: 'Editorial screening, routing, and manuscript decisions.',
+    editor: 'Legacy Super Editor compatibility.',
+    super_editor: 'Editorial workflows for assigned Magazines and Journals.',
+    magazine_editor: 'Editorial workflows for assigned Magazines only.',
+    journal_editor: 'Editorial workflows for assigned Journals only.',
     sub_editor: 'Assigned manuscript review support for Editors.',
     reviewer: 'Peer review work assigned by editorial teams.',
     publisher: 'Publication, issue, and production readiness work.',
@@ -40,7 +43,10 @@ export function roleAccessAreas(role, permissions = []) {
   const roleAreas = {
     super_admin: ['Users and Access', 'Publishing', 'Public Content', 'System Settings'],
     admin: ['Publishing', 'Public Content', 'System Settings'],
-    editor: ['Articles and Workflow', 'Magazines and Issues'],
+    editor: ['Articles and Workflow', 'Magazines and Journals'],
+    super_editor: ['Articles and Workflow', 'Magazines and Journals'],
+    magazine_editor: ['Articles and Workflow', 'Magazines'],
+    journal_editor: ['Articles and Workflow', 'Journals'],
     sub_editor: ['Assigned Manuscripts', 'Editorial Recommendations'],
     reviewer: ['Assigned Reviews'],
     publisher: ['Issues and Publication'],
@@ -79,7 +85,7 @@ export function isSubEditorRole(role) {
 }
 
 export function isMagazineAssignmentRole(role) {
-  return ['editor', 'publisher', 'proofreader'].includes(normalizeRoleName(role));
+  return ['editor', 'super_editor', 'magazine_editor', 'journal_editor', 'publisher', 'proofreader'].includes(normalizeRoleName(role));
 }
 
 export function canOfferImpersonation({ authUser, targetUser, impersonationStatus }) {
