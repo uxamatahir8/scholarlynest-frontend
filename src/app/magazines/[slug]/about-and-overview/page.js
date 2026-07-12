@@ -72,6 +72,8 @@ export default function MagazineAboutPage() {
   const latestIssueArticle = useMemo(() => articles.find((article) => article.issue), [articles]);
   const latestArticles = useMemo(() => articles.slice(0, 3), [articles]);
   const submitHref = user ? '/admin/articles/new' : '/login';
+  const publicationLabel = routePrefix === 'journals' ? 'Journal' : 'Magazine';
+  const pageTitle = data?.seo?.title || `${magazine?.title || publicationLabel} | ${publicationLabel} | ScholarlyNest`;
 
   if (loading) return <LoadingState label="Loading overview..." className="min-h-[320px]" />;
 
@@ -81,7 +83,7 @@ export default function MagazineAboutPage() {
 
   return (
     <div className="space-y-12">
-      <SeoHead title={data.seo?.title} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/about-and-overview`} />
+      <SeoHead title={pageTitle} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/about-and-overview`} />
 
       {(magazine.description || cleanAboutHtml) && (
         <section aria-labelledby="about-magazine-heading">

@@ -1,8 +1,11 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect } from 'react';
 
 const DEFAULT_OG_IMAGE = '/logo.png'; // ScholarlyNest logo fallback
 
 export default function SeoHead({ title, description, keywords, ogImage, ogUrl, ogType }) {
+  const resolvedTitle = String(title || 'ScholarlyNest').trim();
   const resolvedImage = ogImage || DEFAULT_OG_IMAGE;
   const frontendUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
   
@@ -15,14 +18,18 @@ export default function SeoHead({ title, description, keywords, ogImage, ogUrl, 
     ? (ogUrl.startsWith('http') ? ogUrl : `${frontendUrl}${ogUrl.startsWith('/') ? '' : '/'}${ogUrl}`) 
     : '';
 
+  useEffect(() => {
+    document.title = resolvedTitle;
+  }, [resolvedTitle]);
+
   return (
     <>
-      <title>{title}</title>
+      <title>{resolvedTitle}</title>
       <meta name="description" content={description} />
       {keywords && <meta name="keywords" content={keywords} />}
       
       {/* Open Graph */}
-      <meta property="og:title" content={title} />
+      <meta property="og:title" content={resolvedTitle} />
       <meta property="og:description" content={description} />
       <meta property="og:type" content={ogType || 'website'} />
       <meta property="og:image" content={fullOgImage} />
@@ -31,7 +38,7 @@ export default function SeoHead({ title, description, keywords, ogImage, ogUrl, 
       
       {/* Twitter Cards */}
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:title" content={title} />
+      <meta name="twitter:title" content={resolvedTitle} />
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={fullOgImage} />
 
