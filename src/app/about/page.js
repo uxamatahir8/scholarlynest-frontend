@@ -14,13 +14,13 @@ export default function AboutPage() {
         description="ScholarlyNest is a state-of-the-art academic publishing platform designed to bridge the gap between rigorous peer-reviewed research and rapid interdisciplinary collaboration."
         ogUrl="/about"
       />
-      <PageBanner 
-        title="Institutional Charter" 
+      <PageBanner
+        title="Institutional Charter"
         description="ScholarlyNest is a state-of-the-art academic publishing platform designed to bridge the gap between rigorous peer-reviewed research and rapid interdisciplinary collaboration."
         customLabels={{ about: 'About Us' }}
       />
       <AdvertisementSlot placement="content_top" context={{ context: 'website', page_key: 'about' }} className="mx-auto max-w-[1440px] px-4 py-6" />
-      
+
       <div className="mx-auto w-full max-w-[1440px] px-4 pb-16 sm:px-6 lg:px-8">
 
         {/* GUIDING PRINCIPLES GRID */}
@@ -87,7 +87,7 @@ export default function AboutPage() {
                 <div>
                   <div className="flex justify-between text-xs font-semibold text-zinc-600 dark:text-zinc-400">
                     <span>Average Peer Review Cycle</span>
-                    <span>14 Days</span>
+                    <span>30 Days</span>
                   </div>
                   <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-1.5 rounded-full mt-1.5 overflow-hidden">
                     <div className="bg-zinc-800 dark:bg-zinc-200 h-full w-[85%] rounded-full" />
