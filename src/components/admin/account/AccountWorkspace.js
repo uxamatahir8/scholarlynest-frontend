@@ -168,7 +168,12 @@ export default function AccountWorkspace() {
       const upload = await uploadAndAwaitClean({ file, purpose: 'profile_image' });
       const previewUrl = URL.createObjectURL(file);
       setProfile((current) => ({ ...current, profile_image: previewUrl, profile_image_upload_id: upload.id }));
-      toast('Profile image uploaded. Save profile to apply it.', 'success');
+      const response = await api.put('/profile', { profile_image_upload_id: upload.id });
+      const persistedImage = response.data?.user?.profile_image_url || response.data?.user?.profile_image || '';
+      setProfile((current) => ({ ...current, profile_image: persistedImage || previewUrl, profile_image_upload_id: '' }));
+      await refreshUser();
+      if (persistedImage) URL.revokeObjectURL(previewUrl);
+      toast('Profile image updated.', 'success');
     } catch (err) {
       logError('Failed to upload profile image:', err);
       toast(safeApiMessage(err, 'Unable to upload profile image.'), 'error');
@@ -395,7 +400,7 @@ export default function AccountWorkspace() {
                     {uploadingImage ? 'Uploading...' : 'Choose Profile Image'}
                     <input type="file" accept="image/*" className="sr-only" onChange={uploadProfileImage} disabled={uploadingImage} />
                   </label>
-                  <p className="text-xs leading-5 text-[var(--muted)]">Upload an image, then save profile to apply it.</p>
+                  <p className="text-xs leading-5 text-[var(--muted)]">Your image is saved automatically after the security scan.</p>
                 </div>
               </div>
 
