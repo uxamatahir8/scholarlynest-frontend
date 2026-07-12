@@ -443,6 +443,11 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
     setCurrentPage(1);
   }, [debouncedSearchQuery, selectedMagazineId, selectedStatus, queueId, authorFilter, publicationType]);
 
+  // Set browser document title dynamically
+  useEffect(() => {
+    document.title = isAdminOrEditor ? "Manuscripts Board - ScholarlyNest" : "My Articles - ScholarlyNest";
+  }, [isAdminOrEditor]);
+
   // Fetch articles based on filter
   const fetchArticles = async () => {
     if (!hasPermission('articles.view-any') && !hasPermission('articles.view-own')) return;

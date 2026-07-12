@@ -900,6 +900,15 @@ export default function ArticleWorkflowPage() {
     }
   }, [tabs, activeTab]);
 
+  // Set browser document title dynamically
+  useEffect(() => {
+    if (article?.title) {
+      document.title = `${article.title} Workflow - ScholarlyNest`;
+    } else {
+      document.title = 'Manuscript Workflow - ScholarlyNest';
+    }
+  }, [article]);
+
   if (authLoading || loading) {
     return <LoadingState label="Loading manuscript workflow..." className="min-h-[420px]" />;
   }
