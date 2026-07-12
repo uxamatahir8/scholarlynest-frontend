@@ -20,6 +20,13 @@ const PLACEMENTS = [
   { id: 'content_bottom', label: 'Content Bottom', description: 'Appears after main page content.' },
 ];
 const emptyForm = { title: '', alt_text: '', redirect_url: '', placement: 'sidebar_sticky', priority: 0, status: 'draft', open_in_new_tab: true, starts_at: '', ends_at: '', image_media_id: null, target_area: '', target_mode: '', publication_type: '', publication_id: '', page_key: '', article_id: '' };
+const toLocalDateTimeInput = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+};
+const toUtcIso = (value) => value ? new Date(value).toISOString() : null;
 
 export default function AdvertisementWorkspace({ initialId = null }) {
   const [items, setItems] = useState([]);
@@ -84,7 +91,7 @@ export default function AdvertisementWorkspace({ initialId = null }) {
       setSelectedPageKeys([...new Set(targets.map((item) => item.page_key).filter(Boolean))]);
       setSelectedArticleIds([...new Set(targets.map((item) => item.article_id).filter(Boolean).map(String))]);
       setOriginalTargets(targets); setMixedTargetGroups(signatures.size > 1);
-      setForm({ ...emptyForm, ...data, ...target, starts_at: data.starts_at?.slice(0, 16) || '', ends_at: data.ends_at?.slice(0, 16) || '' });
+      setForm({ ...emptyForm, ...data, ...target, starts_at: toLocalDateTimeInput(data.starts_at), ends_at: toLocalDateTimeInput(data.ends_at) });
     }).catch(() => setError('Could not load this advertisement.'));
   }, [initialId]);
 
@@ -109,7 +116,7 @@ export default function AdvertisementWorkspace({ initialId = null }) {
     setSelectedPageKeys([...new Set(targets.map((item) => item.page_key).filter(Boolean))]);
     setSelectedArticleIds([...new Set(targets.map((item) => item.article_id).filter(Boolean).map(String))]);
     setOriginalTargets(targets); setMixedTargetGroups(signatures.size > 1);
-    setForm({ ...emptyForm, ...ad, ...target, starts_at: ad.starts_at?.slice(0, 16) || '', ends_at: ad.ends_at?.slice(0, 16) || '' });
+    setForm({ ...emptyForm, ...ad, ...target, starts_at: toLocalDateTimeInput(ad.starts_at), ends_at: toLocalDateTimeInput(ad.ends_at) });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const reset = () => { setEditingId(null); setDestination(''); setStep(1); setForm(emptyForm); setSelectedPublicationIds([]); setSelectedPageKeys([]); setSelectedArticleIds([]); setOriginalTargets([]); setMixedTargetGroups(false); setPreviewUrl(''); setUploadText(''); setError(''); };
@@ -163,7 +170,7 @@ export default function AdvertisementWorkspace({ initialId = null }) {
     else if (!mixedTargetGroups && (form.target_mode === 'all_pages' || form.target_mode === 'all_articles')) targets = selectedPublicationIds.map((publicationId) => ({ target_area: form.target_area, target_mode: form.target_mode, publication_type: form.publication_type, publication_id: Number(publicationId), page_key: null, article_id: null }));
     else if (!mixedTargetGroups && form.target_mode === 'specific_pages') targets = selectedPublicationIds.flatMap((publicationId) => selectedPageKeys.map((pageKey) => ({ target_area: 'publication', target_mode: 'specific_pages', publication_type: form.publication_type, publication_id: Number(publicationId), page_key: pageKey, article_id: null })));
     else if (!mixedTargetGroups) targets = selectedArticleIds.map((articleId) => { const article = articles.find((item) => String(item.id) === articleId); return { target_area: 'article', target_mode: 'specific_articles', publication_type: form.publication_type, publication_id: Number(article?.magazine_id), page_key: null, article_id: Number(articleId) }; });
-    const payload = { title: form.title, image_media_id: form.image_media_id, alt_text: form.alt_text || null, redirect_url: form.redirect_url || null, placement: form.placement, priority: Number(form.priority), status: form.status, open_in_new_tab: form.open_in_new_tab, starts_at: form.starts_at || null, ends_at: form.ends_at || null, targets };
+    const payload = { title: form.title, image_media_id: form.image_media_id, alt_text: form.alt_text || null, redirect_url: form.redirect_url || null, placement: form.placement, priority: Number(form.priority), status: form.status, open_in_new_tab: form.open_in_new_tab, starts_at: toUtcIso(form.starts_at), ends_at: toUtcIso(form.ends_at), targets };
     try { editingId ? await api.put(`/admin/advertisements/${editingId}`, payload) : await api.post('/admin/advertisements', payload); reset(); await load(); }
     catch (saveError) { setError(saveError.response?.data?.message || Object.values(saveError.response?.data?.errors || {})[0]?.[0] || 'Could not save advertisement.'); }
     finally { setBusy(false); }

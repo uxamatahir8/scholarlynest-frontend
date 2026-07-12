@@ -5,6 +5,7 @@ import api from '../../utils/api';
 
 export default function AdvertisementSlot({ placement, ads, context, className = '', sticky = false }) {
   const [resolved, setResolved] = useState(ads || []);
+  const contextKey = JSON.stringify(context || {});
 
   useEffect(() => {
     if (ads || !context) return;
@@ -13,7 +14,7 @@ export default function AdvertisementSlot({ placement, ads, context, className =
       .then(({ data }) => { if (active) setResolved(data?.advertisements?.[placement] || []); })
       .catch(() => { if (active) setResolved([]); });
     return () => { active = false; };
-  }, [ads, context, placement]);
+  }, [ads, contextKey, placement]);
 
   if (!resolved.length) return null;
   return (
