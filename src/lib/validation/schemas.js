@@ -191,6 +191,7 @@ export const postPublicationWorkflowSchema = z.object({
 });
 
 export const publishArticleModalSchema = z.object({
+  title: requiredString('Article title', 255),
   published_year: z.coerce.number().int('Publication year must be a whole number.').min(1900, 'Publication year must be 1900 or later.').max(new Date().getFullYear() + 5, 'Publication year is too far in the future.'),
   published_month: monthSchema,
   magazine_issue_id: z.union([idField, z.literal(''), z.null()]).optional(),

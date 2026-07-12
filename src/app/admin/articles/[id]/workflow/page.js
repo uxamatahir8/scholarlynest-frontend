@@ -605,6 +605,7 @@ export default function ArticleWorkflowPage() {
 
   const handlePublishSubmit = async (publishData) => {
     const payload = new FormData();
+    payload.append('title', publishData.title);
     payload.append('published_year', publishData.published_year);
     payload.append('published_month', publishData.published_month);
     if (publishData.magazine_issue_id) payload.append('magazine_issue_id', publishData.magazine_issue_id);

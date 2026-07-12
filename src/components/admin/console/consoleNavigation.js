@@ -56,6 +56,13 @@ export const consoleNavigation = [
         isVisible: ({ user, hasPermission }) => can(hasPermission, 'articles.view-any') || hasAnyRole(user, ['super_admin', 'admin', 'editor']),
       },
       {
+        label: 'Editor Desk',
+        href: '/admin/editor',
+        icon: ClipboardCheck,
+        exact: true,
+        isVisible: ({ user, hasPermission }) => can(hasPermission, 'articles.view-any') || hasAnyRole(user, ['super_admin', 'admin', 'editor']),
+      },
+      {
         label: 'My Sub Editors',
         href: '/admin/editor/sub-editors',
         icon: Users,

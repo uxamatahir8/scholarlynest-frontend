@@ -23,6 +23,7 @@ const slugKey = (value, fallback) => String(value || fallback || 'section')
   .slice(0, 100);
 
 export default function PublishArticleModal({ isOpen, onClose, onSubmit, articleTitle, articleAbstract = '', magazineId, publicationSections = [] }) {
+  const [publicationTitle, setPublicationTitle] = useState(articleTitle || '');
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedMonth, setSelectedMonth] = useState('January');
   const [magazineIssueId, setMagazineIssueId] = useState('');
@@ -69,6 +70,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
 
   useEffect(() => {
     if (!isOpen) return;
+    setPublicationTitle(articleTitle || '');
     const safeSections = publicationSections || [];
     if (safeSections.length > 0) {
       const loadedSections = safeSections.map((section, index) => ({
@@ -87,7 +89,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
     } else {
       setSections(defaultSections(articleAbstract || ''));
     }
-  }, [isOpen, publicationSections, articleAbstract]);
+  }, [isOpen, publicationSections, articleAbstract, articleTitle]);
 
   const updateSection = (clientId, patch) => {
     setSections((prev) => prev.map((section) => (
@@ -149,6 +151,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
       existing_media_upload_session_id: section.existing_media_upload_session_id,
     }));
     const validation = validateWithZod(publishArticleModalSchema, {
+      title: publicationTitle,
       published_year: selectedYear,
       published_month: selectedMonth,
       magazine_issue_id: magazineIssueId || null,
@@ -163,6 +166,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
     setSubmitting(true);
     try {
       await onSubmit({
+        title: publicationTitle.trim(),
         published_year: parseInt(selectedYear, 10),
         published_month: selectedMonth,
         magazine_issue_id: magazineIssueId ? parseInt(magazineIssueId, 10) : null,
@@ -218,9 +222,13 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
               <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-mono block">
                 Manuscript Title
               </span>
-              <p className="text-xs font-serif font-bold text-zinc-800 dark:text-zinc-200 leading-normal">
-                {articleTitle}
-              </p>
+              <input
+                type="text"
+                value={publicationTitle}
+                onChange={(event) => setPublicationTitle(event.target.value)}
+                maxLength={255}
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 font-serif text-sm font-bold text-zinc-900 outline-none transition-colors focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+              />
             </div>
             {Object.keys(errors).length > 0 && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">

@@ -31,7 +31,8 @@ export default function Pagination({ currentPage, totalPages, onPageChange, sibl
   const buttonBase = 'inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-45';
 
   return (
-    <nav className="flex items-center justify-center gap-1.5" aria-label={label}>
+    <nav className="flex flex-wrap items-center justify-center gap-1.5" aria-label={label}>
+      <button type="button" disabled={currentPage === 1} onClick={() => onPageChange(1)} className={`${buttonBase} border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-muted)]`} aria-label="Go to first page">First</button>
       <button type="button" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)} className={`${buttonBase} border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-muted)]`} aria-label="Go to previous page">Prev</button>
       {pages.map((page, index) => page === 'DOTS' ? (
         <span key={`dots-${index}`} className="px-1 text-[var(--muted)]" aria-hidden="true">...</span>
@@ -39,6 +40,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange, sibl
         <button key={page} type="button" onClick={() => onPageChange(page)} aria-label={`Go to page ${page}`} aria-current={page === currentPage ? 'page' : undefined} className={`${buttonBase} ${page === currentPage ? 'border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]' : 'border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-muted)]'}`}>{page}</button>
       ))}
       <button type="button" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)} className={`${buttonBase} border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-muted)]`} aria-label="Go to next page">Next</button>
+      <button type="button" disabled={currentPage === totalPages} onClick={() => onPageChange(totalPages)} className={`${buttonBase} border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] hover:bg-[var(--surface-muted)]`} aria-label="Go to last page">Last</button>
     </nav>
   );
 }
