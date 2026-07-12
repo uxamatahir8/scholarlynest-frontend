@@ -15,6 +15,7 @@ import {
   Headset,
   Inbox,
   Languages,
+  Megaphone,
   LibraryBig,
   NotebookTabs,
   ListChecks,
@@ -165,6 +166,12 @@ export const consoleNavigation = [
   {
     group: 'Public Content',
     items: [
+      {
+        label: 'Advertising Management',
+        href: '/admin/advertisements',
+        icon: Megaphone,
+        isVisible: ({ user, hasPermission }) => hasAnyRole(user, ['super_admin', 'admin']) && can(hasPermission, 'advertisements.manage'),
+      },
       {
         label: 'FAQ Management',
         href: '/admin/cms/faqs',
