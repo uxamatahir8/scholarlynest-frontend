@@ -76,6 +76,15 @@ function PaginationBar({ currentPage, lastPage, total, perPage, onPageChange, lo
       </p>
 
       <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onPageChange(1)}
+          disabled={currentPage === 1 || loading}
+          className="inline-flex h-8 items-center justify-center rounded-lg border border-zinc-200 bg-white px-2 text-[10px] font-bold text-zinc-600 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-850"
+          aria-label="Go to first page"
+        >
+          First
+        </button>
         {/* Prev */}
         <button
           onClick={() => onPageChange(currentPage - 1)}
@@ -112,6 +121,15 @@ function PaginationBar({ currentPage, lastPage, total, perPage, onPageChange, lo
           className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-850 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onPageChange(lastPage)}
+          disabled={currentPage === lastPage || loading}
+          className="inline-flex h-8 items-center justify-center rounded-lg border border-zinc-200 bg-white px-2 text-[10px] font-bold text-zinc-600 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-850"
+          aria-label="Go to last page"
+        >
+          Last
         </button>
       </div>
     </div>

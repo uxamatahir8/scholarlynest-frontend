@@ -7,10 +7,12 @@ import api from '../../utils/api';
 import RichEditor from '../ui/RichEditor';
 import { publishArticleModalSchema, validateWithZod } from '../../lib/validation';
 
-const defaultSections = [
-  { section_key: 'introduction', title: 'Introduction', content_html: '', sort_order: 1, image_file: null },
-  { section_key: 'materials_and_methods', title: 'Materials and Methods', content_html: '', sort_order: 2, image_file: null },
-  { section_key: 'discussion', title: 'Discussion', content_html: '', sort_order: 3, image_file: null },
+const makeClientId = () => `section-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const defaultSections = (articleAbstract = '') => [
+  { client_id: makeClientId(), section_key: 'abstract', title: 'Abstract', content_html: articleAbstract, sort_order: 1, image_file: null },
+  { client_id: makeClientId(), section_key: 'introduction', title: 'Introduction', content_html: '', sort_order: 2, image_file: null },
+  { client_id: makeClientId(), section_key: 'materials_and_methods', title: 'Materials and Methods', content_html: '', sort_order: 3, image_file: null },
+  { client_id: makeClientId(), section_key: 'discussion', title: 'Discussion', content_html: '', sort_order: 4, image_file: null },
 ];
 
 const slugKey = (value, fallback) => String(value || fallback || 'section')
@@ -20,7 +22,8 @@ const slugKey = (value, fallback) => String(value || fallback || 'section')
   .replace(/^_+|_+$/g, '')
   .slice(0, 100);
 
-export default function PublishArticleModal({ isOpen, onClose, onSubmit, articleTitle, magazineId, publicationSections = [] }) {
+export default function PublishArticleModal({ isOpen, onClose, onSubmit, articleTitle, articleAbstract = '', magazineId, publicationSections = [] }) {
+  const [publicationTitle, setPublicationTitle] = useState(articleTitle || '');
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedMonth, setSelectedMonth] = useState('January');
   const [magazineIssueId, setMagazineIssueId] = useState('');
@@ -45,7 +48,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
     abbreviations: '',
     citation_text: '',
   });
-  const [sections, setSections] = useState(defaultSections);
+  const [sections, setSections] = useState(() => defaultSections(articleAbstract));
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -67,8 +70,11 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
 
   useEffect(() => {
     if (!isOpen) return;
-    if (publicationSections.length > 0) {
-      setSections(publicationSections.map((section, index) => ({
+    setPublicationTitle(articleTitle || '');
+    const safeSections = publicationSections || [];
+    if (safeSections.length > 0) {
+      const loadedSections = safeSections.map((section, index) => ({
+        client_id: makeClientId(),
         id: section.id,
         section_key: section.section_key || slugKey(section.title, `section_${index + 1}`),
         title: section.title || '',
@@ -76,36 +82,41 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
         sort_order: section.sort_order || index + 1,
         existing_media_upload_session_id: section.media_upload_session_id || null,
         image_file: null,
-      })));
+      }));
+      setSections(loadedSections.some((section) => section.section_key === 'abstract')
+        ? loadedSections
+        : [{ ...defaultSections(articleAbstract || '')[0] }, ...loadedSections].map((section, index) => ({ ...section, sort_order: index + 1 })));
     } else {
-      setSections(defaultSections);
+      setSections(defaultSections(articleAbstract || ''));
     }
-  }, [isOpen, publicationSections]);
+  }, [isOpen, publicationSections, articleAbstract, articleTitle]);
 
-  const updateSection = (index, patch) => {
-    setSections((prev) => prev.map((section, itemIndex) => (
-      itemIndex === index ? { ...section, ...patch } : section
+  const updateSection = (clientId, patch) => {
+    setSections((prev) => prev.map((section) => (
+      section.client_id === clientId ? { ...section, ...patch } : section
     )));
   };
 
-  const moveSection = (index, direction) => {
+  const moveSection = (clientId, direction) => {
     setSections((prev) => {
       const next = [...prev];
+      const index = next.findIndex((section) => section.client_id === clientId);
       const target = index + direction;
-      if (target < 0 || target >= next.length) return prev;
+      if (index < 0 || target < 0 || target >= next.length) return prev;
       [next[index], next[target]] = [next[target], next[index]];
       return next.map((section, itemIndex) => ({ ...section, sort_order: itemIndex + 1 }));
     });
   };
 
-  const removeSection = (index) => {
-    setSections((prev) => prev.filter((_, itemIndex) => itemIndex !== index).map((section, itemIndex) => ({ ...section, sort_order: itemIndex + 1 })));
+  const removeSection = (clientId) => {
+    setSections((prev) => prev.filter((section) => section.client_id !== clientId).map((section, itemIndex) => ({ ...section, sort_order: itemIndex + 1 })));
   };
 
   const addSection = () => {
     setSections((prev) => [
       ...prev,
       {
+        client_id: makeClientId(),
         section_key: `custom_section_${prev.length + 1}`,
         title: 'Custom Section',
         content_html: '',
@@ -140,6 +151,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
       existing_media_upload_session_id: section.existing_media_upload_session_id,
     }));
     const validation = validateWithZod(publishArticleModalSchema, {
+      title: publicationTitle,
       published_year: selectedYear,
       published_month: selectedMonth,
       magazine_issue_id: magazineIssueId || null,
@@ -154,6 +166,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
     setSubmitting(true);
     try {
       await onSubmit({
+        title: publicationTitle.trim(),
         published_year: parseInt(selectedYear, 10),
         published_month: selectedMonth,
         magazine_issue_id: magazineIssueId ? parseInt(magazineIssueId, 10) : null,
@@ -209,9 +222,13 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
               <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 font-mono block">
                 Manuscript Title
               </span>
-              <p className="text-xs font-serif font-bold text-zinc-800 dark:text-zinc-200 leading-normal">
-                {articleTitle}
-              </p>
+              <input
+                type="text"
+                value={publicationTitle}
+                onChange={(event) => setPublicationTitle(event.target.value)}
+                maxLength={255}
+                className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 font-serif text-sm font-bold text-zinc-900 outline-none transition-colors focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+              />
             </div>
             {Object.keys(errors).length > 0 && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
@@ -319,29 +336,29 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
                 </button>
               </div>
               {sections.map((section, index) => (
-                <div key={`${section.section_key}-${index}`} className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/60 p-4 dark:border-zinc-800 dark:bg-zinc-950/30">
+                <div key={section.client_id} className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/60 p-4 dark:border-zinc-800 dark:bg-zinc-950/30">
                   <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
                     <div className="grid gap-3 md:grid-cols-2">
                       <label className="block">
                         <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono">Section Title</span>
-                        <input value={section.title} onChange={(e) => updateSection(index, { title: e.target.value, section_key: slugKey(e.target.value, section.section_key) })} className="mt-1 w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100" />
+                        <input value={section.title} disabled={section.section_key === 'abstract'} onChange={(e) => updateSection(section.client_id, { title: e.target.value, section_key: slugKey(e.target.value, section.section_key) })} className="mt-1 w-full text-xs font-semibold px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100 disabled:opacity-70" />
                       </label>
                       <label className="block">
                         <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono">Section Image</span>
                         <span className="mt-1 flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-bold text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
                           <Upload className="h-3.5 w-3.5" />
                           {section.image_file?.name || (section.existing_media_upload_session_id ? 'Existing image retained' : 'Choose image')}
-                          <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => updateSection(index, { image_file: event.target.files?.[0] || null })} />
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => updateSection(section.client_id, { image_file: event.target.files?.[0] || null })} />
                         </span>
                       </label>
                     </div>
                     <div className="flex items-end gap-1">
-                      <button type="button" onClick={() => moveSection(index, -1)} disabled={index === 0} className="rounded-lg border border-zinc-200 p-2 text-zinc-600 disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-300"><ArrowUp className="h-4 w-4" /></button>
-                      <button type="button" onClick={() => moveSection(index, 1)} disabled={index === sections.length - 1} className="rounded-lg border border-zinc-200 p-2 text-zinc-600 disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-300"><ArrowDown className="h-4 w-4" /></button>
-                      <button type="button" onClick={() => removeSection(index)} className="rounded-lg border border-red-200 p-2 text-red-600 dark:border-red-900/60"><Trash2 className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => moveSection(section.client_id, -1)} disabled={index === 0} title="Move section up" className="rounded-lg border border-zinc-200 p-2 text-zinc-600 disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-300"><ArrowUp className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => moveSection(section.client_id, 1)} disabled={index === sections.length - 1} title="Move section down" className="rounded-lg border border-zinc-200 p-2 text-zinc-600 disabled:opacity-40 dark:border-zinc-800 dark:text-zinc-300"><ArrowDown className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => removeSection(section.client_id)} disabled={section.section_key === 'abstract'} title={section.section_key === 'abstract' ? 'Abstract is required' : 'Delete section'} className="rounded-lg border border-red-200 p-2 text-red-600 disabled:cursor-not-allowed disabled:opacity-35 dark:border-red-900/60"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </div>
-                  <RichEditor value={section.content_html} onChange={(value) => updateSection(index, { content_html: value })} minHeight="180px" />
+                  <RichEditor value={section.content_html} onChange={(value) => updateSection(section.client_id, { content_html: value })} minHeight="180px" />
                 </div>
               ))}
             </div>

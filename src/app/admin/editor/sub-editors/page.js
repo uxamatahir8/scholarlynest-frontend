@@ -22,7 +22,7 @@ export default function MySubEditorsPage() {
   const [form, setForm] = useState({ name: '', email: '' });
   const [formErrors, setFormErrors] = useState({});
 
-  const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const isEditor = hasRole('editor');
   const roleAllowed = isEditor;
 
   useEffect(() => {
@@ -149,18 +149,16 @@ export default function MySubEditorsPage() {
                         {sub.email}
                       </p>
                       <p className="mt-2 text-[10px] text-zinc-400">Linked on {new Date(sub.assigned_at).toLocaleDateString()}</p>
-                      {isFinalLink && (
-                        <p className="mt-1.5 text-[10px] font-bold text-amber-600 dark:text-amber-505">
-                          ⚠️ must remain assigned to at least one Editor
-                        </p>
-                      )}
+                      <p className="mt-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        ✓ Assigned to your editor desk
+                      </p>
                     </div>
                     <button
                       type="button"
                       disabled={unassigningId === sub.id || isFinalLink}
                       onClick={() => handleUnassign(sub.id)}
                       className={`p-2 rounded-xl transition-all shrink-0 ${isFinalLink ? 'text-zinc-300 dark:text-zinc-700 cursor-not-allowed' : 'text-red-500 hover:bg-red-500/10 cursor-pointer disabled:opacity-50'}`}
-                      title={isFinalLink ? "This Sub Editor must remain assigned to at least one Editor." : "Remove link"}
+                      title={isFinalLink ? "Automatically assigned to your desk. A Sub Editor must retain at least one Editor." : "Remove link"}
                     >
                       {unassigningId === sub.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />

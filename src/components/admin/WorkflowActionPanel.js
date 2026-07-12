@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, CheckCircle2, ClipboardCheck, FileCheck2, Loader2, Send, Upload, UserPlus } from 'lucide-react';
+import { ArrowRightLeft, Bell, Check, CheckCircle2, ClipboardCheck, FileCheck2, Loader2, Send, Upload, UserPlus, XCircle } from 'lucide-react';
 import api from '../../utils/api';
 import { safeApiMessage } from '../../utils/safeErrors';
 import { logError } from '../../utils/safeLogger';
@@ -20,8 +20,10 @@ import {
 } from './articleWorkflow';
 import { uploadAndAwaitClean } from '../../lib/mediaUploads/DirectUploadClient';
 import {
-  finalEditorialDecisionSchema,
-  postPublicationWorkflowSchema,
+	  finalEditorialDecisionSchema,
+	  articleTransferRejectSchema,
+	  articleTransferRequestSchema,
+	  postPublicationWorkflowSchema,
   productionAssignmentSchema,
   productionCompletionSchema,
   reviewerWorkflowSubmitSchemaFor,
@@ -90,6 +92,9 @@ export default function WorkflowActionPanel({
   const [confirmAction, setConfirmAction] = useState(null);
   const [assignees, setAssignees] = useState({});
   const [screenForm, setScreenForm] = useState({ decision: 'send_to_review', plagiarism_status: '', plagiarism_score: '', comments: '' });
+  const [transferTargets, setTransferTargets] = useState([]);
+  const [transferForm, setTransferForm] = useState({ to_magazine_id: '', editor_comments: '' });
+  const [transferRejectForm, setTransferRejectForm] = useState({ author_rejection_reason: '' });
   const [subEditorId, setSubEditorId] = useState('');
   const [reviewerId, setReviewerId] = useState('');
   const [manualReviewer, setManualReviewer] = useState({ name: '', email: '', affiliation: '' });
@@ -97,6 +102,7 @@ export default function WorkflowActionPanel({
   const [subEditorForm, setSubEditorForm] = useState({ recommendation: 'minor_revision', comments: '', internal_notes: '' });
   const [reviewForm, setReviewForm] = useState({ recommendation: 'minor_revision', comments_for_author: '', confidential_comments: '', originality: 3, methodology: 3, citation_accuracy: 3 });
   const [questionnaireResponses, setQuestionnaireResponses] = useState({});
+  const [questionnaireComments, setQuestionnaireComments] = useState({});
   const [decisionForm, setDecisionForm] = useState({ decision: 'accepted', decision_source: 'mixed_editorial_decision', comments_for_author: '', internal_notes: '' });
   const [postForm, setPostForm] = useState({ action_type: 'correction', reason: '', notice_text: '' });
   const [files, setFiles] = useState({
@@ -107,7 +113,7 @@ export default function WorkflowActionPanel({
   });
 
   const isAdmin = hasRole('super_admin') || hasRole('admin');
-  const isEditor = hasRole('editor') || hasRole('magazine_editor') || hasRole('magazine-editor');
+  const isEditor = hasRole('editor');
   const isSubEditor = hasRole('sub_editor');
   const isReviewer = hasRole('reviewer');
   const isPublisher = hasRole('publisher');
@@ -115,7 +121,7 @@ export default function WorkflowActionPanel({
   const canEditorial = isAdmin || isEditor;
   const canAssignReviewer = isAdmin || isEditor || isSubEditor;
   const canPublish = isAdmin || isPublisher;
-  const canAssignProduction = isAdmin || isEditor || isPublisher;
+  const canAssignProduction = isAdmin || isPublisher;
 
   const mySubEditorAssignment = useMemo(() => (
     (workflowContext?.sub_editor_assignments || []).find((item) => Number(item.sub_editor_id) === Number(user?.id))
@@ -124,6 +130,8 @@ export default function WorkflowActionPanel({
   const myReviewerAssignment = useMemo(() => (
     (workflowContext?.reviewer_assignments || []).find((item) => Number(item.reviewer_id) === Number(user?.id))
   ), [workflowContext, user]);
+  const reviewerQuestions = myReviewerAssignment?.questionnaire_instance?.questions || [];
+  const hasQuestionnaireFinalDecision = reviewerQuestions.some((question) => question.prompt?.toLowerCase() === 'final decision');
 
   const myProductionAssignment = useMemo(() => (
     (workflowContext?.production_assignments || []).find((item) => {
@@ -141,6 +149,51 @@ export default function WorkflowActionPanel({
     })
   ), [workflowContext, user, isAdmin, isCopyEditor]);
 
+  const allReviewersToShow = useMemo(() => {
+    const suggestedList = article?.reviewer_preferences?.suggested || [];
+    const assignmentsList = article?.reviewer_assignments || [];
+
+    const getAssignmentForEmail = (email) => {
+      const normalized = String(email || '').trim().toLowerCase();
+      if (!normalized) return null;
+      return assignmentsList.find((assignment) => (
+        String(assignment.invitee_email || '').trim().toLowerCase() === normalized
+      ));
+    };
+
+    const manualInvitations = assignmentsList.filter(
+      (assignment) => !suggestedList.some(
+        (suggested) => String(suggested.email || '').trim().toLowerCase() === String(assignment.invitee_email || '').trim().toLowerCase()
+      )
+    ).map((assignment) => ({
+      id: assignment.id,
+      name: assignment.invitee_name || assignment.reviewer?.name,
+      email: assignment.invitee_email || assignment.reviewer?.email,
+      affiliation: assignment.reviewer?.affiliation || '',
+      isManual: true,
+      status: assignment.invitation_state || assignment.status,
+    }));
+
+    return [
+      ...suggestedList.map((reviewer) => {
+        const existingAssignment = getAssignmentForEmail(reviewer.email);
+        const state = existingAssignment?.invitation_state || existingAssignment?.status;
+        return {
+          ...reviewer,
+          isManual: false,
+          state,
+          existingAssignment,
+        };
+      }),
+      ...manualInvitations.map((reviewer) => ({
+        ...reviewer,
+        isManual: true,
+        state: reviewer.status,
+        existingAssignment: assignmentsList.find(a => a.id === reviewer.id),
+      })),
+    ];
+  }, [article?.reviewer_preferences, article?.reviewer_assignments]);
+
   const loadAssignees = async (role) => {
     if (assignees[role] || !article?.magazine_id) return;
     try {
@@ -150,6 +203,17 @@ export default function WorkflowActionPanel({
       setAssignees((prev) => ({ ...prev, [role]: res.data?.data || [] }));
     } catch (err) {
       logError(`Failed to load ${role} assignees`, err);
+    }
+  };
+
+  const loadTransferTargets = async () => {
+    if (!article?.id || transferTargets.length) return;
+    try {
+      const res = await api.get(`/articles/${article.id}/transfer-target-magazines`);
+      setTransferTargets(res.data?.data || []);
+    } catch (err) {
+      logError('Failed to load transfer target magazines', err);
+      toast(safeApiMessage(err, 'Unable to load transfer target magazines.'), 'error');
     }
   };
 
@@ -218,6 +282,12 @@ export default function WorkflowActionPanel({
 
   const updateQuestionnaireAnswer = (question, value) => {
     setQuestionnaireResponses((prev) => ({ ...prev, [question.id]: value }));
+    if (question.prompt?.toLowerCase() === 'final decision') {
+      setReviewForm((prev) => ({
+        ...prev,
+        recommendation: value === 'moderate_revision' ? 'major_revision' : value,
+      }));
+    }
   };
 
   const reviewerAssignmentForEmail = (email) => {
@@ -228,9 +298,10 @@ export default function WorkflowActionPanel({
     ));
   };
 
-  const questionnairePayload = () => Object.entries(questionnaireResponses).map(([questionId, answer]) => ({
-    question_id: Number(questionId),
-    answer,
+  const questionnairePayload = () => reviewerQuestions.map((question) => ({
+    question_id: Number(question.id),
+    answer: questionnaireResponses[question.id] ?? question.answer ?? '',
+    comment: questionnaireComments[question.id] ?? question.comment ?? '',
   }));
 
   const validateAction = (schema, values) => {
@@ -262,7 +333,10 @@ export default function WorkflowActionPanel({
   };
 
   const status = article.status;
-  const canScreen = canEditorial && ['submitted', 'pending'].includes(status);
+  const canScreen = canEditorial && ['submitted', 'pending', 'screening'].includes(status);
+  const pendingTransferRequest = article?.pending_transfer_request;
+  const canRequestTransfer = Boolean(article?.can_request_transfer) && canScreen;
+  const canRespondTransferRequest = Boolean(article?.can_respond_transfer_request) && status === 'in_transit' && pendingTransferRequest;
   const canAssignSubEditor = canEditorial && ['under_review', 'resubmitted'].includes(status);
   const canShowReviewerAssignment = canAssignReviewer && ['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted'].includes(status);
   const canFinalDecision = canEditorial && REVIEWABLE_STATUSES.has(status);
@@ -282,7 +356,11 @@ export default function WorkflowActionPanel({
     ? 'This will mark your copyediting task as complete and move the manuscript toward publication readiness.'
     : 'This will mark your production task as complete and move the manuscript toward publication readiness.';
 
-  const hasAnyAction = canScreen || canAssignSubEditor || canShowReviewerAssignment || (isSubEditor && mySubEditorAssignment)
+  useEffect(() => {
+    if (canRequestTransfer) loadTransferTargets();
+  }, [canRequestTransfer, article?.id]);
+
+  const hasAnyAction = canScreen || canRespondTransferRequest || canAssignSubEditor || canShowReviewerAssignment || (isSubEditor && mySubEditorAssignment)
     || (isReviewer && myReviewerAssignment) || canFinalDecision || canAuthorFinalReview || canShowProductionAssignment || canCompleteProduction
     || completedProductionAssignment || canShowPublish || canPostPublication;
 
@@ -297,55 +375,108 @@ export default function WorkflowActionPanel({
           <EmptyState title="No action available">Your role has no workflow action for this manuscript right now.</EmptyState>
         )}
 
+        {status === 'in_transit' && (
+          <Alert tone="warning" title="Article in transit">
+            This manuscript is waiting for the author to accept or reject a magazine transfer request. Normal editorial workflow actions are paused until the request is resolved.
+          </Alert>
+        )}
+
         {canScreen && (
-          <ActionBlock title="Editorial Screening" description="Decide whether this manuscript moves into review or is rejected during screening.">
+          <ActionBlock title="Editorial Screening" description="Decide whether this manuscript moves into review, is rejected during screening, or should be transferred to another magazine.">
             <div className="grid gap-3 md:grid-cols-3">
               <Field label="Decision" required>
                 <Select value={screenForm.decision} onChange={(event) => setScreenForm({ ...screenForm, decision: event.target.value })}>
                   <option value="send_to_review">Send to Review</option>
+                  {canRequestTransfer && <option value="transfer">Transfer Article</option>}
                   <option value="reject">Reject at Screening</option>
                 </Select>
               </Field>
-              <Field label="Similarity Status">
-                <Input value={screenForm.plagiarism_status} onChange={(event) => setScreenForm({ ...screenForm, plagiarism_status: event.target.value })} />
-              </Field>
-              <Field label="Similarity Score">
-                <Input type="number" min="0" max="100" value={screenForm.plagiarism_score} onChange={(event) => setScreenForm({ ...screenForm, plagiarism_score: event.target.value })} />
-              </Field>
+              {screenForm.decision !== 'transfer' && (
+                <>
+                  <Field label="Similarity Status">
+                    <Input value={screenForm.plagiarism_status} onChange={(event) => setScreenForm({ ...screenForm, plagiarism_status: event.target.value })} />
+                  </Field>
+                  <Field label="Similarity Score">
+                    <Input type="number" min="0" max="100" value={screenForm.plagiarism_score} onChange={(event) => setScreenForm({ ...screenForm, plagiarism_score: event.target.value })} />
+                  </Field>
+                </>
+              )}
             </div>
-            <Field label={screenForm.decision === 'reject' ? 'Reason for Author' : 'Screening Notes'} required={screenForm.decision === 'reject'}>
-              <Textarea value={screenForm.comments} onChange={(event) => setScreenForm({ ...screenForm, comments: event.target.value })} rows={3} />
-            </Field>
-            {fileInput('plagiarism_report', 'Similarity Report')}
-            <Button
-              type="button"
-              icon={ClipboardCheck}
-              isLoading={busyAction === 'screen'}
-              disabled={screenForm.decision === 'reject' && !screenForm.comments.trim()}
-	              onClick={() => {
-	                if (!validateAction(workflowScreeningSchema, screenForm)) return;
-	                askConfirmation({
-	                key: 'screen',
-	                title: screenForm.decision === 'reject' ? 'Reject during screening?' : 'Send manuscript to review?',
-	                message: screenForm.decision === 'reject'
-                  ? 'This will reject the manuscript during screening and notify the author-facing workflow with your reason.'
-                  : 'This will move the manuscript into editorial review.',
-                confirmText: screenForm.decision === 'reject' ? 'Reject Manuscript' : 'Send to Review',
-                variant: screenForm.decision === 'reject' ? 'danger' : 'primary',
-	                run: () => runAction('screen', async () => api.post(`/admin/articles/${article.id}/screen`, await buildDirectUploadFormData({
-	                  ...screenForm,
-	                  plagiarism_score: screenForm.plagiarism_score === '' ? null : Number(screenForm.plagiarism_score),
-                }, {
-                  plagiarism_report_upload_id: {
-                    file: files.plagiarism_report,
-                    purpose: 'article_plagiarism_report',
-                  },
-	                }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Screening result saved.'),
-	              });
-	              }}
-            >
-              Save Screening
-            </Button>
+            {screenForm.decision === 'transfer' ? (
+              <>
+                <Alert tone="info" title="Transfer requires author approval">
+                  The author will receive a request to accept or reject the proposed magazine transfer. The manuscript will move to In Transit while waiting.
+                </Alert>
+                <Field label="Target Magazine" required>
+                  <Select value={transferForm.to_magazine_id} onChange={(event) => setTransferForm({ ...transferForm, to_magazine_id: event.target.value })}>
+                    <option value="">Select target magazine</option>
+                    {transferTargets.map((magazine) => (
+                      <option key={magazine.id} value={magazine.id}>{magazine.name || magazine.title}</option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Transfer Comments" required>
+                  <Textarea value={transferForm.editor_comments} onChange={(event) => setTransferForm({ ...transferForm, editor_comments: event.target.value })} rows={4} />
+                </Field>
+                <Button
+                  type="button"
+                  icon={ArrowRightLeft}
+                  isLoading={busyAction === 'transfer-request'}
+                  onClick={() => {
+                    if (!validateAction(articleTransferRequestSchema, transferForm)) return;
+                    askConfirmation({
+                      key: 'transfer-request',
+                      title: 'Send transfer request?',
+                      message: 'This will pause normal editorial workflow and ask the author to approve moving the manuscript to the selected magazine.',
+                      confirmText: 'Submit Transfer Request',
+                      variant: 'primary',
+                      run: () => runAction('transfer-request', () => api.post(`/articles/${article.id}/transfer-requests`, {
+                        to_magazine_id: Number(transferForm.to_magazine_id),
+                        editor_comments: transferForm.editor_comments,
+                      }), 'Transfer request sent to the author.'),
+                    });
+                  }}
+                >
+                  Submit Transfer Request
+                </Button>
+              </>
+            ) : (
+              <>
+                <Field label={screenForm.decision === 'reject' ? 'Reason for Author' : 'Screening Notes'} required={screenForm.decision === 'reject'}>
+                  <Textarea value={screenForm.comments} onChange={(event) => setScreenForm({ ...screenForm, comments: event.target.value })} rows={3} />
+                </Field>
+                {fileInput('plagiarism_report', 'Similarity Report')}
+                <Button
+                  type="button"
+                  icon={ClipboardCheck}
+                  isLoading={busyAction === 'screen'}
+                  disabled={screenForm.decision === 'reject' && !screenForm.comments.trim()}
+                  onClick={() => {
+                    if (!validateAction(workflowScreeningSchema, screenForm)) return;
+                    askConfirmation({
+                      key: 'screen',
+                      title: screenForm.decision === 'reject' ? 'Reject during screening?' : 'Send manuscript to review?',
+                      message: screenForm.decision === 'reject'
+                        ? 'This will reject the manuscript during screening and notify the author-facing workflow with your reason.'
+                        : 'This will move the manuscript into editorial review.',
+                      confirmText: screenForm.decision === 'reject' ? 'Reject Manuscript' : 'Send to Review',
+                      variant: screenForm.decision === 'reject' ? 'danger' : 'primary',
+                      run: () => runAction('screen', async () => api.post(`/admin/articles/${article.id}/screen`, await buildDirectUploadFormData({
+                        ...screenForm,
+                        plagiarism_score: screenForm.plagiarism_score === '' ? null : Number(screenForm.plagiarism_score),
+                      }, {
+                        plagiarism_report_upload_id: {
+                          file: files.plagiarism_report,
+                          purpose: 'article_plagiarism_report',
+                        },
+                      }), { headers: { 'Content-Type': 'multipart/form-data' } }), 'Screening result saved.'),
+                    });
+                  }}
+                >
+                  Save Screening
+                </Button>
+              </>
+            )}
           </ActionBlock>
         )}
 
@@ -383,7 +514,7 @@ export default function WorkflowActionPanel({
               )}
               {canShowReviewerAssignment && (
                 <div className="space-y-4 md:col-span-2">
-                  <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2 max-w-md">
                   <Field label="Existing Reviewer">
                     <Select value={reviewerId} onChange={(event) => setReviewerId(event.target.value)}>
                       <option value="">Select Reviewer</option>
@@ -411,40 +542,103 @@ export default function WorkflowActionPanel({
                   </Button>
                   </div>
 
-                  {(article.reviewer_preferences?.suggested || []).length > 0 && (
+                  {allReviewersToShow.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Suggested Reviewers</p>
+                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Suggested & Invited Reviewers</p>
                       <div className="grid gap-2">
-                        {article.reviewer_preferences.suggested.map((reviewer) => {
-                          const existingAssignment = reviewerAssignmentForEmail(reviewer.email);
-                          const state = existingAssignment?.invitation_state || existingAssignment?.status;
+                        {allReviewersToShow.map((reviewer) => {
+                          const assignment = reviewer.existingAssignment;
+                          const showReminder = assignment && reviewer.state === 'invited';
                           return (
-                          <div key={reviewer.id || reviewer.email} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+                          <div key={reviewer.isManual ? 'manual-' + reviewer.id : 'suggested-' + (reviewer.id || reviewer.email)} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                               <div>
                                 <p className="text-sm font-bold text-[var(--foreground)]">{reviewer.name}</p>
                                 <p className="text-xs text-[var(--muted)]">{reviewer.email}{reviewer.affiliation ? ` · ${reviewer.affiliation}` : ''}</p>
                               </div>
-	                              <Button
-                                type="button"
-                                size="sm"
-                                icon={UserPlus}
-	                                isLoading={busyAction === `suggested-${reviewer.id}`}
-	                                disabled={Boolean(existingAssignment)}
-	                                onClick={() => {
-	                                  if (!validateAction(workflowSuggestedReviewerSchema, { suggested_preference_id: reviewer.id })) return;
-	                                  askConfirmation({
-	                                  key: `suggested-${reviewer.id}`,
-                                  title: 'Invite suggested reviewer?',
-                                  message: 'This will send a secure review invitation to the suggested reviewer.',
-                                  confirmText: 'Send Invitation',
-                                  variant: 'primary',
-	                                  run: () => runAction(`suggested-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { suggested_preference_id: reviewer.id }), 'Reviewer invitation sent.'),
-	                                });
-	                                }}
-                              >
-	                                {state ? labelize(state) : 'Invite'}
-	                              </Button>
+                              {reviewer.isManual ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center rounded-lg bg-[var(--surface-muted)] border border-[var(--border)] px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+                                    Manual Invite
+                                  </span>
+                                  {reviewer.state && (
+                                    <span className="inline-flex items-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                      {labelize(reviewer.state)}
+                                    </span>
+                                  )}
+                                  {showReminder && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="secondary"
+                                      icon={Bell}
+                                      isLoading={busyAction === `remind-${assignment.id}`}
+                                      onClick={() => {
+                                        askConfirmation({
+                                          key: `remind-${assignment.id}`,
+                                          title: 'Send reminder?',
+                                          message: 'This will send a reminder email to the reviewer about this review invitation.',
+                                          confirmText: 'Send Reminder',
+                                          variant: 'primary',
+                                          run: () => runAction(`remind-${assignment.id}`, () => api.post(`/admin/reviewer-assignments/${assignment.id}/remind`), 'Reminder email sent.'),
+                                        });
+                                      }}
+                                    >
+                                      Send Reminder
+                                    </Button>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  {reviewer.state && (
+                                    <span className="inline-flex items-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                      {labelize(reviewer.state)}
+                                    </span>
+                                  )}
+                                  {showReminder && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="secondary"
+                                      icon={Bell}
+                                      isLoading={busyAction === `remind-${assignment.id}`}
+                                      onClick={() => {
+                                        askConfirmation({
+                                          key: `remind-${assignment.id}`,
+                                          title: 'Send reminder?',
+                                          message: 'This will send a reminder email to the reviewer about this review invitation.',
+                                          confirmText: 'Send Reminder',
+                                          variant: 'primary',
+                                          run: () => runAction(`remind-${assignment.id}`, () => api.post(`/admin/reviewer-assignments/${assignment.id}/remind`), 'Reminder email sent.'),
+                                        });
+                                      }}
+                                    >
+                                      Send Reminder
+                                    </Button>
+                                  )}
+                                  {!reviewer.existingAssignment && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      icon={UserPlus}
+                                      isLoading={busyAction === `suggested-${reviewer.id}`}
+                                      onClick={() => {
+                                        if (!validateAction(workflowSuggestedReviewerSchema, { suggested_preference_id: reviewer.id })) return;
+                                        askConfirmation({
+                                          key: `suggested-${reviewer.id}`,
+                                          title: 'Invite suggested reviewer?',
+                                          message: 'This will send a secure review invitation to the suggested reviewer.',
+                                          confirmText: 'Send Invitation',
+                                          variant: 'primary',
+                                          run: () => runAction(`suggested-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { suggested_preference_id: reviewer.id }), 'Reviewer invitation sent.'),
+                                        });
+                                      }}
+                                    >
+                                      Invite
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
@@ -569,11 +763,13 @@ export default function WorkflowActionPanel({
               </>
             ) : (
               <>
-                <Field label="Recommendation" required>
-                  <Select value={reviewForm.recommendation} onChange={(event) => setReviewForm({ ...reviewForm, recommendation: event.target.value })}>
-                    {recommendationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                  </Select>
-                </Field>
+                {!hasQuestionnaireFinalDecision && (
+                  <Field label="Recommendation" required>
+                    <Select value={reviewForm.recommendation} onChange={(event) => setReviewForm({ ...reviewForm, recommendation: event.target.value })}>
+                      {recommendationOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </Select>
+                  </Field>
+                )}
                 <div className="grid gap-3 md:grid-cols-3">
                   {['originality', 'methodology', 'citation_accuracy'].map((key) => (
                     <Field key={key} label={key.replaceAll('_', ' ')}>
@@ -591,7 +787,8 @@ export default function WorkflowActionPanel({
                   <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
                     <p className="text-sm font-bold text-[var(--foreground)]">Reviewer Questionnaire</p>
                     {myReviewerAssignment.questionnaire_instance.questions.map((question) => (
-                      <Field key={question.id} label={question.prompt} required={question.is_required}>
+                      <div key={question.id} className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+                      <Field label={question.prompt} required={question.is_required}>
                         {question.response_type === 'textarea' ? (
                           <Textarea value={questionnaireResponses[question.id] || question.answer || ''} onChange={(event) => updateQuestionnaireAnswer(question, event.target.value)} rows={3} />
                         ) : question.response_type === 'single_line' ? (
@@ -599,20 +796,42 @@ export default function WorkflowActionPanel({
                         ) : question.response_type === 'checkbox' ? (
                           <div className="flex flex-wrap gap-2">
                             {(question.options || []).map((option) => {
+                              const val = typeof option === 'object' && option !== null ? option.value : option;
+                              const lbl = typeof option === 'object' && option !== null ? option.label : option;
                               const rawCurrent = questionnaireResponses[question.id] ?? question.answer ?? [];
                               const current = Array.isArray(rawCurrent) ? rawCurrent : [];
-                              const checked = current.includes(option.value);
+                              const checked = current.includes(val);
                               return (
-                                <label key={option.value} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm">
+                                <label key={val} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm cursor-pointer hover:bg-[var(--surface-muted)] transition-colors">
                                   <input
                                     type="checkbox"
                                     checked={checked}
                                     onChange={(event) => {
-                                      const next = event.target.checked ? [...current, option.value] : current.filter((item) => item !== option.value);
+                                      const next = event.target.checked ? [...current, val] : current.filter((item) => item !== val);
                                       updateQuestionnaireAnswer(question, next);
                                     }}
                                   />
-                                  {option.label}
+                                  {lbl}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ) : question.response_type === 'radio' ? (
+                          <div className="flex flex-wrap gap-4">
+                            {(question.options || []).map((option) => {
+                              const val = typeof option === 'object' && option !== null ? option.value : option;
+                              const lbl = typeof option === 'object' && option !== null ? option.label : option;
+                              const checked = (questionnaireResponses[question.id] ?? question.answer) === val;
+                              return (
+                                <label key={val} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] px-4 py-2.5 text-sm cursor-pointer hover:bg-[var(--surface-muted)] transition-colors">
+                                  <input
+                                    type="radio"
+                                    name={`question-${question.id}`}
+                                    value={val}
+                                    checked={checked}
+                                    onChange={() => updateQuestionnaireAnswer(question, val)}
+                                  />
+                                  {lbl}
                                 </label>
                               );
                             })}
@@ -620,10 +839,25 @@ export default function WorkflowActionPanel({
                         ) : (
                           <Select value={questionnaireResponses[question.id] || question.answer || ''} onChange={(event) => updateQuestionnaireAnswer(question, event.target.value)}>
                             <option value="">Select</option>
-                            {(question.options || []).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                            {(question.options || []).map((option) => {
+                              const val = typeof option === 'object' && option !== null ? option.value : option;
+                              const lbl = typeof option === 'object' && option !== null ? option.label : option;
+                              return <option key={val} value={val}>{lbl}</option>;
+                            })}
                           </Select>
                         )}
                       </Field>
+                      {question.comment_helper && (
+                        <Field label="Comment or suggested modification">
+                          <Textarea
+                            value={questionnaireComments[question.id] ?? question.comment ?? ''}
+                            onChange={(event) => setQuestionnaireComments((prev) => ({ ...prev, [question.id]: event.target.value }))}
+                            rows={2}
+                            placeholder={question.comment_helper}
+                          />
+                        </Field>
+                      )}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -702,10 +936,69 @@ export default function WorkflowActionPanel({
           </ActionBlock>
         )}
 
+        {canRespondTransferRequest && (
+          <ActionBlock title="Magazine Transfer Request" description="Review the editor’s proposed transfer and choose whether this manuscript should move to the suggested magazine.">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">Current Magazine</p>
+                <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">{pendingTransferRequest.from_magazine?.title || article.magazine?.title || 'Current magazine'}</p>
+              </div>
+              <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">Suggested Magazine</p>
+                <p className="mt-1 text-sm font-semibold text-[var(--foreground)]">{pendingTransferRequest.to_magazine?.title || 'Suggested magazine'}</p>
+              </div>
+            </div>
+            <div className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-3 text-sm text-[var(--muted)]">
+              <p><span className="font-semibold text-[var(--foreground)]">Requested by:</span> {pendingTransferRequest.requested_by?.name || 'Editorial team'}</p>
+              <p><span className="font-semibold text-[var(--foreground)]">Requested at:</span> {pendingTransferRequest.requested_at ? new Date(pendingTransferRequest.requested_at).toLocaleString() : 'Not recorded'}</p>
+              <p className="mt-2 whitespace-pre-line"><span className="font-semibold text-[var(--foreground)]">Editor comments:</span> {pendingTransferRequest.editor_comments || 'No comments provided.'}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                icon={CheckCircle2}
+                isLoading={busyAction === 'transfer-accept'}
+                onClick={() => askConfirmation({
+                  key: 'transfer-accept',
+                  title: 'Accept magazine transfer?',
+                  message: 'This will move the manuscript to the suggested magazine and return it to Screening.',
+                  confirmText: 'Accept Transfer',
+                  variant: 'primary',
+                  run: () => runAction('transfer-accept', () => api.post(`/articles/${article.id}/transfer-requests/${pendingTransferRequest.id}/accept`), 'Transfer accepted.'),
+                })}
+              >
+                Accept Transfer
+              </Button>
+              <Button
+                type="button"
+                icon={XCircle}
+                variant="secondary"
+                isLoading={busyAction === 'transfer-reject'}
+                onClick={() => {
+                  if (!validateAction(articleTransferRejectSchema, transferRejectForm)) return;
+                  askConfirmation({
+                    key: 'transfer-reject',
+                    title: 'Reject magazine transfer?',
+                    message: 'This will keep the manuscript in the current magazine and return it to Screening.',
+                    confirmText: 'Reject Transfer',
+                    variant: 'danger',
+                    run: () => runAction('transfer-reject', () => api.post(`/articles/${article.id}/transfer-requests/${pendingTransferRequest.id}/reject`, transferRejectForm), 'Transfer rejected.'),
+                  });
+                }}
+              >
+                Reject Transfer
+              </Button>
+            </div>
+            <Field label="Rejection Reason" required>
+              <Textarea value={transferRejectForm.author_rejection_reason} onChange={(event) => setTransferRejectForm({ author_rejection_reason: event.target.value })} rows={3} />
+            </Field>
+          </ActionBlock>
+        )}
+
         {canAuthorFinalReview && (
-          <ActionBlock title="Author Final Review" description="Approve the accepted manuscript so production can begin.">
-            <Alert tone="info" title="Accepted manuscript">
-              The editorial decision is complete. Approval is limited to the manuscript owner or corresponding author.
+          <ActionBlock title="Author Final Review" description="Approve the proofread manuscript for publication.">
+            <Alert tone="info" title="Proofreading complete">
+              Review the final proof before publication. Approval is limited to the manuscript owner or corresponding author.
             </Alert>
             <Button
               type="button"
@@ -714,7 +1007,7 @@ export default function WorkflowActionPanel({
               onClick={() => askConfirmation({
                 key: 'author-final-review',
                 title: 'Approve final review?',
-                message: 'This confirms the accepted manuscript may move to copyediting.',
+                message: 'This confirms the final proof may move to ready for publication.',
                 confirmText: 'Approve Final Review',
                 variant: 'primary',
                 run: () => runAction('author-final-review', () => api.post(`/admin/articles/${article.id}/author-final-review`), 'Final review approved.'),

@@ -49,6 +49,9 @@ export const safeApiMessage = (error, fallback = 'We could not complete that req
     if (msg.includes('account_already_exists') || msg.includes('already exists') || msg.includes('email has already been taken')) {
       return 'An account already exists with this email.';
     }
+
+    // Return any other custom API error message directly
+    return message;
   }
 
   const status = error?.[ 'response' ]?.status;

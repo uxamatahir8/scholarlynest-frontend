@@ -25,7 +25,6 @@ export function rolePurpose(role) {
     super_admin: 'Full platform governance and access control.',
     admin: 'Legacy administrative access with limited authority.',
     editor: 'Editorial screening, routing, and manuscript decisions.',
-    magazine_editor: 'Magazine-scoped editorial management.',
     sub_editor: 'Assigned manuscript review support for Editors.',
     reviewer: 'Peer review work assigned by editorial teams.',
     publisher: 'Publication, issue, and production readiness work.',
@@ -42,7 +41,6 @@ export function roleAccessAreas(role, permissions = []) {
     super_admin: ['Users and Access', 'Publishing', 'Public Content', 'System Settings'],
     admin: ['Publishing', 'Public Content', 'System Settings'],
     editor: ['Articles and Workflow', 'Magazines and Issues'],
-    magazine_editor: ['Articles and Workflow', 'Assigned Magazines'],
     sub_editor: ['Assigned Manuscripts', 'Editorial Recommendations'],
     reviewer: ['Assigned Reviews'],
     publisher: ['Issues and Publication'],
@@ -81,7 +79,7 @@ export function isSubEditorRole(role) {
 }
 
 export function isMagazineAssignmentRole(role) {
-  return ['editor', 'magazine_editor', 'publisher', 'proofreader'].includes(normalizeRoleName(role));
+  return ['editor', 'publisher', 'proofreader'].includes(normalizeRoleName(role));
 }
 
 export function canOfferImpersonation({ authUser, targetUser, impersonationStatus }) {

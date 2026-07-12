@@ -14,7 +14,7 @@ import Alert from '../../../../components/ui/Alert';
 import LoadingState from '../../../../components/ui/LoadingState';
 import ErrorState from '../../../../components/ui/ErrorState';
 
-const emptyQuestion = () => ({ prompt: '', response_type: 'radio', is_required: true, options: ['Yes', 'No'] });
+const emptyQuestion = () => ({ prompt: '', comment_helper: '', response_type: 'radio', is_required: true, options: ['Yes', 'No'] });
 const optionTypes = new Set(['radio', 'checkbox', 'dropdown']);
 
 export default function ReviewQuestionnaireSettingsPage() {
@@ -45,6 +45,7 @@ export default function ReviewQuestionnaireSettingsPage() {
           if (active.length > 0) {
             setQuestions(active.map((question) => ({
               prompt: question.prompt || '',
+              comment_helper: question.comment_helper || '',
               response_type: question.response_type || 'radio',
               is_required: !!question.is_required,
               options: question.options?.length ? question.options : [''],
@@ -97,39 +98,86 @@ export default function ReviewQuestionnaireSettingsPage() {
         </Field>
 
         {questions.map((question, index) => (
-          <div key={index} className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+          <div key={index} className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 transition-all hover:border-[var(--border-hover)]">
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-sm font-bold text-[var(--foreground)]">Question {index + 1}</p>
-              <button type="button" onClick={() => setQuestions(questions.filter((_, idx) => idx !== index))} className="text-red-600">
+              <button type="button" onClick={() => setQuestions(questions.filter((_, idx) => idx !== index))} className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
-            <Field label="Prompt" required>
-              <Textarea value={question.prompt} onChange={(event) => updateQuestion(index, 'prompt', event.target.value)} rows={2} />
+            <Field label="Question Text" required>
+              <Textarea value={question.prompt} onChange={(event) => updateQuestion(index, 'prompt', event.target.value)} rows={2} placeholder="e.g. Does this manuscript require major revisions?" />
             </Field>
+            <div className="mt-3">
+              <Field label="Optional Comment Helper">
+                <Input value={question.comment_helper || ''} onChange={(event) => updateQuestion(index, 'comment_helper', event.target.value)} placeholder="e.g. If No, suggest modification." />
+              </Field>
+            </div>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <Field label="Response type">
-                <Select value={question.response_type} onChange={(event) => updateQuestion(index, 'response_type', event.target.value)}>
-                  <option value="radio">Radio</option>
-                  <option value="checkbox">Checkbox</option>
-                  <option value="dropdown">Dropdown select</option>
-                  <option value="single_line">Single line answer</option>
-                  <option value="textarea">Textarea</option>
+              <Field label="Answer Type">
+                <Select
+                  value={question.response_type}
+                  onChange={(event) => {
+                    const nextType = event.target.value;
+                    const defaultOptions = optionTypes.has(nextType) && (!question.options || question.options.length === 0 || (question.options.length === 1 && !question.options[0]))
+                      ? ['Yes', 'No']
+                      : question.options || [];
+                    setQuestions(questions.map((q, idx) => (idx === index ? { ...q, response_type: nextType, options: defaultOptions } : q)));
+                  }}
+                >
+                  <option value="radio">Single Choice (Radio Buttons)</option>
+                  <option value="checkbox">Multiple Choice (Checkboxes)</option>
+                  <option value="dropdown">Dropdown Select</option>
+                  <option value="single_line">Short Text (Single Line)</option>
+                  <option value="textarea">Long Text (Paragraph)</option>
                 </Select>
               </Field>
-              <label className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-[var(--foreground)]">
+              <label className="mt-7 inline-flex items-center gap-2 text-sm font-bold text-[var(--foreground)] cursor-pointer">
                 <input type="checkbox" checked={question.is_required} onChange={(event) => updateQuestion(index, 'is_required', event.target.checked)} />
                 Required
               </label>
             </div>
             {optionTypes.has(question.response_type) && (
-              <Field label="Options" className="mt-3">
-                <Textarea
-                  value={(question.options || []).join('\n')}
-                  onChange={(event) => updateQuestion(index, 'options', event.target.value.split('\n'))}
-                  rows={4}
-                />
-              </Field>
+              <div className="mt-3 space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Answer Options</p>
+                <div className="space-y-2">
+                  {(question.options || []).map((option, optIdx) => (
+                    <div key={optIdx} className="flex items-center gap-2">
+                      <Input
+                        value={option}
+                        placeholder={`Option ${optIdx + 1}`}
+                        onChange={(event) => {
+                          const nextOpts = [...(question.options || [])];
+                          nextOpts[optIdx] = event.target.value;
+                          updateQuestion(index, 'options', nextOpts);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextOpts = (question.options || []).filter((_, oIdx) => oIdx !== optIdx);
+                          updateQuestion(index, 'options', nextOpts);
+                        }}
+                        className="text-red-500 hover:text-red-700 p-1"
+                        title="Delete option"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  icon={Plus}
+                  onClick={() => {
+                    updateQuestion(index, 'options', [...(question.options || []), '']);
+                  }}
+                >
+                  Add Option
+                </Button>
+              </div>
             )}
           </div>
         ))}

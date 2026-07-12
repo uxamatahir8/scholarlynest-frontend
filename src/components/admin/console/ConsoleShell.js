@@ -31,7 +31,10 @@ export default function ConsoleShell({ children, auth }) {
   const [stoppingImpersonation, setStoppingImpersonation] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) router.push('/login');
+    if (!authLoading && !user) {
+      const requestedPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      router.replace(`/login?redirect=${encodeURIComponent(requestedPath)}`);
+    }
   }, [authLoading, router, user]);
 
   useEffect(() => {
@@ -68,6 +71,59 @@ export default function ConsoleShell({ children, auth }) {
     () => getVisibleConsoleNavigation({ user, hasPermission, impersonationStatus }),
     [user, hasPermission, impersonationStatus],
   );
+
+  useEffect(() => {
+    if (!pathname) return;
+
+    let pageTitle = 'Admin Console';
+
+    // 1. Check exact/prefix matches from navigation items
+    const flatItems = navigation.flatMap((section) => section.items || []);
+    const navMatch = [...flatItems]
+      .sort((a, b) => b.href.length - a.href.length)
+      .find((item) => (item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`)));
+
+    if (navMatch) {
+      pageTitle = navMatch.label;
+    }
+
+    // 2. Override with specific sub-page/dynamic-route patterns
+    if (pathname === '/admin') {
+      pageTitle = 'Dashboard';
+    } else if (pathname === '/admin/articles/new') {
+      pageTitle = 'New Submission';
+    } else if (/^\/admin\/articles\/[^/]+\/workflow$/.test(pathname)) {
+      pageTitle = 'Manuscript Workflow';
+    } else if (/^\/admin\/articles\/[^/]+\/edit$/.test(pathname)) {
+      pageTitle = 'Edit Manuscript';
+    } else if (pathname === '/admin/users/create') {
+      pageTitle = 'Create User';
+    } else if (/^\/admin\/users\/[^/]+\/edit$/.test(pathname)) {
+      pageTitle = 'Edit User';
+    } else if (/^\/admin\/magazines\/[^/]+\/pages$/.test(pathname)) {
+      pageTitle = 'Magazine Pages';
+    } else if (pathname === '/admin/support/new') {
+      pageTitle = 'New Support Ticket';
+    } else if (/^\/admin\/support\/[^/]+$/.test(pathname)) {
+      pageTitle = 'Support Ticket Chat';
+    } else if (/^\/admin\/support-tickets\/[^/]+$/.test(pathname)) {
+      pageTitle = 'Review Support Ticket';
+    } else if (/^\/admin\/rbac$/.test(pathname)) {
+      pageTitle = 'Redirecting...';
+    } else if (pathname === '/admin/search-results') {
+      pageTitle = 'Search Results';
+    } else if (/^\/admin\/cms\/[^/]+$/.test(pathname)) {
+      const parts = pathname.split('/');
+      const slug = parts[parts.length - 1];
+      if (slug !== 'faqs') {
+        const readableSlug = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        pageTitle = `${readableSlug} - CMS`;
+      }
+    }
+
+    document.title = `${pageTitle} | ScholarlyNest`;
+  }, [pathname, navigation]);
+
   const useDocumentScroll = pathname === '/admin/articles/new' || /^\/admin\/articles\/[^/]+\/(edit|workflow)$/.test(pathname || '');
 
   if (authLoading || !user) {

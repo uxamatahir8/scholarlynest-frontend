@@ -12,7 +12,7 @@ export default function MagazineFormFields({ value, onChange, disabled = false }
         const res = await api.get('/admin/users?role=editor');
         setEditors(res.data || []);
       } catch (err) {
-        logError('Failed to fetch magazine editors', err);
+        logError('Failed to fetch editors', err);
       } finally {
         setLoading(false);
       }
@@ -23,7 +23,7 @@ export default function MagazineFormFields({ value, onChange, disabled = false }
   return (
     <div className="space-y-1 font-roboto">
       <label className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] font-mono block">
-        Designated Magazine Editor
+        Designated Editor
       </label>
       {loading ? (
         <div className="text-[11px] text-[var(--muted)] animate-pulse py-2">

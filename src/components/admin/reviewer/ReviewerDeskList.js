@@ -20,6 +20,7 @@ const VALID_STATUS_FILTERS = new Set(['active', 'completed', 'pending', 'accepte
 
 const statusLabel = (value) => {
   if (!value) return 'Not recorded';
+  if (value === 'accepted') return 'Awaiting Review';
   return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 

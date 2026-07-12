@@ -182,7 +182,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [articleImages, setArticleImages] = useState([]);
   const [queuedArticleImages, setQueuedArticleImages] = useState([]);
   const [assets, setAssets] = useState([]);
-  const [revisionResponse, setRevisionResponse] = useState('');
+  const [revisionResponseFile, setRevisionResponseFile] = useState(null);
   const [changeSummary, setChangeSummary] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
@@ -218,9 +218,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (visibleAuthors.length === 0) missing.push({ key: 'authors', label: 'Add at least one author', target: '#authors-affiliations' });
     if (!owner) missing.push({ key: 'owner', label: 'Choose one article owner', target: '#authors-affiliations' });
     if (correspondingAuthors.length === 0) missing.push({ key: 'corresponding', label: 'Choose a corresponding author', target: '#authors-affiliations' });
-    if (isRevision && !revisionResponse.trim()) missing.push({ key: 'revisionResponse', label: 'Add a response to the revision request', target: '#revision-response' });
+    if (isRevision && !revisionResponseFile) missing.push({ key: 'revisionResponse', label: 'Upload a response to the revision request', target: '#revision-response' });
     return missing;
-  }, [abstract, correspondingAuthors.length, isRevision, magazineId, owner, revisionResponse, title, visibleAuthors.length]);
+  }, [abstract, correspondingAuthors.length, isRevision, magazineId, owner, revisionResponseFile, title, visibleAuthors.length]);
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -365,6 +365,20 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     setPdfFile(file);
   };
 
+  const handleRevisionResponseChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!['pdf', 'doc', 'docx'].includes(ext)) {
+      event.target.value = '';
+      setRevisionResponseFile(null);
+      toast('Please upload the revision response as a PDF, DOC, or DOCX file.', 'error');
+      return;
+    }
+    setRevisionResponseFile(file);
+    setValidationErrors((prev) => ({ ...prev, revisionResponse: undefined }));
+  };
+
   const stepForError = (key) => {
     if (['title', 'abstract', 'magazineId'].includes(key)) return 0;
     if (['authors', 'coAuthors', 'owner', 'corresponding'].includes(key)) return 1;
@@ -384,7 +398,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (!magazineId) errors.magazineId = 'Please choose a magazine.';
     if (!title.trim()) errors.title = 'Please add a manuscript title.';
     if (!cleanRichText(abstract)) errors.abstract = 'Please add an abstract.';
-    if (isRevision && !revisionResponse.trim()) errors.revisionResponse = 'Please add a response to the revision request.';
+    if (isRevision && !revisionResponseFile) errors.revisionResponse = 'Please upload a PDF, DOC, or DOCX response to the revision request.';
     if (scope === 'submit' && !termsAccepted) errors.termsAccepted = 'You must accept the terms and conditions before submitting.';
     if (isSuperAdmin) {
       Object.assign(errors, validateAuthors(authors, { isSuperAdmin: true, user }));
@@ -424,7 +438,8 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (intent === 'submit') formData.append('terms_accepted', termsAccepted ? '1' : '0');
     appendAcademicMetadata(formData, academicMetadata);
     if (uploadIds.pdf_upload_id) formData.append('pdf_upload_id', uploadIds.pdf_upload_id);
-    if (revisionResponse.trim()) formData.append('revision_response', revisionResponse.trim());
+    if (uploadIds.revision_response_upload_id) formData.append('revision_response_upload_id', uploadIds.revision_response_upload_id);
+    (uploadIds.additional_file_ids || []).forEach((fileId) => formData.append('additional_file_ids[]', fileId));
     if (changeSummary.trim()) formData.append('change_summary', changeSummary.trim());
     formData.append('tags', JSON.stringify(selectedTags));
     const normalizedAuthors = normalizeAuthorRows(isSuperAdmin ? authors : visibleAuthors);
@@ -436,44 +451,26 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   };
 
   const uploadSupplementaryFiles = async (nextArticleId) => {
-    if (!nextArticleId || supplementaryFiles.length === 0) return true;
-    let failed = 0;
+    if (!nextArticleId || supplementaryFiles.length === 0) return [];
+    const fileIds = [];
     for (const file of supplementaryFiles) {
-      try {
-        await uploadAndAwaitClean({
-          file,
-          purpose: 'article_supplementary',
-          attachableId: nextArticleId,
-        });
-      } catch (err) {
-        logError('Failed to upload supplementary manuscript asset', err);
-        failed += 1;
-      }
+      const upload = await uploadAndAwaitClean({ file, purpose: 'article_supplementary', attachableId: nextArticleId });
+      if (!upload.record?.article_file_id) throw new Error(`Supplementary file "${file.name}" could not be attached.`);
+      fileIds.push(upload.record.article_file_id);
     }
-    if (failed > 0) {
-      toast(`Manuscript saved, but ${failed} supplementary file upload${failed > 1 ? 's' : ''} failed.`, 'warning');
-      return false;
-    }
-    return true;
+    return fileIds;
   };
 
   const uploadArticleImages = async (nextArticleId) => {
-    if (!nextArticleId || queuedArticleImages.length === 0) return true;
-    let failed = 0;
+    if (!nextArticleId || queuedArticleImages.length === 0) return [];
+    const fileIds = [];
     for (const file of queuedArticleImages) {
-      try {
-        await uploadAndAwaitClean({ file, purpose: 'article_image', attachableId: nextArticleId });
-      } catch (err) {
-        logError('Failed to upload article image', err);
-        failed += 1;
-      }
-    }
-    if (failed > 0) {
-      toast(`Manuscript saved, but ${failed} article image upload${failed > 1 ? 's' : ''} failed.`, 'warning');
-      return false;
+      const upload = await uploadAndAwaitClean({ file, purpose: 'article_image', attachableId: nextArticleId });
+      if (!upload.record?.article_file_id) throw new Error(`Article image "${file.name}" could not be attached.`);
+      fileIds.push(upload.record.article_file_id);
     }
     setQueuedArticleImages([]);
-    return true;
+    return fileIds;
   };
 
   const persistManuscript = async (intent) => {
@@ -500,14 +497,48 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
         });
         uploadIds.pdf_upload_id = pdfUpload.id;
       }
-      setSavingMessage(intent === 'submit' ? 'Submitting manuscript...' : 'Saving draft...');
-      const formData = buildFormData(intent, uploadIds);
-      const response = isEdit
-        ? await api.put(`/admin/articles/${articleId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
-        : await api.post('/articles', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      const savedArticle = response.data?.article;
-      await uploadSupplementaryFiles(savedArticle?.id || articleId);
-      await uploadArticleImages(savedArticle?.id || articleId);
+      if (isRevision && revisionResponseFile) {
+        setSavingMessage('Uploading revision response...');
+        const responseUpload = await uploadAndAwaitClean({
+          file: revisionResponseFile,
+          purpose: 'article_revision_response',
+          attachableId: articleId,
+        });
+        uploadIds.revision_response_upload_id = responseUpload.id;
+      }
+      let savedArticle;
+      if (!isEdit && intent === 'submit') {
+        setSavingMessage('Creating submission draft...');
+        const draftResponse = await api.post('/articles', buildFormData('draft', uploadIds), { headers: { 'Content-Type': 'multipart/form-data' } });
+        savedArticle = draftResponse.data?.article;
+        const nextArticleId = savedArticle?.id;
+        if (!nextArticleId) throw new Error('The submission draft could not be created.');
+        setSavingMessage('Uploading and checking supporting files...');
+        uploadIds.additional_file_ids = [
+          ...await uploadSupplementaryFiles(nextArticleId),
+          ...await uploadArticleImages(nextArticleId),
+        ];
+        setSavingMessage('Submitting manuscript...');
+        const submitResponse = await api.put(`/admin/articles/${nextArticleId}`, buildFormData('submit', uploadIds), { headers: { 'Content-Type': 'multipart/form-data' } });
+        savedArticle = submitResponse.data?.article;
+      } else {
+        if (isEdit) {
+          setSavingMessage('Uploading and checking supporting files...');
+          uploadIds.additional_file_ids = [
+            ...await uploadSupplementaryFiles(articleId),
+            ...await uploadArticleImages(articleId),
+          ];
+        }
+        setSavingMessage(intent === 'submit' ? 'Submitting manuscript...' : 'Saving draft...');
+        const response = isEdit
+          ? await api.put(`/admin/articles/${articleId}`, buildFormData(intent, uploadIds), { headers: { 'Content-Type': 'multipart/form-data' } })
+          : await api.post('/articles', buildFormData(intent, uploadIds), { headers: { 'Content-Type': 'multipart/form-data' } });
+        savedArticle = response.data?.article;
+        if (!isEdit) {
+          await uploadSupplementaryFiles(savedArticle?.id);
+          await uploadArticleImages(savedArticle?.id);
+        }
+      }
       toast(intent === 'submit' ? 'Manuscript submitted for editorial review.' : 'Draft manuscript saved.', 'success');
       if (intent === 'submit') {
         router.push(savedArticle?.id ? `/admin/articles/${savedArticle.id}/workflow` : '/admin/articles');
@@ -906,14 +937,14 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                   label="Article PDF/Word file"
                   accept="application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   fileName={pdfFile?.name || ''}
-                  existingLabel={hasExistingPdf ? 'Existing article file attached' : ''}
+                  existingLabel={!isRevision && hasExistingPdf ? 'Existing article file attached' : ''}
                   onChange={handlePdfChange}
                   onClear={() => setPdfFile(null)}
                   help="Only one PDF, DOC, or DOCX file is allowed."
                 />
               </div>
 
-              {isEdit ? (
+              {isEdit && !isRevision ? (
                 <ArticleAssetDropzone articleId={articleId} assets={assets} onAssetsChanged={setAssets} />
               ) : (
                 <ArticleAssetBufferedDropzone files={supplementaryFiles} onFilesChanged={setSupplementaryFiles} />
@@ -922,8 +953,8 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-5">
                 <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">Article Images</h3>
                 <ArticleImagesDropzone
-                  articleId={isEdit ? articleId : null}
-                  images={articleImages}
+                  articleId={isEdit && !isRevision ? articleId : null}
+                  images={isRevision ? [] : articleImages}
                   queuedImages={queuedArticleImages}
                   onQueuedImagesChanged={setQueuedArticleImages}
                   onImagesChanged={setArticleImages}
@@ -938,18 +969,18 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-sm font-bold text-[var(--foreground)]">Response to revision request</label>
-                  <textarea
-                    value={revisionResponse}
-                    onChange={(event) => setRevisionResponse(event.target.value)}
-                    rows={6}
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleRevisionResponseChange}
                     aria-invalid={!!validationErrors.revisionResponse}
-                    className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm font-semibold text-[var(--foreground)] outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                    placeholder="Explain how the revised manuscript addresses the request."
+                    className="mt-2 block w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm font-semibold text-[var(--foreground)] file:mr-4 file:rounded-md file:border-0 file:bg-amber-600 file:px-3 file:py-2 file:font-bold file:text-white hover:file:bg-amber-500"
                   />
+                  <p className="mt-2 text-xs font-medium text-[var(--muted)]">Required. PDF, DOC, or DOCX only, up to 25 MB.</p>
                   <FieldError id="revision-response-error">{validationErrors.revisionResponse}</FieldError>
                 </div>
                 <div>
-                  <label className="text-sm font-bold text-[var(--foreground)]">Change summary</label>
+                  <label className="text-sm font-bold text-[var(--foreground)]">Change summary <span className="font-medium text-[var(--muted)]">(optional)</span></label>
                   <textarea
                     value={changeSummary}
                     onChange={(event) => setChangeSummary(event.target.value)}

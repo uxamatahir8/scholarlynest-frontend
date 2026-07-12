@@ -23,7 +23,7 @@ export default function PageBanner({ title, description, customLabels }) {
         <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[var(--background)] to-transparent pointer-events-none" />
       </div>
 
-      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 pb-12">
+      <div className="relative z-10 mx-auto w-full max-w-[1440px] px-4 pb-12 sm:px-6 lg:px-8">
         <div className="mb-6 inline-flex">
           <Breadcrumbs customLabels={customLabels} />
         </div>

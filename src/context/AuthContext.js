@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('auth_token', access_token);
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
-      return { success: true };
+      return { success: true, user: userData };
     } catch (err) {
       if (err.response?.status === 403 && err.response?.data?.message === 'verification_required') {
         return { success: false, verificationRequired: true, email };

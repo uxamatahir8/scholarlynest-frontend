@@ -2,6 +2,8 @@ export const STATUS_META = {
   draft: ['Draft', 'zinc'],
   pending: ['Submitted', 'blue'],
   submitted: ['Submitted', 'blue'],
+  screening: ['Screening', 'blue'],
+  in_transit: ['In Transit', 'amber'],
   under_review: ['Under Review', 'indigo'],
   assigned_to_sub_editor: ['Assigned to Sub Editor', 'violet'],
   reviewer_assigned: ['Reviewer Assigned', 'cyan'],
@@ -41,6 +43,8 @@ export const STATUS_TONE_CLASSES = {
 export const STATUS_FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'submitted', label: 'Submitted' },
+  { id: 'screening', label: 'Screening' },
+  { id: 'in_transit', label: 'In Transit' },
   { id: 'under_review', label: 'Under Review' },
   { id: 'assigned_to_sub_editor', label: 'Sub Editor' },
   { id: 'reviewer_assigned', label: 'Reviewer' },
@@ -55,6 +59,7 @@ export const STATUS_FILTERS = [
 
 export const EDITABLE_STATUS_OPTIONS = [
   { value: 'submitted', label: 'Submitted' },
+  { value: 'screening', label: 'Screening' },
   { value: 'under_review', label: 'Under Review' },
   { value: 'accepted', label: 'Accepted' },
   { value: 'published', label: 'Published' },
@@ -72,6 +77,7 @@ export const STATUS_LABELS = Object.fromEntries(
 export const REVIEWABLE_STATUSES = new Set([
   'pending',
   'submitted',
+  'screening',
   'under_review',
   'assigned_to_sub_editor',
   'reviewer_assigned',
@@ -94,5 +100,5 @@ export function normalizeRoleName(roleName) {
 }
 
 export function roleRequiresMagazineAssignment(roleName) {
-  return ['editor', 'magazine_editor', 'publisher', 'proofreader'].includes(normalizeRoleName(roleName));
+  return ['editor', 'publisher', 'proofreader'].includes(normalizeRoleName(roleName));
 }

@@ -20,7 +20,7 @@ export default function AssignmentSummary({ article, canSeeReviewerIdentity }) {
     rows.push({
       key: `reviewer-${assignment.id}`,
       label: 'Reviewer',
-      name: canSeeReviewerIdentity ? assignment.reviewer?.name || 'Assigned reviewer' : `Reviewer ${index + 1}`,
+      name: canSeeReviewerIdentity ? assignment.invitee_name || assignment.reviewer?.name || 'Assigned reviewer' : `Reviewer ${index + 1}`,
       status: labelize(assignment.invitation_state || assignment.status),
     });
   });

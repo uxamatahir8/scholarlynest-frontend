@@ -5,12 +5,24 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getRoleDisplayName } from '../../../utils/roles';
 
-function isItemActive(pathname, item) {
-  if (!pathname) return false;
-  return item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
+function activeNavigationItem(navigation, pathname) {
+  if (!pathname) return null;
+
+  const matches = navigation
+    .flatMap((section) => section.items || [])
+    .filter((item) => item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`))
+    .sort((a, b) => {
+      if (b.href.length !== a.href.length) return b.href.length - a.href.length;
+      if (a.exact !== b.exact) return a.exact ? -1 : 1;
+      return 0;
+    });
+
+  return matches[0] || null;
 }
 
 export function ConsoleNavigationList({ navigation, pathname, onNavigate, compact = false }) {
+  const activeItem = activeNavigationItem(navigation, pathname);
+
   return (
     <nav aria-label="Console navigation" className="space-y-7">
       {navigation.map((section) => (
@@ -22,7 +34,7 @@ export function ConsoleNavigationList({ navigation, pathname, onNavigate, compac
           )}
           <ul className="space-y-1">
             {section.items.map((item) => {
-              const active = isItemActive(pathname, item);
+              const active = item === activeItem;
               const Icon = item.icon;
               return (
                 <li key={item.href}>

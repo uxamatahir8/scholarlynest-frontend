@@ -26,7 +26,7 @@ export default function CustomFooterPage() {
       .then((res) => {
         if (active && res.data) {
           setPageData(res.data);
-          
+
           // Sanitize content_html using DOMPurify (client-side only to prevent SSR issues)
           if (res.data.content) {
             setSanitizedHtml(DOMPurify.sanitize(res.data.content));
@@ -51,10 +51,10 @@ export default function CustomFooterPage() {
   if (loading) {
     return (
       <div className="bg-zinc-50/20 dark:bg-zinc-950/10 min-h-screen pt-32 pb-24 font-sans text-left">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 space-y-8">
           {/* Breadcrumb shimmer */}
           <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-1/4 animate-pulse" />
-          
+
           {/* Page Card shimmer */}
           <div className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-100 dark:border-zinc-900/60 rounded-3xl p-6 sm:p-10 shadow-sm space-y-6">
             <div className="h-8 bg-zinc-305 dark:bg-zinc-800 rounded w-3/4 animate-pulse" />
@@ -100,9 +100,9 @@ export default function CustomFooterPage() {
         keywords={`scholarlynest, ${pageData.title.toLowerCase()}, guidelines, policies`}
         ogUrl={`/${pageData.slug}`}
       />
-      
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        
+
+      <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 space-y-8">
+
         {/* Navigation Breadcrumb */}
         <div className="flex items-center space-x-2 text-[10px] font-sans font-bold uppercase tracking-widest text-zinc-400">
           <Link href="/" className="hover:text-amber-605 transition-colors">Home</Link>
@@ -112,30 +112,26 @@ export default function CustomFooterPage() {
 
         {/* Readable Content Article Card */}
         <article className="bg-white/80 dark:bg-zinc-900/35 border border-zinc-100 dark:border-zinc-900/60 rounded-3xl p-6 sm:p-10 shadow-sm space-y-8">
-          
+
           {/* Header */}
           <div className="space-y-3 pb-6 border-b border-zinc-100 dark:border-zinc-800/80">
-            <span className="inline-flex items-center space-x-1.5 text-[9px] font-bold uppercase tracking-wider font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 px-2.5 py-1 rounded-lg">
-              <Globe className="w-3.5 h-3.5 text-emerald-555" />
-              <span>Dynamic Policy Page</span>
-            </span>
             <h1 className="text-3xl sm:text-4xl font-serif font-bold text-zinc-900 dark:text-white leading-tight">
               {pageData.title}
             </h1>
           </div>
 
           {/* Render Rich Text Content with Custom Prose Rules */}
-          <div 
+          <div
             className="cms-content-prose"
-            dangerouslySetInnerHTML={{ __html: sanitizedHtml }} 
+            dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
           />
 
         </article>
 
         {/* Bottom Back Button */}
         <div className="flex justify-center pt-4">
-          <Link 
-            href="/" 
+          <Link
+            href="/"
             className="group inline-flex items-center space-x-2 text-[10px] font-sans font-bold uppercase tracking-widest text-zinc-405 dark:text-zinc-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5 transition-transform duration-300 group-hover:-translate-x-1 text-amber-500" />

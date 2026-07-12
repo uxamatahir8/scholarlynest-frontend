@@ -335,7 +335,10 @@ export default function ArticleDetail() {
     })),
   ];
   const supplementaryFiles = (article.assets || []).filter((asset) => !isImageAsset(asset));
-  const publicationSections = (article.publication_sections || []).filter((section) => section.content_html);
+  const allPublicationSections = (article.publication_sections || []).filter((section) => section.content_html);
+  const publicationAbstract = allPublicationSections.find((section) => section.section_key === 'abstract');
+  const abstractHtml = publicationAbstract?.content_html || article.abstract;
+  const publicationSections = allPublicationSections.filter((section) => section.section_key !== 'abstract');
   const details = [
     article.open_access_label && { label: 'Access', value: article.open_access_label },
     article.is_peer_reviewed && { label: 'Review', value: 'Peer-reviewed' },
@@ -353,7 +356,7 @@ export default function ArticleDetail() {
     article.abbreviations && { title: 'Abbreviations', body: article.abbreviations },
   ].filter(Boolean);
   const contentNav = [
-    article.abstract && { id: 'abstract', label: 'Abstract' },
+    abstractHtml && { id: 'abstract', label: 'Abstract' },
     article.seo_keywords && { id: 'keywords', label: 'Keywords' },
     ...publicationSections.map((section) => ({
       id: `section-${section.section_key}`,
@@ -378,7 +381,7 @@ export default function ArticleDetail() {
       <div className="w-full pt-4 sm:pt-6">
         
         {/* Navigation & Admin Action Header */}
-        <div className="max-w-4xl mx-auto flex items-center justify-between mb-8">
+        <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between mb-8">
           <Link 
             href={article.magazine?.slug ? `/magazines/${article.magazine.slug}` : '/magazines'}
             className="group inline-flex items-center space-x-2 text-[10px] font-sans font-bold uppercase tracking-widest text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
@@ -397,7 +400,7 @@ export default function ArticleDetail() {
           )}
         </div>
 
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <div className="mx-auto grid w-full max-w-[1440px] gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
           <aside className="hidden pt-[192px] lg:block">
             <nav className="sticky top-24 rounded-2xl border border-zinc-150 bg-white/80 p-4 text-left shadow-sm dark:border-zinc-850 dark:bg-zinc-900/50" aria-label="Article sections">
               <p className="mb-3 text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Sections</p>
@@ -546,14 +549,14 @@ export default function ArticleDetail() {
           )}
 
           {/* 7. Abstract */}
-          {article.abstract && (
+          {abstractHtml && (
             <section id="abstract" className="scroll-mt-24 bg-zinc-50/50 dark:bg-zinc-900/10 p-6 sm:p-8 rounded-2xl border border-zinc-150 dark:border-zinc-850/80 text-left space-y-4">
               <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
                 Abstract
               </h3>
               <div 
                 className="font-serif italic text-base sm:text-lg leading-relaxed text-zinc-700 dark:text-zinc-300 prose dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: article.abstract }}
+                dangerouslySetInnerHTML={{ __html: abstractHtml }}
               />
             </section>
           )}

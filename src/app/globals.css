@@ -200,6 +200,24 @@ body {
   overflow-x: hidden;
 }
 
+/* Consistent interaction cursors across public and console interfaces. */
+button:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary {
+  cursor: pointer !important;
+}
+
+button:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled,
+input[type="reset"]:disabled,
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed !important;
+}
+
 @keyframes headline-marquee {
   from {
     transform: translateX(0);
@@ -307,6 +325,29 @@ select option {
 /* Shift the header down when the announcement ribbon is active */
 .fixed-header-offset {
   transition: background-color 0.5s ease, border-color 0.5s ease;
+}
+
+.tab-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab-scroller::-webkit-scrollbar {
+  height: 6px;
+}
+
+.tab-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tab-scroller::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.tab-scroller::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 .console-scroll {

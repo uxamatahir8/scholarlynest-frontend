@@ -79,7 +79,10 @@ export default function ReviewInvitationPage() {
             <h2 className="mt-1 text-lg font-bold text-[var(--foreground)]">{invitation.article?.title}</h2>
             {(invitation.article?.article_type || invitation.article?.article_category) && <p className="mt-1 text-sm text-[var(--muted)]">{[invitation.article?.article_type, invitation.article?.article_category].filter(Boolean).join(' · ')}</p>}
             <h3 className="mt-4 text-sm font-bold text-[var(--foreground)]">Abstract</h3>
-            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-[var(--muted)]">{invitation.article?.abstract}</p>
+            <div 
+              className="mt-1 text-sm leading-relaxed text-[var(--muted)] prose dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{ __html: invitation.article?.abstract || 'No abstract provided.' }}
+            />
           </section>
         )}
 

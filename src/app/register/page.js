@@ -219,6 +219,15 @@ export default function Register() {
     }
   };
 
+  if (authLoading || user) {
+    return (
+      <div className="flex-grow flex flex-col justify-center items-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-accent dark:text-accent-gold" />
+        <p className="text-xs text-muted mt-4 font-semibold">Verifying session...</p>
+      </div>
+    );
+  }
+
   // RENDER: Closed registration state fallback
   if (isClosed) {
     return (

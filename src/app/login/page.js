@@ -11,12 +11,14 @@ import { Lock, Mail, Loader2, AlertCircle, Eye, EyeOff, LayoutDashboard } from '
 import SeoHead from '../../components/SeoHead';
 import api from '../../utils/api';
 import { loginSchema, validateWithZod } from '../../lib/validation';
+import { resolveDashboardRedirect, withDashboardRedirect } from '../../utils/authRedirect';
 
 export default function Login() {
   const { user, login, loginWithPayload, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const requestedPath = searchParams.get('redirect');
   const errorRef = useRef(null);
   const emailInputRef = useRef(null);
   const passwordInputRef = useRef(null);
@@ -35,13 +37,13 @@ export default function Login() {
       const res = await api.post('/auth/google/signin', { credential: response.credential });
       if (res.status === 202 && res.data.message === '2fa_required') {
         toast('Two-factor authentication code sent to your email.', 'info');
-        router.push(`/verify-2fa?email=${encodeURIComponent(res.data.email)}`);
+        router.push(withDashboardRedirect(`/verify-2fa?email=${encodeURIComponent(res.data.email)}`, requestedPath));
         return;
       }
       const { user: userData, access_token } = res.data;
       loginWithPayload(userData, access_token);
       toast('Authentication successful. Welcome to ScholarlyNest!', 'success');
-      router.push('/admin');
+      router.replace(resolveDashboardRedirect(requestedPath, userData));
     } catch (err) {
       logError(err);
       if (err['response']?.status === 404 && err['response']?.data?.message === 'no_account_exists') {
@@ -113,9 +115,9 @@ export default function Login() {
   // Already authenticated user redirection
   useEffect(() => {
     if (!authLoading && user) {
-      router.push('/admin');
+      router.replace(resolveDashboardRedirect(requestedPath, user));
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, requestedPath, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -143,13 +145,13 @@ export default function Login() {
 
     if (result.success) {
       toast('Authentication successful. Welcome to ScholarlyNest!', 'success');
-      router.push('/admin');
+      router.replace(resolveDashboardRedirect(requestedPath, result.user));
     } else if (result.verificationRequired) {
       toast('Email verification is required. A code was sent to your email.', 'warning');
-      router.push(`/verify?email=${encodeURIComponent(result.email)}`);
+      router.push(withDashboardRedirect(`/verify?email=${encodeURIComponent(result.email)}`, requestedPath));
     } else if (result.twoFactorRequired) {
       toast('Two-factor authentication code sent to your email.', 'info');
-      router.push(`/verify-2fa?email=${encodeURIComponent(result.email)}`);
+      router.push(withDashboardRedirect(`/verify-2fa?email=${encodeURIComponent(result.email)}`, requestedPath));
     } else {
       setError(result.message);
       toast(result.message || 'Invalid credentials provided.', 'error');
@@ -158,6 +160,15 @@ export default function Login() {
       setTimeout(() => errorRef.current?.focus(), 100);
     }
   };
+
+  if (authLoading || user) {
+    return (
+      <div className="flex-grow flex flex-col justify-center items-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-accent dark:text-accent-gold" />
+        <p className="text-xs text-muted mt-4 font-semibold">Verifying session...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">

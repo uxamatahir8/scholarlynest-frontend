@@ -3,8 +3,9 @@ import { MessageSquareText } from 'lucide-react';
 import EmptyState from '../../ui/EmptyState';
 import WorkflowSection from './WorkflowSection';
 import { labelize } from './workflowDisplay';
+import { DownloadRow } from './ArticleFilesPanel';
 
-export default function ReviewRecommendationPanel({ article, canSeeReviewerIdentity }) {
+export default function ReviewRecommendationPanel({ article, canSeeReviewerIdentity, files = [] }) {
   const recommendations = [];
 
   (article.sub_editor_assignments || []).forEach((assignment) => {
@@ -15,6 +16,14 @@ export default function ReviewRecommendationPanel({ article, canSeeReviewerIdent
         actor: assignment.sub_editor?.name || 'Assigned Sub Editor',
         recommendation: assignment.recommendation,
         comments: assignment.comments,
+        submittedAt: assignment.completed_at || assignment.created_at,
+        timestampLabel: 'Submitted',
+        fileSectionLabel: 'Sub Editor files',
+        files: files.filter((file) => (
+          file.file_type === 'annotated_manuscript'
+          && file.assignment_type === 'sub_editor_assignment'
+          && Number(file.assignment_id) === Number(assignment.id)
+        )),
       });
     }
   });
@@ -24,10 +33,18 @@ export default function ReviewRecommendationPanel({ article, canSeeReviewerIdent
       recommendations.push({
         key: `reviewer-${assignment.id}`,
         title: 'Reviewer recommendation',
-        actor: canSeeReviewerIdentity ? assignment.reviewer?.name || 'Assigned reviewer' : `Reviewer ${index + 1}`,
+        actor: canSeeReviewerIdentity ? assignment.invitee_name || assignment.reviewer?.name || 'Assigned reviewer' : `Reviewer ${index + 1}`,
         recommendation: assignment.recommendation,
         comments: assignment.comments_for_author,
         questionnaire: assignment.questionnaire_instance,
+        submittedAt: assignment.questionnaire_instance?.submitted_at || assignment.completed_at,
+        timestampLabel: 'Submitted',
+        fileSectionLabel: 'Reviewer files',
+        files: files.filter((file) => (
+          file.file_type === 'reviewed_manuscript'
+          && file.assignment_type === 'reviewer_assignment'
+          && Number(file.assignment_id) === Number(assignment.id)
+        )),
       });
     }
   });
@@ -40,7 +57,15 @@ export default function ReviewRecommendationPanel({ article, canSeeReviewerIdent
       recommendation: decision.decision,
       comments: decision.comments_for_author,
       internal: decision.internal_notes,
+      submittedAt: decision.decision_date,
+      timestampLabel: 'Decided',
     });
+  });
+
+  recommendations.sort((a, b) => {
+    const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+    const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+    return bTime - aTime;
   });
 
   return (
@@ -63,6 +88,22 @@ export default function ReviewRecommendationPanel({ article, canSeeReviewerIdent
                 )}
               </div>
               {item.comments && <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--foreground)]">{item.comments}</p>}
+              {item.submittedAt && <p className="mt-2 text-xs font-medium text-[var(--muted)]">{item.timestampLabel || 'Submitted'} {new Date(item.submittedAt).toLocaleString()}</p>}
+              {item.files?.length > 0 && (
+                <div className="mt-3 min-w-0 overflow-hidden rounded-md bg-[var(--surface)] p-3">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{item.fileSectionLabel || 'Files'}</p>
+                  <ul className="grid min-w-0 max-w-full gap-2">
+                    {item.files.map((file) => (
+                      <DownloadRow
+                        key={file.id}
+                        item={file}
+                        title={file.original_name || 'Reviewed manuscript'}
+                        meta="Reviewed manuscript"
+                      />
+                    ))}
+                  </ul>
+                </div>
+              )}
               {item.questionnaire?.questions?.length > 0 && (
                 <div className="mt-3 min-w-0 overflow-hidden rounded-md bg-[var(--surface)] p-3">
                   <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Questionnaire responses</p>
@@ -70,7 +111,11 @@ export default function ReviewRecommendationPanel({ article, canSeeReviewerIdent
                     {item.questionnaire.questions.map((question) => (
                       <div key={question.id} className="min-w-0">
                         <dt className="break-words text-xs font-bold text-[var(--foreground)]">{question.prompt}</dt>
-                        <dd className="break-words text-sm text-[var(--muted)]">{Array.isArray(question.answer) ? question.answer.join(', ') : (question.answer || 'No response')}</dd>
+                        <dd className="break-words text-sm text-[var(--muted)]">{(() => {
+                          const answers = Array.isArray(question.answer) ? question.answer : [question.answer];
+                          return answers.filter(Boolean).map((answer) => question.options?.find((option) => option.value === answer)?.label || labelize(answer)).join(', ') || 'No response';
+                        })()}</dd>
+                        {question.comment && <dd className="mt-1 whitespace-pre-wrap break-words rounded-md border-l-2 border-amber-500 bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--foreground)]">{question.comment}</dd>}
                       </div>
                     ))}
                   </dl>

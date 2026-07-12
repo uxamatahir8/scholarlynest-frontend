@@ -13,7 +13,7 @@ export const ARTICLE_QUEUES = {
     label: 'Submitted',
     heading: 'Articles Requiring Attention',
     description: 'Submitted manuscripts waiting for initial editorial screening.',
-    statuses: ['submitted'],
+    statuses: ['submitted', 'screening'],
   },
   'active-review': {
     id: 'active-review',

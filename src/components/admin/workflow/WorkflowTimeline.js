@@ -27,7 +27,9 @@ export default function WorkflowTimeline({ article }) {
               {events.map((event) => (
                 <li key={event.id} className="relative border-l border-[var(--border)] pl-4">
                   <span className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-[var(--accent)]" aria-hidden="true" />
-                  <p className="text-sm font-bold text-[var(--foreground)]">{eventLabel(event.event || event.action)}</p>
+                  <p className="text-sm font-bold text-[var(--foreground)]">
+                    {eventLabel((event.event === 'notification.sent' && event.payload?.workflow_event) ? event.payload.workflow_event : (event.event || event.action))}
+                  </p>
                   <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
                     {formatDate(event.created_at, { hour: 'numeric', minute: '2-digit' })}
                     {event.actor?.name ? ` · ${event.actor.name}` : ''}

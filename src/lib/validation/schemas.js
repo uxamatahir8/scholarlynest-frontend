@@ -64,7 +64,7 @@ export const supportTicketReplySchema = z.object({ reply: requiredString('Reply 
 export const supportTicketStatusSchema = z.object({ status: z.enum(['submitted', 'in_review', 'waiting_for_user', 'resolved', 'closed']) });
 export const contactSchema = z.object({ name: requiredString('Name'), email: emailField(), subject: requiredString('Subject'), message: requiredString('Message', 10000) });
 export const newsletterSchema = z.object({ email: emailField() });
-export const magazineSchema = z.object({ title: requiredString('Magazine name'), slug: requiredString('Slug'), description: optionalString('Description', 10000) });
+export const magazineSchema = z.object({ title: requiredString('Magazine name'), slug: z.string().optional(), description: optionalString('Description', 10000) });
 export const issueSchema = z.object({
   magazine_id: idField,
   volume_number: z.coerce.number().int('Volume must be a whole number.').positive('Volume must be greater than zero.'),
@@ -100,7 +100,7 @@ export const reviewerInvitationResponseSchema = z.object({
 export const reviewerSubmitSchema = z.object({ recommendation: requiredString('Recommendation'), comments_for_author: optionalString('Comments', 10000), confidential_comments: optionalString('Confidential comments', 10000) });
 
 export const workflowScreeningSchema = z.object({
-  decision: z.enum(['send_to_review', 'reject']),
+  decision: z.enum(['send_to_review', 'reject', 'transfer']),
   plagiarism_status: optionalString('Similarity status', 255),
   plagiarism_score: optionalPercent,
   comments: optionalString('Screening notes', 10000),
@@ -108,6 +108,15 @@ export const workflowScreeningSchema = z.object({
   if (data.decision === 'reject' && !String(data.comments || '').trim()) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['comments'], message: 'Reason for Author is required.' });
   }
+});
+
+export const articleTransferRequestSchema = z.object({
+  to_magazine_id: idField,
+  editor_comments: requiredString('Transfer comments', 5000),
+});
+
+export const articleTransferRejectSchema = z.object({
+  author_rejection_reason: requiredString('Rejection reason', 5000),
 });
 
 export const workflowAssigneeSchema = z.object({ assignee_id: idField });
@@ -142,6 +151,7 @@ export const reviewerWorkflowSubmitSchemaFor = (requiredQuestionIds = []) => z.o
   questionnaire_responses: z.array(z.object({
     question_id: z.coerce.number().int().positive(),
     answer: questionnaireAnswerSchema.optional(),
+    comment: optionalString('Question comment', 10000),
   })).optional(),
   scorecard: z.object({
     originality: z.coerce.number().int().min(1).max(5),
@@ -181,6 +191,7 @@ export const postPublicationWorkflowSchema = z.object({
 });
 
 export const publishArticleModalSchema = z.object({
+  title: requiredString('Article title', 255),
   published_year: z.coerce.number().int('Publication year must be a whole number.').min(1900, 'Publication year must be 1900 or later.').max(new Date().getFullYear() + 5, 'Publication year is too far in the future.'),
   published_month: monthSchema,
   magazine_issue_id: z.union([idField, z.literal(''), z.null()]).optional(),
