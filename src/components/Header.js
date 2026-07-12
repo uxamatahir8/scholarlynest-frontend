@@ -14,9 +14,9 @@ import GlobalSearchInput from './home/GlobalSearchInput';
 
 const NAV_LINKS = [
   { label: 'Home', href: '/' },
-  { label: 'About', href: '/about' },
   { label: 'Journals', href: '/journals' },
   { label: 'Magazines', href: '/magazines' },
+  { label: 'About', href: '/about' },
   { label: 'Contact', href: '/contact' },
 ];
 
