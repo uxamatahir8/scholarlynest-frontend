@@ -135,5 +135,5 @@ function VerifyMfaForm() {
 }
 
 export default function VerifyMfa() {
-  return <div className="flex-grow flex w-full max-w-md flex-col justify-center px-4 py-12 sm:px-6"><Suspense fallback={<Loader2 className="mx-auto h-8 w-8 animate-spin" />}><VerifyMfaForm /></Suspense></div>;
+  return <div className="mx-auto flex w-full max-w-md flex-grow flex-col justify-center px-4 py-12 sm:px-6"><Suspense fallback={<Loader2 className="mx-auto h-8 w-8 animate-spin" />}><VerifyMfaForm /></Suspense></div>;
 }
