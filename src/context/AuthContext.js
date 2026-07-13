@@ -70,7 +70,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post('/login', { email, password });
       if (res.status === 202 && res.data.message === '2fa_required') {
-        return { success: false, twoFactorRequired: true, email: res.data.email };
+        return {
+          success: false,
+          twoFactorRequired: true,
+          challengeToken: res.data.mfa_challenge_token,
+          availableMethods: res.data.available_methods,
+          defaultMethod: res.data.default_method,
+        };
       }
       const { user: userData, access_token } = res.data;
 

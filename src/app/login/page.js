@@ -36,8 +36,13 @@ export default function Login() {
     try {
       const res = await api.post('/auth/google/signin', { credential: response.credential });
       if (res.status === 202 && res.data.message === '2fa_required') {
-        toast('Two-factor authentication code sent to your email.', 'info');
-        router.push(withDashboardRedirect(`/verify-2fa?email=${encodeURIComponent(res.data.email)}`, requestedPath));
+        sessionStorage.setItem('mfa_challenge', JSON.stringify({
+          token: res.data.mfa_challenge_token,
+          methods: res.data.available_methods,
+          defaultMethod: res.data.default_method,
+        }));
+        toast(res.data.default_method === 'email' ? 'Authentication code sent to your email.' : 'Enter a code from your authenticator app.', 'info');
+        router.push(withDashboardRedirect('/verify-2fa', requestedPath));
         return;
       }
       const { user: userData, access_token } = res.data;
@@ -150,8 +155,13 @@ export default function Login() {
       toast('Email verification is required. A code was sent to your email.', 'warning');
       router.push(withDashboardRedirect(`/verify?email=${encodeURIComponent(result.email)}`, requestedPath));
     } else if (result.twoFactorRequired) {
-      toast('Two-factor authentication code sent to your email.', 'info');
-      router.push(withDashboardRedirect(`/verify-2fa?email=${encodeURIComponent(result.email)}`, requestedPath));
+      sessionStorage.setItem('mfa_challenge', JSON.stringify({
+        token: result.challengeToken,
+        methods: result.availableMethods,
+        defaultMethod: result.defaultMethod,
+      }));
+      toast(result.defaultMethod === 'email' ? 'Authentication code sent to your email.' : 'Enter a code from your authenticator app.', 'info');
+      router.push(withDashboardRedirect('/verify-2fa', requestedPath));
     } else {
       setError(result.message);
       toast(result.message || 'Invalid credentials provided.', 'error');
