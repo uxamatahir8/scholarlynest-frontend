@@ -6,6 +6,14 @@ const ALLOWED_MESSAGE_KEYS = new Set([
 ]);
 
 export const safeApiMessage = (error, fallback = 'We could not complete that request. Please try again.') => {
+  const status = error?.[ 'response' ]?.status;
+  if (status === 429) {
+    const retryAfter = Number(error?.response?.headers?.['retry-after']);
+    return Number.isFinite(retryAfter) && retryAfter > 0
+      ? `Too many attempts. Please wait ${retryAfter} seconds and try again.`
+      : 'Too many attempts. Please wait a moment and try again.';
+  }
+
   const message = error?.[ 'response' ]?.data?.message;
 
   if (typeof message === 'string') {
@@ -52,11 +60,6 @@ export const safeApiMessage = (error, fallback = 'We could not complete that req
 
     // Return any other custom API error message directly
     return message;
-  }
-
-  const status = error?.[ 'response' ]?.status;
-  if (status === 429) {
-    return 'We could not complete that request. Please try again.';
   }
 
   // Handle visual context boundaries from the fallback strings
