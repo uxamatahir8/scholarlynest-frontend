@@ -86,15 +86,17 @@ export default function MagazinePublicLayout({ children }) {
     })),
   ];
   const coverImage = magazine.cover_image_url || getFullImageUrl(magazine.cover_image);
+  const bannerImage = magazine.banner_image_url || getFullImageUrl(magazine.banner_image);
+  const heroImage = bannerImage || coverImage;
   const pageKey = pathname?.split('/').filter(Boolean).at(-1) === slug ? 'about-and-overview' : pathname?.split('/').filter(Boolean).at(-1);
   const advertisementContext = { context: 'publication', publication_type: routePrefix === 'journals' ? 'journal' : 'magazine', publication_slug: slug, page_key: pageKey };
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <section className="relative isolate overflow-hidden bg-zinc-950" aria-labelledby="magazine-title">
-        {coverImage ? (
+        {heroImage ? (
           <img
-            src={coverImage}
+            src={heroImage}
             alt=""
             className="absolute inset-0 h-full w-full object-cover object-center"
             aria-hidden="true"
@@ -103,7 +105,7 @@ export default function MagazinePublicLayout({ children }) {
           <div className="absolute inset-0 bg-zinc-900" aria-hidden="true" />
         )}
         <div className="absolute inset-0 bg-zinc-950/55" aria-hidden="true" />
-        <div className="relative mx-auto flex min-h-[340px] w-full max-w-[1440px] items-end px-4 py-12 sm:min-h-[380px] sm:px-6 lg:px-8">
+        <div className="relative mx-auto flex min-h-[190px] w-full max-w-[1440px] items-end px-4 py-8 sm:min-h-[260px] sm:px-6 sm:py-10 lg:min-h-[360px] lg:px-8">
           <div className="max-w-4xl">
             <Link href={`/${routePrefix}`} className="inline-flex items-center gap-2 text-sm font-bold text-amber-200 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
