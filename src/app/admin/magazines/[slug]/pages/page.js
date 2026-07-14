@@ -2,7 +2,7 @@
 
 import { logError } from '../../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { 
@@ -26,8 +26,11 @@ const RichEditor = dynamic(() => import('../../../../../components/ui/RichEditor
 
 export default function AdminMagazinePages() {
   const params = useParams();
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const slug = params ? params.slug : null;
+  const publicationType = searchParams.get('publication_type') === 'journal' ? 'journal' : 'magazine';
+  const publicationLabel = publicationType === 'journal' ? 'Journal' : 'Magazine';
+  const adminEndpoint = publicationType === 'journal' ? '/admin/journals' : '/admin/magazines';
   const { toast } = useToast();
   const { user, hasRole, loading: authLoading } = useAuth();
   const isEditor = hasRole('editor');
@@ -61,7 +64,7 @@ export default function AdminMagazinePages() {
         setError('You do not have access to magazine page management.');
         return;
       }
-      const response = await api.get(`/admin/magazines/${slug}`);
+      const response = await api.get(`${adminEndpoint}/${slug}`);
       setMagazine(response.data);
     } catch (err) {
       logError(err);
@@ -116,10 +119,10 @@ export default function AdminMagazinePages() {
       };
 
       if (modalMode === 'create') {
-        await api.post(`/admin/magazines/${magazine.id}/pages`, payload);
+        await api.post(`${adminEndpoint}/${magazine.id}/pages`, payload);
         toast('New subpage created and ordered successfully.', 'success');
       } else {
-        await api.put(`/admin/magazines/${magazine.id}/pages/${selectedPageId}`, payload);
+        await api.put(`${adminEndpoint}/${magazine.id}/pages/${selectedPageId}`, payload);
         toast('Subpage updated successfully.', 'success');
       }
 
@@ -143,7 +146,7 @@ export default function AdminMagazinePages() {
   const executeDeletePage = async () => {
     if (!canDeleteRecords || !selectedPageId) return;
     try {
-      await api.delete(`/admin/magazines/${magazine.id}/pages/${selectedPageId}`);
+      await api.delete(`${adminEndpoint}/${magazine.id}/pages/${selectedPageId}`);
       toast('Custom subpage deleted successfully.', 'success');
       fetchMagazineDetails();
     } catch (err) {
@@ -169,7 +172,7 @@ export default function AdminMagazinePages() {
       <div className="flex flex-col items-center justify-center py-20 space-y-4">
         <AlertCircle className="w-12 h-12 text-red-500" />
         <p className="text-sm font-semibold text-zinc-650">{error || 'Magazine not found.'}</p>
-        <Link href="/admin/magazines" className="text-xs font-bold text-[var(--accent)] uppercase tracking-wider hover:underline">
+        <Link href={publicationType === 'journal' ? '/admin/journals' : '/admin/magazines'} className="text-xs font-bold text-[var(--accent)] uppercase tracking-wider hover:underline">
           Return to Registry Manager
         </Link>
       </div>
@@ -180,14 +183,14 @@ export default function AdminMagazinePages() {
     <div className="space-y-6">
       {/* Navigation Headers */}
       <div className="flex items-center justify-between pb-4 border-b border-zinc-200">
-        <Link href="/admin/magazines" className="inline-flex items-center text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-[var(--accent)] transition-colors">
+        <Link href={publicationType === 'journal' ? '/admin/journals' : '/admin/magazines'} className="inline-flex items-center text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-[var(--accent)] transition-colors">
           <ArrowLeft className="w-4 h-4 mr-1.5" />
-          Back to Magazines
+          Back to {publicationLabel}s
         </Link>
         <div className="flex items-center space-x-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
           <span>Console</span>
           <ChevronRight className="w-3 h-3 text-[var(--accent-gold)]" />
-          <span>Magazines</span>
+          <span>{publicationLabel}s</span>
           <ChevronRight className="w-3 h-3 text-[var(--accent-gold)]" />
           <span className="text-zinc-600 truncate max-w-[150px]">{magazine.title}</span>
         </div>
@@ -295,7 +298,7 @@ export default function AdminMagazinePages() {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-grow flex flex-col min-h-[400px]">
+            <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto flex-grow flex flex-col min-h-[400px] px-6 pt-6">
               
               {/* Row Grid: Title & Sort Order */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
@@ -381,7 +384,7 @@ export default function AdminMagazinePages() {
               </div>
 
               {/* Form buttons */}
-              <div className="pt-4 border-t border-zinc-150 flex items-center justify-end space-x-3 shrink-0">
+              <div className="sticky bottom-0 z-20 -mx-6 mt-4 flex shrink-0 items-center justify-end space-x-3 border-t border-zinc-150 bg-white/95 px-6 py-4 shadow-[0_-8px_20px_rgba(0,0,0,0.04)] backdrop-blur">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

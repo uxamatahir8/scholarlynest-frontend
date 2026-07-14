@@ -16,21 +16,19 @@ const TiptapFontSize = Extension.create({
       types: ['textStyle'],
     };
   },
-  addAttributes() {
-    return {
-      fontSize: {
-        default: null,
-        parseHTML: element => element.style.fontSize,
-        renderHTML: attributes => {
-          if (!attributes.fontSize) {
-            return {};
-          }
-          return {
-            style: `font-size: ${attributes.fontSize}`,
-          };
+  addGlobalAttributes() {
+    return [{
+      types: this.options.types,
+      attributes: {
+        fontSize: {
+          default: null,
+          parseHTML: element => element.style.fontSize || null,
+          renderHTML: attributes => attributes.fontSize
+            ? { style: `font-size: ${attributes.fontSize}` }
+            : {},
         },
       },
-    };
+    }];
   },
   addCommands() {
     return {
@@ -191,6 +189,8 @@ export default function RichEditor({ value, onChange, placeholder = 'Start writi
   }, [isFullscreen]);
 
   const editor = useEditor({
+    immediatelyRender: false,
+    shouldRerenderOnTransaction: true,
     extensions: [
       StarterKit.configure({ heading: { levels: HEADING_LEVELS } }),
       ImageExtension.configure({ allowBase64: true }),
@@ -291,6 +291,8 @@ export default function RichEditor({ value, onChange, placeholder = 'Start writi
   }
 
   const activeFont = FONT_FAMILIES.find(f => f.value && editor.isActive('textStyle', { fontFamily: f.value }));
+  const activeFontSize = editor.getAttributes('textStyle').fontSize;
+  const activeHeading = HEADING_LEVELS.find(level => editor.isActive('heading', { level }));
 
   return (
     <div className={`rich-editor-root border border-zinc-200 dark:border-zinc-700 rounded-xl overflow-hidden bg-white dark:bg-[#181817] shadow-sm flex flex-col ${className} ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none m-0' : ''}`}>
@@ -335,12 +337,16 @@ export default function RichEditor({ value, onChange, placeholder = 'Start writi
           width="w-28"
           trigger={
             <button type="button" className="flex items-center space-x-1 px-2 py-1.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
-              <span>Size</span>
+              <span>{activeFontSize || 'Size'}</span>
               <ChevronDown className="w-3 h-3" />
             </button>
           }
         >
           <div className="max-h-56 overflow-y-auto py-1">
+            <button type="button" onClick={() => editor.chain().focus().unsetFontSize().run()}
+              className="w-full px-3 py-1.5 text-left text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800">
+              Default
+            </button>
             {FONT_SIZES.map(s => (
               <button key={s} type="button" onClick={() => editor.chain().focus().setFontSize(s).run()}
                 className="w-full text-left px-3 py-1 text-xs hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors" style={{ fontSize: s }}>
@@ -357,7 +363,7 @@ export default function RichEditor({ value, onChange, placeholder = 'Start writi
           width="w-36"
           trigger={
             <button type="button" className="flex items-center space-x-1 px-2 py-1.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
-              <span>Heading</span>
+              <span>{activeHeading ? `Heading ${activeHeading}` : 'Paragraph'}</span>
               <ChevronDown className="w-3 h-3" />
             </button>
           }
@@ -369,7 +375,7 @@ export default function RichEditor({ value, onChange, placeholder = 'Start writi
               {editor.isActive('paragraph') && <Check className="w-3 h-3 text-[var(--accent)]" />}
             </button>
             {HEADING_LEVELS.map(l => (
-              <button key={l} type="button" onClick={() => editor.chain().focus().toggleHeading({ level: l }).run()}
+              <button key={l} type="button" onClick={() => editor.chain().focus().setHeading({ level: l }).run()}
                 className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between"
                 style={{ fontSize: `${1.6 - l * 0.15}rem`, fontWeight: 700 }}>
                 <span>Heading {l}</span>

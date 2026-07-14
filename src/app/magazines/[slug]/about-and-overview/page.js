@@ -86,7 +86,7 @@ export default function MagazineAboutPage() {
       <SeoHead title={pageTitle} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/about-and-overview`} />
 
       {(magazine.description || cleanAboutHtml) && (
-        <section aria-labelledby="about-magazine-heading">
+        <section aria-labelledby="about-magazine-heading" className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 md:p-8 lg:p-10">
           <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Overview</p>
           <h2 id="about-magazine-heading" className="mt-2 font-serif text-3xl font-bold text-zinc-950 dark:text-white sm:text-4xl">{magazine.title}</h2>
           {magazine.description && <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-650 dark:text-zinc-300">{magazine.description}</p>}
