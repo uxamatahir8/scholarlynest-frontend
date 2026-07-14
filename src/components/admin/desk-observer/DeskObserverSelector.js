@@ -150,7 +150,7 @@ export default function DeskObserverSelector({
                 onChange={(event) => setSelectedId(event.target.value)}
               >
                 <option value="">{loadingUsers ? 'Loading users...' : `Select ${observerRoleLabel(selectedRole)}`}</option>
-                {users.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                {users.map((item) => <option key={item.id} value={item.id}>{item.name} — {observerRoleLabel(item.role)}</option>)}
               </Select>
             </Field>
           </div>

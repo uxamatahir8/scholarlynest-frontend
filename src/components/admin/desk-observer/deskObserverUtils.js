@@ -5,6 +5,9 @@ export const observerRoles = {
   proofreader: 'Proofreader',
   publisher: 'Publisher',
   editor: 'Editor',
+  super_editor: 'Super Editor',
+  magazine_editor: 'Magazine Editor',
+  journal_editor: 'Journal Editor',
 };
 
 export const observerParam = 'observer_user';
