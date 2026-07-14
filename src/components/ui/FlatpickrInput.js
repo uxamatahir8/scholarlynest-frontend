@@ -68,7 +68,7 @@ const FlatpickrInput = forwardRef(function FlatpickrInput({
         ref={inputRef}
         id={inputId}
         name={name}
-        type="text"
+        type="hidden"
         disabled={disabled}
         required={required}
         placeholder={placeholder || (mode === 'datetime' ? 'dd-Mmm-yyyy hh:mm' : mode === 'time' ? 'hh:mm' : 'dd-Mmm-yyyy')}
