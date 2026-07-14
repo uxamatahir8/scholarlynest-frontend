@@ -76,6 +76,11 @@ export const AuthProvider = ({ children }) => {
           challengeToken: res.data.mfa_challenge_token,
           availableMethods: res.data.available_methods,
           defaultMethod: res.data.default_method,
+          requiredMethods: res.data.required_methods,
+          verifiedMethods: res.data.verified_methods,
+          remainingMethods: res.data.remaining_methods,
+          nextMethod: res.data.next_method,
+          recoveryCodeAllowed: res.data.recovery_code_allowed,
         };
       }
       const { user: userData, access_token } = res.data;

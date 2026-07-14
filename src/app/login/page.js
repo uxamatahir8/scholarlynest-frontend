@@ -40,6 +40,11 @@ export default function Login() {
           token: res.data.mfa_challenge_token,
           methods: res.data.available_methods,
           defaultMethod: res.data.default_method,
+          requiredMethods: res.data.required_methods,
+          verifiedMethods: res.data.verified_methods,
+          remainingMethods: res.data.remaining_methods,
+          nextMethod: res.data.next_method,
+          recoveryCodeAllowed: res.data.recovery_code_allowed,
         }));
         toast(res.data.default_method === 'email' ? 'Authentication code sent to your email.' : 'Enter a code from your authenticator app.', 'info');
         router.push(withDashboardRedirect('/verify-2fa', requestedPath));
@@ -159,6 +164,11 @@ export default function Login() {
         token: result.challengeToken,
         methods: result.availableMethods,
         defaultMethod: result.defaultMethod,
+        requiredMethods: result.requiredMethods,
+        verifiedMethods: result.verifiedMethods,
+        remainingMethods: result.remainingMethods,
+        nextMethod: result.nextMethod,
+        recoveryCodeAllowed: result.recoveryCodeAllowed,
       }));
       toast(result.defaultMethod === 'email' ? 'Authentication code sent to your email.' : 'Enter a code from your authenticator app.', 'info');
       router.push(withDashboardRedirect('/verify-2fa', requestedPath));
