@@ -132,7 +132,11 @@ export const AuthProvider = ({ children }) => {
     if (!user || !user.roles) return false;
     const normalize = (name) => name?.toLowerCase().replace('_', '-');
     const roleList = (Array.isArray(roles) ? roles : [roles]).map(normalize);
-    return user.roles.some((r) => roleList.includes(normalize(r.name)));
+    const editorialRoles = ['editor', 'super-editor', 'magazine-editor', 'journal-editor'];
+    return user.roles.some((r) => {
+      const actualRole = normalize(r.name);
+      return roleList.includes(actualRole) || (roleList.includes('editor') && editorialRoles.includes(actualRole));
+    });
   };
 
   // Helper check for specific permissions

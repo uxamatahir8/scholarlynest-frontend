@@ -246,7 +246,7 @@ export default function AdminOverview() {
     );
   }
 
-  if (role === 'editor') {
+  if (userHasRole(user, 'editor')) {
     return (
       <ArticleDashboardWorkspace
         title="Editorial Workspace"
