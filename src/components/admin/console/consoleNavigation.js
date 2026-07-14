@@ -133,6 +133,12 @@ export const consoleNavigation = [
         isVisible: ({ user, hasPermission }) => (can(hasPermission, 'magazines.view-any') || can(hasPermission, 'magazines.view-own')) && !userHasRole(user, 'author') && !userHasRole(user, 'sub_editor') && !userHasRole(user, 'reviewer') && !userHasRole(user, 'magazine_editor'),
       },
       {
+        label: 'Shared Pages',
+        href: '/admin/shared-pages',
+        icon: Files,
+        isVisible: ({ user, hasPermission }) => hasAnyRole(user, ['super_admin', 'admin']) && can(hasPermission, 'shared_pages.manage'),
+      },
+      {
         label: 'Issue Manager',
         href: '/admin/issues',
         icon: CalendarRange,
