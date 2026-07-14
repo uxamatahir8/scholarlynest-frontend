@@ -1,5 +1,7 @@
 'use client';
 
+import { Select } from '../../ui/Input';
+
 import { safeApiMessage } from '../../../utils/safeErrors';
 import { logError } from '../../../utils/safeLogger';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -705,7 +707,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               <div className="grid gap-5 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
                 <div>
                   <label htmlFor="magazine-select" className={labelClass}>Select {publicationLabel} <span className="text-amber-700">*</span></label>
-                  <select
+                  <Select
                     id="magazine-select"
                     value={magazineId}
                     onChange={(event) => {
@@ -720,7 +722,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                     {availablePublications.map((magazine) => (
                       <option key={magazine.id} value={magazine.id}>{magazine.title}</option>
                     ))}
-                  </select>
+                  </Select>
                   <FieldError id="magazine-select-error">{validationErrors.magazineId}</FieldError>
                 </div>
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
@@ -849,7 +851,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               ].map(([field, label, options]) => (
                 <div key={field}>
                   <label className={labelClass}>{label}</label>
-                  <select
+                  <Select
                     value={academicMetadata[field]}
                     onChange={(event) => updateAcademicMetadata(field, event.target.value)}
                     className={selectClass}
@@ -859,7 +861,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                     {academicMetadata[field] && !options.some((option) => option.name === academicMetadata[field]) && (
                       <option value={academicMetadata[field]}>{academicMetadata[field]}</option>
                     )}
-                  </select>
+                  </Select>
                 </div>
               ))}
             </div>

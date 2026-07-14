@@ -12,6 +12,7 @@ import Field from '../ui/Field';
 import { Input, Select } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import EmptyState from '../ui/EmptyState';
+import FlatpickrInput from '../ui/FlatpickrInput';
 import WorkflowSection from './workflow/WorkflowSection';
 import { labelize } from './workflow/workflowDisplay';
 import {
@@ -1040,7 +1041,7 @@ export default function WorkflowActionPanel({
                 </Select>
               </Field>
               <Field label="Due Date">
-                <Input type="date" value={productionForm.due_date} onChange={(event) => setProductionForm({ ...productionForm, due_date: event.target.value })} />
+                <FlatpickrInput value={productionForm.due_date} onChange={(value) => setProductionForm({ ...productionForm, due_date: value })} aria-label="Production due date" />
               </Field>
             </div>
             <Button

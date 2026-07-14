@@ -1,5 +1,7 @@
 'use client';
 
+import { Select } from '../../ui/Input';
+
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { Check, Code, Edit3, Loader2, X } from 'lucide-react';
@@ -83,12 +85,12 @@ export default function PublicPageFormModal({
                 </div>
                 <div className="space-y-1">
                   <label className="font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-500">Status *</label>
-                  <select value={values.status} onChange={(event) => onChange('status', event.target.value)} className={inputClass}>
+                  <Select value={values.status} onChange={(event) => onChange('status', event.target.value)} className={inputClass}>
                     <option value="active">Active</option>
                     <option value="draft">Draft</option>
                     <option value="inactive">Inactive</option>
                     <option value="private">Private</option>
-                  </select>
+                  </Select>
                   <FieldError message={errorFor('status')} />
                 </div>
               </div>

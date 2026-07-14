@@ -1,5 +1,7 @@
 'use client';
 
+import { Select } from '../../ui/Input';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -145,7 +147,7 @@ export default function ReviewerDeskList({
         <div className="flex flex-wrap items-center gap-4">
           <div>
             <label className="mr-2 text-xs font-bold text-[var(--foreground)]">Status:</label>
-            <select
+            <Select
               value={status}
               onChange={(event) => updateQuery({ status: event.target.value, page: 1 })}
               className="inline-block min-h-10 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
@@ -154,7 +156,7 @@ export default function ReviewerDeskList({
               <option value="pending">Pending Invitations</option>
               <option value="accepted">Accepted Reviews</option>
               <option value="completed">Submitted Reviews</option>
-            </select>
+            </Select>
           </div>
 
           <div className="flex items-center gap-3">

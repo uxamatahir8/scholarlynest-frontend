@@ -1,10 +1,13 @@
 'use client';
 
+import { Select } from '../ui/Input';
+
 import { logError } from '../../utils/safeLogger';
 import React, { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, Calendar, CheckCircle2, Loader2, Plus, Trash2, Upload, X } from 'lucide-react';
 import api from '../../utils/api';
 import RichEditor from '../ui/RichEditor';
+import FlatpickrInput from '../ui/FlatpickrInput';
 import { publishArticleModalSchema, validateWithZod } from '../../lib/validation';
 
 const makeClientId = () => `section-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -242,7 +245,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
               <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">
                 Issue
               </label>
-              <select
+              <Select
                 value={magazineIssueId}
                 onChange={(e) => setMagazineIssueId(e.target.value)}
                 className="w-full text-xs font-semibold px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100"
@@ -253,7 +256,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
                     Volume {issue.volume_number}, Issue {issue.issue_number}{issue.special_title ? ` - ${issue.special_title}` : ''}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -263,7 +266,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
                   Select Year
                 </label>
                 <div className="relative">
-                  <select
+                  <Select
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(e.target.value)}
                     className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-105 cursor-pointer appearance-none font-sans"
@@ -271,7 +274,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
                     {years.map((y) => (
                       <option key={y} value={y}>{y}</option>
                     ))}
-                  </select>
+                  </Select>
                   <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
                 </div>
               </div>
@@ -282,7 +285,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
                   Select Month
                 </label>
                 <div className="relative">
-                  <select
+                  <Select
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value)}
                     className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-105 cursor-pointer appearance-none font-sans"
@@ -290,7 +293,7 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
                     {months.map((m) => (
                       <option key={m} value={m}>{m}</option>
                     ))}
-                  </select>
+                  </Select>
                   <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
                 </div>
               </div>
@@ -303,11 +306,11 @@ export default function PublishArticleModal({ isOpen, onClose, onSubmit, article
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">Received Date</label>
-                <input type="date" value={metadata.received_at} onChange={(e) => setMetadata({ ...metadata, received_at: e.target.value })} className="w-full text-xs font-semibold px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100" />
+                <FlatpickrInput value={metadata.received_at} onChange={(value) => setMetadata({ ...metadata, received_at: value })} aria-label="Received date" className="text-xs" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[9px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 font-mono block">Accepted Date</label>
-                <input type="date" value={metadata.accepted_at} onChange={(e) => setMetadata({ ...metadata, accepted_at: e.target.value })} className="w-full text-xs font-semibold px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-900 dark:text-zinc-100" />
+                <FlatpickrInput value={metadata.accepted_at} onChange={(value) => setMetadata({ ...metadata, accepted_at: value })} aria-label="Accepted date" className="text-xs" />
               </div>
             </div>
 

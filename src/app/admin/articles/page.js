@@ -1,5 +1,7 @@
 'use client';
 
+import { Select } from '../../../components/ui/Input';
+
 import { logError } from '../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -631,23 +633,23 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
           </div>
 
           {!isAuthorWorkspace && (
-            <select value={publicationType} onChange={(event) => { setPublicationType(event.target.value); setSelectedMagazineId('all'); updateQuery({ publication_type: event.target.value, magazine_id: 'all' }); }} aria-label="Filter by publication type" className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 sm:w-48">
+            <Select value={publicationType} onChange={(event) => { setPublicationType(event.target.value); setSelectedMagazineId('all'); updateQuery({ publication_type: event.target.value, magazine_id: 'all' }); }} aria-label="Filter by publication type" className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 sm:w-48">
               {!isMagazineEditor && !isJournalEditor && <option value="all">All Publications</option>}
               {!isJournalEditor && <option value="magazine">Magazines</option>}
               {!isMagazineEditor && <option value="journal">Journals</option>}
-            </select>
+            </Select>
           )}
 
           {!isAuthorWorkspace && (
-            <select value={authorFilter} onChange={(event) => { setAuthorFilter(event.target.value); updateQuery({ author_id: event.target.value }); }} aria-label="Filter by author" className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 sm:w-56">
+            <Select value={authorFilter} onChange={(event) => { setAuthorFilter(event.target.value); updateQuery({ author_id: event.target.value }); }} aria-label="Filter by author" className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 sm:w-56">
               <option value="all">All Authors</option>
               {authorOptions.map((author) => <option key={author.id} value={author.id}>{author.name}</option>)}
-            </select>
+            </Select>
           )}
 
           {isAuthorWorkspace && (
             <div className="relative w-full sm:w-56">
-              <select
+              <Select
                 value={selectedStatus}
                 onChange={(e) => {
                   setSelectedStatus(e.target.value);
@@ -662,14 +664,14 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
                     {option.label} ({option.count})
                   </option>
                 ))}
-              </select>
+              </Select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
             </div>
           )}
 
           {/* Magazine selector */}
           <div className="relative w-full sm:w-56">
-            <select
+            <Select
               value={selectedMagazineId}
               onChange={(e) => {
                 setSelectedMagazineId(e.target.value);
@@ -683,7 +685,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
                   {m.title}
                 </option>
               ))}
-            </select>
+            </Select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
           </div>
         </div>
@@ -878,7 +880,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
 
 export default function AdminArticlesBoard() {
   return (
-    <DeskObserverContext roles={['editor']}>
+    <DeskObserverContext roles={['editor', 'super_editor', 'magazine_editor', 'journal_editor']}>
       {({ observerMode, observerParams }) => (
         <AdminArticlesBoardContent
           observerMode={observerMode}

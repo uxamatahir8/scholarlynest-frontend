@@ -4,7 +4,7 @@ export const observerRoles = {
   copy_editor: 'Copy Editor',
   proofreader: 'Proofreader',
   publisher: 'Publisher',
-  editor: 'Editor',
+  editor: 'All Editors',
   super_editor: 'Super Editor',
   magazine_editor: 'Magazine Editor',
   journal_editor: 'Journal Editor',

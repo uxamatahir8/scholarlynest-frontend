@@ -1,5 +1,7 @@
 'use client';
 
+import { Select } from '../../ui/Input';
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -336,14 +338,14 @@ export default function IssueWorkspace() {
         <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(220px,320px)_1fr] lg:items-end">
           <label className="block">
             <span className="text-sm font-semibold text-[var(--foreground)]">Magazine scope</span>
-            <select
+            <Select
               value={magazineFilter}
               onChange={(event) => updateQuery({ magazine_id: event.target.value, issue_id: '', page: 1 })}
               className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm font-semibold text-[var(--foreground)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
             >
               <option value="">All assigned magazines</option>
               {magazines.map((magazine) => <option key={magazine.id} value={magazine.id}>{magazine.title}</option>)}
-            </select>
+            </Select>
           </label>
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3">
             <p className="text-xs font-semibold text-[var(--muted)]">Current context</p>
@@ -413,17 +415,17 @@ export default function IssueWorkspace() {
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <label className="block">
                   <span className="text-sm font-semibold text-[var(--foreground)]">Magazine</span>
-                  <select value={issueForm.magazine_id} onChange={(event) => setIssueForm({ ...issueForm, magazine_id: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                  <Select value={issueForm.magazine_id} onChange={(event) => setIssueForm({ ...issueForm, magazine_id: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
                     <option value="">Select magazine</option>
                     {magazines.map((magazine) => <option key={magazine.id} value={magazine.id}>{magazine.title}</option>)}
-                  </select>
+                  </Select>
                 </label>
                 {canPublishIssues ? (
                   <label className="block">
                     <span className="text-sm font-semibold text-[var(--foreground)]">Issue status</span>
-                    <select value={issueForm.status} onChange={(event) => setIssueForm({ ...issueForm, status: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                    <Select value={issueForm.status} onChange={(event) => setIssueForm({ ...issueForm, status: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
                       {issueStatusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                    </select>
+                    </Select>
                   </label>
                 ) : (
                   <div className="block">
@@ -443,10 +445,10 @@ export default function IssueWorkspace() {
                 </label>
                 <label className="block">
                   <span className="text-sm font-semibold text-[var(--foreground)]">Publication month</span>
-                  <select value={issueForm.issue_month} onChange={(event) => setIssueForm({ ...issueForm, issue_month: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                  <Select value={issueForm.issue_month} onChange={(event) => setIssueForm({ ...issueForm, issue_month: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
                     <option value="">Not set</option>
                     {MONTHS.map((month) => <option key={month} value={month}>{month}</option>)}
-                  </select>
+                  </Select>
                 </label>
                 <label className="block">
                   <span className="text-sm font-semibold text-[var(--foreground)]">Publication year</span>
