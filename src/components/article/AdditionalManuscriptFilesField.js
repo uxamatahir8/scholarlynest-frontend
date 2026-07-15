@@ -13,6 +13,7 @@ export { newRow as createAdditionalManuscriptFileRow };
 export default function AdditionalManuscriptFilesField({ rows, onChange, articleId = null, disabled = false }) {
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
+  const canAddRow = rows.length === 0 || rows.every((row) => row.fileTitle.trim() && row.status === 'uploaded');
 
   const patchRow = (clientId, patch) => onChange(rowsRef.current.map((row) => row.clientId === clientId ? { ...row, ...patch } : row));
 
@@ -112,7 +113,18 @@ export default function AdditionalManuscriptFilesField({ rows, onChange, article
           );
         })}
       </div>
-      <button type="button" disabled={disabled} onClick={() => onChange([...rows, newRow()])} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-bold hover:bg-[var(--surface-muted)]"><Plus className="h-4 w-4" /> Add File</button>
+      <button
+        type="button"
+        disabled={disabled || !canAddRow}
+        onClick={() => {
+          if (canAddRow) onChange([...rows, newRow()]);
+        }}
+        title={!canAddRow ? 'Complete the current file before adding another.' : undefined}
+        className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-bold hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Plus className="h-4 w-4" /> Add File
+      </button>
+      {!canAddRow && <p className="mt-2 text-xs font-semibold text-[var(--muted)]">Complete the current file before adding another.</p>}
     </section>
   );
 }
