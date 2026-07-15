@@ -22,9 +22,9 @@ export default function AdminMagazinePages() {
   const publicationLabel = publicationType === 'journal' ? 'Journal' : 'Magazine';
   const adminEndpoint = publicationType === 'journal' ? '/admin/journals' : '/admin/magazines';
   const { toast } = useToast();
-  const { user, hasRole, loading: authLoading } = useAuth();
-  const isEditor = hasRole('editor');
-  const canManageMagazinePages = hasRole('super_admin') || hasRole('admin') || isEditor;
+  const { user, hasRole, hasPermission, loading: authLoading } = useAuth();
+  const canViewMagazinePages = hasPermission('magazines.view-any') || hasPermission('magazines.view-own');
+  const canManageMagazinePages = hasPermission('magazines.pages.manage');
   const canDeleteRecords = hasRole('super_admin');
 
   const [magazine, setMagazine] = useState(null);
@@ -49,8 +49,8 @@ export default function AdminMagazinePages() {
     try {
       setLoading(true);
       setError(null);
-      if (!canManageMagazinePages) {
-        setError('You do not have access to magazine page management.');
+      if (!canViewMagazinePages) {
+        setError(`You do not have access to ${publicationLabel.toLowerCase()} public pages.`);
         return;
       }
       const response = await api.get(`${adminEndpoint}/${slug}`);
@@ -65,9 +65,10 @@ export default function AdminMagazinePages() {
 
   useEffect(() => {
     fetchMagazineDetails();
-  }, [slug, user, authLoading, canManageMagazinePages]);
+  }, [slug, user, authLoading, canViewMagazinePages]);
 
   const openCreateModal = () => {
+    if (!canManageMagazinePages) return;
     setModalMode('create');
     setSelectedPageId(null);
     setPageTitle('');
@@ -77,6 +78,7 @@ export default function AdminMagazinePages() {
   };
 
   const openEditModal = (pageObj) => {
+    if (!canManageMagazinePages) return;
     setModalMode('edit');
     setSelectedPageId(pageObj.id);
     setPageTitle(pageObj.title || '');
@@ -88,6 +90,7 @@ export default function AdminMagazinePages() {
   // Submit page creation/update
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canManageMagazinePages) return;
     if (!pageTitle.trim()) {
       toast('Page title is required.', 'error');
       return;
@@ -199,13 +202,15 @@ export default function AdminMagazinePages() {
             <h2 className="text-sm font-bold uppercase tracking-widest text-zinc-800">Custom Sorted Sidebar Pages</h2>
             <p className="text-[11px] text-zinc-500 font-medium mt-0.5">Control pages appearing in the magazine's public directory menu.</p>
           </div>
-          <button
-            onClick={openCreateModal}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[var(--accent)] hover:bg-[var(--accent)]/95 shadow-sm transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Custom Page</span>
-          </button>
+          {canManageMagazinePages && (
+            <button
+              onClick={openCreateModal}
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[var(--accent)] hover:bg-[var(--accent)]/95 shadow-sm transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Custom Page</span>
+            </button>
+          )}
         </div>
 
         {/* Page Table/List */}
@@ -213,7 +218,9 @@ export default function AdminMagazinePages() {
           <div className="text-center py-16 bg-white border border-zinc-200 rounded-2xl shadow-sm">
             <BookOpen className="w-10 h-10 mx-auto text-zinc-300 mb-2.5" />
             <p className="text-xs font-semibold text-zinc-500">No custom pages have been configured for this magazine.</p>
-            <button onClick={openCreateModal} className="mt-2.5 text-xs font-bold uppercase tracking-wider text-[var(--accent)] hover:underline cursor-pointer">Add First Page</button>
+            {canManageMagazinePages && (
+              <button onClick={openCreateModal} className="mt-2.5 text-xs font-bold uppercase tracking-wider text-[var(--accent)] hover:underline cursor-pointer">Add First Page</button>
+            )}
           </div>
         ) : (
           <div className="bg-white border border-zinc-200 rounded-2xl shadow-sm overflow-hidden">
@@ -238,7 +245,7 @@ export default function AdminMagazinePages() {
                       <td className="px-6 py-4 font-bold text-zinc-950">{p.title}</td>
                       <td className="px-6 py-4 font-mono text-[11px] text-zinc-500">/{p.slug}</td>
                       <td className="px-6 py-4 text-right space-x-3">
-                        {(!isEditor || (Number(p.created_by) === Number(user?.id) && p.is_editor_created)) && (
+                        {canManageMagazinePages && (
                           <button
                             onClick={() => openEditModal(p)}
                             className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
@@ -266,19 +273,21 @@ export default function AdminMagazinePages() {
         )}
       </div>
 
-      <PublicPageFormModal
-        isOpen={isModalOpen}
-        mode={modalMode}
-        values={{ title: pageTitle, content: pageContent, sort_order: sortOrder }}
-        onChange={(field, value) => {
-          if (field === 'title') setPageTitle(value);
-          if (field === 'content') setPageContent(value);
-          if (field === 'sort_order') setSortOrder(value);
-        }}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleSubmit}
-        saving={saving}
-      />
+      {canManageMagazinePages && (
+        <PublicPageFormModal
+          isOpen={isModalOpen}
+          mode={modalMode}
+          values={{ title: pageTitle, content: pageContent, sort_order: sortOrder }}
+          onChange={(field, value) => {
+            if (field === 'title') setPageTitle(value);
+            if (field === 'content') setPageContent(value);
+            if (field === 'sort_order') setSortOrder(value);
+          }}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleSubmit}
+          saving={saving}
+        />
+      )}
 
       {/* Confirmation Modal */}
       <ConfirmationModal

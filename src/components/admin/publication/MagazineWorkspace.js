@@ -35,13 +35,12 @@ export default function MagazineWorkspace({ publicationType = 'magazine' }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const isEditor = hasRole('editor');
+  const isSuperAdmin = hasRole('super_admin');
   const canView = hasPermission('magazines.view-any') || hasPermission('magazines.view-own');
-  const canCreate = hasPermission('magazines.create') && !isEditor;
-  const canEdit = hasPermission('magazines.edit') && !isEditor;
-  const canDelete = hasRole('super_admin') && hasPermission('magazines.delete') && !isEditor;
-  const canEditSeo = hasPermission('seo.magazines') && !isEditor;
-  const canManagePublicPages = hasRole('super_admin') || hasRole('admin') || isEditor || canEdit;
+  const canCreate = isSuperAdmin && hasPermission('magazines.create');
+  const canEdit = isSuperAdmin && hasPermission('magazines.edit');
+  const canDelete = isSuperAdmin && hasPermission('magazines.delete');
+  const canEditSeo = isSuperAdmin && hasPermission('seo.magazines');
   const canUseIssueManager = hasRole('super_admin') || hasRole('publisher');
 
   const pageSummary = useMemo(() => {
@@ -216,7 +215,7 @@ export default function MagazineWorkspace({ publicationType = 'magazine' }) {
                     <Link href={`/${publicPrefix}/${magazine.slug}`} target="_blank" className="inline-flex items-center gap-1 text-sm font-semibold text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] dark:text-amber-400">
                       Public {label.toLowerCase()} <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                     </Link>
-                    {canManagePublicPages && (
+                    {canView && (
                       <Link href={`/admin/magazines/${magazine.slug}/pages${isJournal ? '?publication_type=journal' : ''}`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
                         Public pages <Settings className="h-3.5 w-3.5" aria-hidden="true" />
                       </Link>
@@ -229,12 +228,12 @@ export default function MagazineWorkspace({ publicationType = 'magazine' }) {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">
-                  {(canEdit || isEditor || canEditSeo) && (
+                  {canView && (
                     <Button type="button" variant="outline" onClick={() => openEdit(magazine)}>
                       {canEdit || canEditSeo ? 'Edit' : 'View'}
                     </Button>
                   )}
-                  {canManagePublicPages && (
+                  {canView && (
                     <Link href={`/admin/magazines/${magazine.slug}/pages${isJournal ? '?publication_type=journal' : ''}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-all hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
                       Public Pages <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </Link>
