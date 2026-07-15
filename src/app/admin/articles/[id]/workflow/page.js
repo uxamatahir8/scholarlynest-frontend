@@ -106,6 +106,45 @@ function EditorialDecisionTab({ article }) {
   );
 }
 
+function AdditionalManuscriptFilesTab({ files, versions }) {
+  const versionById = new Map((versions || []).map((version) => [Number(version.id), version]));
+  const groups = [...(versions || [])]
+    .sort((a, b) => Number(b.version_number || 0) - Number(a.version_number || 0))
+    .map((version) => ({
+      version,
+      files: files.filter((file) => Number(file.article_version_id) === Number(version.id)),
+    }))
+    .filter((group) => group.files.length > 0);
+  const pending = files.filter((file) => !file.article_version_id || !versionById.has(Number(file.article_version_id)));
+  if (pending.length) groups.unshift({ version: null, files: pending });
+
+  if (groups.length === 0) {
+    return <EmptyState title="No additional manuscript files">No additional manuscript files have been uploaded.</EmptyState>;
+  }
+
+  return (
+    <div className="space-y-5">
+      {groups.map(({ version, files: groupFiles }) => (
+        <section key={version?.id || 'current'} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+          <h3 className="text-sm font-bold text-[var(--foreground)]">
+            {!version ? 'Current Submission' : version.revision_number ? `R${version.revision_number}` : Number(version.version_number) === 1 ? 'Initial Submission' : `Version ${version.version_number}`}
+          </h3>
+          <ul className="mt-3 grid gap-3">
+            {groupFiles.map((file) => (
+              <DownloadRow
+                key={file.id}
+                item={file}
+                title={file.file_title || file.original_name || 'Additional manuscript file'}
+                meta={`${file.original_name} · ${file.mime_type || 'Document'} · ${file.size ? `${(file.size / 1024).toFixed(1)} KB` : 'Size unavailable'} · ${file.uploader?.name || 'Unknown uploader'} · ${formatDate(file.created_at)} · ${file.scan_status || 'clean'}`}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 // Helper component for Reviewer Recommendation Tab
 function ReviewerRecommendationTabContent({ assignment, article }) {
   const reviewerFiles = (article?.files || []).filter((file) => (
@@ -256,7 +295,7 @@ function VersionTabContent({ version, article, generalFiles, assets, fallbackVer
     return Number(sourceFile?.article_version_id || fallbackVersionId) === Number(version.id);
   });
   const assetIds = new Set(versionAssets.map((asset) => Number(asset.id)));
-  const primaryFiles = versionFiles.filter((file) => file.file_type !== 'supplementary');
+  const primaryFiles = versionFiles.filter((file) => !['supplementary', 'additional_manuscript_file'].includes(file.file_type));
   
   const supplementaryItems = [
     ...versionFiles
@@ -833,6 +872,16 @@ export default function ArticleWorkflowPage() {
       });
     }
 
+    const additionalManuscriptFiles = (article.files || []).filter((file) => file.file_type === 'additional_manuscript_file' && file.scan_status === 'clean' && file.article_version_id);
+    if (isAuthor || hasEditorialAccess) {
+      list.push({
+        id: 'additional-manuscript-files',
+        label: 'Additional Manuscript Files',
+        icon: Files,
+        content: <AdditionalManuscriptFilesTab files={additionalManuscriptFiles} versions={article.versions || []} />,
+      });
+    }
+
     // 6. Submission/Revision Versions
     const orderedVersions = [...(article.versions || [])].sort((a, b) => Number(b.version_number || 0) - Number(a.version_number || 0));
     const fallbackVersionId = orderedVersions.at(-1)?.id;
@@ -841,6 +890,7 @@ export default function ArticleWorkflowPage() {
       && file.file_type !== 'copy_edited_file'
       && file.file_type !== 'proof_file'
       && file.file_type !== 'publication_pdf'
+      && file.file_type !== 'additional_manuscript_file'
     );
     const fileForAsset = new Map(generalFiles
       .filter((file) => file.source_asset_id)

@@ -6,6 +6,10 @@ const ALLOWED_MESSAGE_KEYS = new Set([
 ]);
 
 export const safeApiMessage = (error, fallback = 'We could not complete that request. Please try again.') => {
+  if (typeof error?.userMessage === 'string' && error.userMessage.trim()) {
+    return error.userMessage;
+  }
+
   const status = error?.[ 'response' ]?.status;
   if (status === 429) {
     const retryAfter = Number(error?.response?.headers?.['retry-after']);

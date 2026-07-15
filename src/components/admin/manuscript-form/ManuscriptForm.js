@@ -37,6 +37,7 @@ import ReviewerPreferenceRepeater, { normalizeReviewerPreferences } from '../../
 import ArticleAssetBufferedDropzone from '../../article/ArticleAssetBufferedDropzone';
 import ArticleAssetDropzone from '../../article/ArticleAssetDropzone';
 import ArticleImagesDropzone from '../../article/ArticleImagesDropzone';
+import AdditionalManuscriptFilesField from '../../article/AdditionalManuscriptFilesField';
 import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
 import {
   appendAcademicMetadata,
@@ -182,6 +183,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [keywordInput, setKeywordInput] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
   const [supplementaryFiles, setSupplementaryFiles] = useState([]);
+  const [additionalManuscriptFiles, setAdditionalManuscriptFiles] = useState([]);
   const [articleImages, setArticleImages] = useState([]);
   const [queuedArticleImages, setQueuedArticleImages] = useState([]);
   const [assets, setAssets] = useState([]);
@@ -225,8 +227,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (!owner) missing.push({ key: 'owner', label: 'Choose one article owner', target: '#authors-affiliations' });
     if (correspondingAuthors.length === 0) missing.push({ key: 'corresponding', label: 'Choose a corresponding author', target: '#authors-affiliations' });
     if (isRevision && !revisionResponseFile) missing.push({ key: 'revisionResponse', label: 'Upload a response to the revision request', target: '#revision-response' });
+    if (additionalManuscriptFiles.some((row) => row.status !== 'uploaded')) missing.push({ key: 'additionalManuscriptFiles', label: 'Finish or remove each additional manuscript file', target: '#manuscript-files' });
     return missing;
-  }, [abstract, correspondingAuthors.length, isRevision, magazineId, owner, publicationType, revisionResponseFile, title, visibleAuthors.length]);
+  }, [abstract, additionalManuscriptFiles, correspondingAuthors.length, isRevision, magazineId, owner, publicationType, revisionResponseFile, title, visibleAuthors.length]);
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -278,6 +281,19 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
           setTitle(nextArticle.title || '');
           setAbstract(nextArticle.abstract || '');
           setAssets(nextArticle.assets || []);
+          setAdditionalManuscriptFiles((nextArticle.files || [])
+            .filter((file) => file.file_type === 'additional_manuscript_file' && !file.article_version_id)
+            .map((file) => ({
+              clientId: `document-${file.id}`,
+              fileTitle: file.file_title || '',
+              file: null,
+              uploadId: null,
+              articleFileId: file.id,
+              fileName: file.original_name || '',
+              status: file.scan_status === 'clean' ? 'uploaded' : 'failed',
+              progress: file.scan_status === 'clean' ? 100 : 0,
+              error: file.scan_status === 'clean' ? '' : 'The uploaded file could not be verified.',
+            })));
           setArticleImages(nextArticle.article_images || (nextArticle.assets || []).filter((asset) => asset.asset_type === 'image'));
           setSuggestedReviewers(nextArticle.reviewer_preferences?.suggested || []);
           setOpposedReviewers(nextArticle.reviewer_preferences?.opposed || []);
@@ -389,7 +405,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (['title', 'abstract', 'magazineId', 'publicationType', 'publication_type'].includes(key)) return 0;
     if (['authors', 'coAuthors', 'owner', 'corresponding'].includes(key)) return 1;
     if (['suggestedReviewers', 'opposedReviewers'].includes(key)) return 2;
-    if (['revisionResponse'].includes(key)) return 4;
+    if (['revisionResponse', 'additionalManuscriptFiles'].includes(key)) return 4;
     return 3;
   };
 
@@ -406,6 +422,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (!title.trim()) errors.title = 'Please add a manuscript title.';
     if (!cleanRichText(abstract)) errors.abstract = 'Please add an abstract.';
     if (isRevision && !revisionResponseFile) errors.revisionResponse = 'Please upload a PDF, DOC, or DOCX response to the revision request.';
+    if (scope === 'submit' && additionalManuscriptFiles.some((row) => !row.fileTitle.trim() || row.status !== 'uploaded')) errors.additionalManuscriptFiles = 'Finish uploading or remove every additional manuscript file row.';
     if (scope === 'submit' && !termsAccepted) errors.termsAccepted = 'You must accept the terms and conditions before submitting.';
     if (isSuperAdmin) {
       Object.assign(errors, validateAuthors(authors, { isSuperAdmin: true, user }));
@@ -448,6 +465,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (uploadIds.pdf_upload_id) formData.append('pdf_upload_id', uploadIds.pdf_upload_id);
     if (uploadIds.revision_response_upload_id) formData.append('revision_response_upload_id', uploadIds.revision_response_upload_id);
     (uploadIds.additional_file_ids || []).forEach((fileId) => formData.append('additional_file_ids[]', fileId));
+    formData.append('additional_manuscript_files', JSON.stringify(additionalManuscriptFiles
+      .filter((row) => row.status === 'uploaded')
+      .map((row) => ({ file_title: row.fileTitle.trim(), upload_id: row.uploadId, article_file_id: row.articleFileId }))));
     if (changeSummary.trim()) formData.append('change_summary', changeSummary.trim());
     formData.append('tags', JSON.stringify(selectedTags));
     const normalizedAuthors = normalizeAuthorRows(isSuperAdmin ? authors : visibleAuthors);
@@ -982,6 +1002,14 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               ) : (
                 <ArticleAssetBufferedDropzone files={supplementaryFiles} onFilesChanged={setSupplementaryFiles} />
               )}
+
+              <AdditionalManuscriptFilesField
+                rows={additionalManuscriptFiles}
+                onChange={setAdditionalManuscriptFiles}
+                articleId={isEdit ? articleId : null}
+                disabled={saving}
+              />
+              <FieldError id="additional-manuscript-files-error">{validationErrors.additionalManuscriptFiles}</FieldError>
 
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-5">
                 <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">Article Images</h3>

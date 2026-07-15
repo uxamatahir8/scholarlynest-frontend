@@ -138,7 +138,7 @@ export default function ArticleFilesPanel({ files = [], assets = [], versions = 
       return Number(sourceFile?.article_version_id || fallbackVersionId) === Number(version.id);
     });
     const assetIds = new Set(versionAssets.map((asset) => Number(asset.id)));
-    const primaryFiles = versionFiles.filter((file) => file.file_type !== 'supplementary');
+    const primaryFiles = versionFiles.filter((file) => !['supplementary', 'additional_manuscript_file'].includes(file.file_type));
     const supplementaryItems = [
       ...versionFiles
         .filter((file) => file.file_type === 'supplementary' && !assetIds.has(Number(file.source_asset_id)))
