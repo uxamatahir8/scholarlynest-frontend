@@ -8,6 +8,8 @@ import { ArrowLeft, Loader2, AlertCircle, Globe, ChevronRight } from 'lucide-rea
 import api from '../../utils/api';
 import DOMPurify from 'dompurify';
 import SeoHead from '../../components/SeoHead';
+import PageTitle from '../../components/PageTitle';
+import { humanizeRouteSegment } from '../../utils/pageTitle';
 
 export default function CustomFooterPage() {
   const params = useParams();
@@ -51,6 +53,7 @@ export default function CustomFooterPage() {
   if (loading) {
     return (
       <div className="bg-zinc-50/20 dark:bg-zinc-950/10 min-h-screen pt-32 pb-24 font-sans text-left">
+        <PageTitle title={humanizeRouteSegment(slug)} />
         <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8 space-y-8">
           {/* Breadcrumb shimmer */}
           <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-1/4 animate-pulse" />
@@ -73,6 +76,7 @@ export default function CustomFooterPage() {
   if (!pageData) {
     return (
       <div className="bg-zinc-50/20 dark:bg-zinc-950/10 min-h-screen pt-32 pb-24 font-sans text-left flex flex-col justify-center">
+        <PageTitle title="Content Unavailable" />
         <div className="max-w-md w-full mx-auto px-6 text-center space-y-6">
           <AlertCircle className="w-12 h-12 mx-auto text-amber-600" />
           <div className="space-y-2">
@@ -95,7 +99,8 @@ export default function CustomFooterPage() {
   return (
     <div className="bg-zinc-50/20 dark:bg-zinc-950/10 min-h-screen pt-32 pb-24 font-sans text-left transition-premium">
       <SeoHead
-        title={`${pageData.title} | ScholarlyNest`}
+        title={pageData.title}
+        ogTitle={`${pageData.title} | ScholarlyNest`}
         description={`Read the ${pageData.title} guidelines and policies on ScholarlyNest.`}
         keywords={`scholarlynest, ${pageData.title.toLowerCase()}, guidelines, policies`}
         ogUrl={`/${pageData.slug}`}

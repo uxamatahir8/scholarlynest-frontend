@@ -10,7 +10,8 @@ export default function AboutPage() {
   return (
     <div className="bg-[var(--background)] min-height-screen transition-premium">
       <SeoHead
-        title="About Us — ScholarlyNest"
+        title="About Us"
+        ogTitle="About Us — ScholarlyNest"
         description="ScholarlyNest is a state-of-the-art academic publishing platform designed to bridge the gap between rigorous peer-reviewed research and rapid interdisciplinary collaboration."
         ogUrl="/about"
       />

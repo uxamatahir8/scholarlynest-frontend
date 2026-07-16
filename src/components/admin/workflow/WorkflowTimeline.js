@@ -2,7 +2,7 @@ import React from 'react';
 import { History } from 'lucide-react';
 import EmptyState from '../../ui/EmptyState';
 import WorkflowSection from './WorkflowSection';
-import { eventLabel, formatDate, labelize } from './workflowDisplay';
+import { eventLabel, formatDate, labelize, submissionVersionLabel } from './workflowDisplay';
 
 export default function WorkflowTimeline({ article }) {
   const events = (article.audit_logs || [])
@@ -52,7 +52,7 @@ export default function WorkflowTimeline({ article }) {
             <ul className="mt-3 space-y-2">
               {versions.map((version) => (
                 <li key={version.id} className="rounded-md border border-[var(--border)] bg-[var(--surface-muted)] p-3">
-                  <p className="text-sm font-bold text-[var(--foreground)]">Version {version.version_number}</p>
+                  <p className="text-sm font-bold text-[var(--foreground)]">{submissionVersionLabel(version)}</p>
                   <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
                     {version.label || labelize(version.status_snapshot)} · {formatDate(version.created_at)}
                   </p>

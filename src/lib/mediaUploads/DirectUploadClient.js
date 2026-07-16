@@ -54,12 +54,38 @@ async function putWithProgress(url, blob, headers, onProgress, offset = 0, total
           checksum_sha256: xhr.getResponseHeader('x-amz-checksum-sha256') || null,
         });
       } else {
-        reject(new Error('Upload request failed.'));
+        const error = new Error(`The upload server rejected the file (HTTP ${xhr.status}).`);
+        error.uploadStatus = xhr.status;
+        reject(error);
       }
     };
-    xhr.onerror = () => reject(new Error('Upload request failed.'));
+    xhr.onerror = () => reject(new Error('Network connection was interrupted.'));
+    xhr.ontimeout = () => reject(new Error('The upload timed out. Please retry.'));
     xhr.send(blob);
   });
+}
+
+export function getUploadErrorMessage(error) {
+  const validationErrors = error?.response?.data?.errors;
+  if (validationErrors && typeof validationErrors === 'object') {
+    const first = Object.values(validationErrors).flat().find((message) => typeof message === 'string');
+    if (first) return first;
+  }
+
+  const apiMessage = error?.response?.data?.message;
+  if (typeof apiMessage === 'string' && apiMessage.trim()) {
+    if (/expired|cannot be completed|cannot be resumed/i.test(apiMessage)) return 'Upload URL expired. Please retry.';
+    if (error?.response?.status === 403) return 'You do not have permission to upload this file.';
+    return apiMessage;
+  }
+
+  if (error?.uploadStatus) return 'The server rejected the upload.';
+  if (/network|connection|offline/i.test(error?.message || '')) return 'Network connection was interrupted.';
+  if (/timed out|timeout/i.test(error?.message || '')) return 'The upload timed out. Please retry.';
+  if (/scan|security|malware|virus/i.test(error?.message || '')) return 'File scan failed.';
+  if (/could not be verified|object size/i.test(error?.message || '')) return 'The uploaded file could not be verified.';
+  if (/rejected|http \d+/i.test(error?.message || '')) return 'The server rejected the upload.';
+  return 'Upload failed. Please retry or remove the file and upload it again.';
 }
 
 export async function uploadDirectToS3({
@@ -195,13 +221,20 @@ export async function pollUploadUntilSettled(uploadId, onStatus) {
 }
 
 export async function uploadAndAwaitClean(options) {
-  const upload = await uploadDirectToS3(options);
-  const settled = await pollUploadUntilSettled(upload.id, options.onStatus);
-  if (!settled) {
-    throw new Error('Upload scan did not finish in time.');
+  try {
+    const upload = await uploadDirectToS3(options);
+    const settled = await pollUploadUntilSettled(upload.id, options.onStatus);
+    if (!settled) {
+      throw new Error('Upload scan did not finish in time.');
+    }
+    if (settled.status !== 'clean') {
+      const error = new Error(settled.failure_reason || 'Upload did not pass security scanning.');
+      error.upload = settled;
+      throw error;
+    }
+    return settled;
+  } catch (error) {
+    error.userMessage = getUploadErrorMessage(error);
+    throw error;
   }
-  if (settled.status !== 'clean') {
-    throw new Error(settled.failure_reason || 'Upload did not pass security scanning.');
-  }
-  return settled;
 }

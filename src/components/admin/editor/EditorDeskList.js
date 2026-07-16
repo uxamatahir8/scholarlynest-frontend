@@ -1,5 +1,7 @@
 'use client';
 
+import { Select } from '../../ui/Input';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -97,7 +99,6 @@ export default function EditorDeskList({ observerMode = false, observerUser = nu
 
   return (
     <div className="space-y-8">
-      <title>Editor Desk - ScholarlyNest</title>
       <ConsolePageHeader
         title={observerMode && observerUser ? `${observerUser.name}'s Editor Desk` : 'Editor Desk'}
         description="Screen submissions, coordinate peer review, and record editorial decisions."
@@ -112,9 +113,9 @@ export default function EditorDeskList({ observerMode = false, observerUser = nu
           <button type="submit" className="min-h-10 rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white dark:bg-zinc-100 dark:text-zinc-950">Search</button>
         </form>
         <div className="flex flex-wrap items-center gap-3">
-          <select value={status} onChange={(event) => updateQuery({ status: event.target.value, page: 1 })} className="min-h-10 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 text-sm font-medium">
+          <Select value={status} onChange={(event) => updateQuery({ status: event.target.value, page: 1 })} className="min-h-10 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 text-sm font-medium">
             {STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
+          </Select>
           <span className="text-xs font-medium text-[var(--muted)]">Showing {start}-{end} of {meta.total}</span>
           <button type="button" onClick={loadArticles} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-[var(--border)] px-3 text-xs font-semibold">
             <RotateCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh

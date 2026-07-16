@@ -15,14 +15,22 @@ function UserAvatar({ user }) {
   );
 }
 
-function AssignedEditors({ user }) {
+function AssignmentContext({ user }) {
   const editors = user.assigned_editors || [];
-  if (editors.length === 0) return <span className="text-xs text-[var(--muted)]">No editor assignment shown</span>;
+  const publications = user.assigned_magazines || user.magazines || [];
+  if (editors.length === 0 && publications.length === 0) return <span className="text-xs text-[var(--muted)]">—</span>;
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {editors.map((editor) => (
-        <Badge key={editor.id} variant="outline" className="text-[10px]">{editor.name}</Badge>
-      ))}
+    <div className="space-y-2">
+      {publications.length > 0 && <div className="flex flex-wrap gap-1.5">
+        {publications.map((publication) => (
+          <Badge key={`publication-${publication.id}`} variant="outline" className="text-[10px]">
+            {publication.publication_type === 'journal' ? 'Journal' : 'Magazine'} · {publication.title}
+          </Badge>
+        ))}
+      </div>}
+      {editors.length > 0 && <div className="flex flex-wrap gap-1.5">
+        {editors.map((editor) => <Badge key={`editor-${editor.id}`} variant="info" className="text-[10px]">Under {editor.name}</Badge>)}
+      </div>}
     </div>
   );
 }
@@ -55,7 +63,7 @@ export default function UserList({ users, authUser, impersonationStatus, onImper
               <TableHead>User</TableHead>
               <TableHead>Role and Access</TableHead>
               <TableHead>Account State</TableHead>
-              <TableHead>Assigned Editor Context</TableHead>
+              <TableHead>Assignment Context</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </tr>
           </TableHeader>
@@ -86,7 +94,7 @@ export default function UserList({ users, authUser, impersonationStatus, onImper
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell><AssignedEditors user={user} /></TableCell>
+                  <TableCell><AssignmentContext user={user} /></TableCell>
                   <TableCell className="text-right"><UserActions user={user} authUser={authUser} impersonationStatus={impersonationStatus} onImpersonate={onImpersonate} /></TableCell>
                 </TableRow>
               );
@@ -117,8 +125,8 @@ export default function UserList({ users, authUser, impersonationStatus, onImper
                   <span className="text-xs text-[var(--muted)]">{user.created_at ? new Date(user.created_at).toLocaleDateString() : 'Created date unavailable'}</span>
                 </div>
                 <div>
-                  <p className="mb-1 text-xs font-bold text-[var(--foreground)]">Assigned Editor Context</p>
-                  <AssignedEditors user={user} />
+                  <p className="mb-1 text-xs font-bold text-[var(--foreground)]">Assignment Context</p>
+                  <AssignmentContext user={user} />
                 </div>
                 <UserActions user={user} authUser={authUser} impersonationStatus={impersonationStatus} onImpersonate={onImpersonate} />
               </div>

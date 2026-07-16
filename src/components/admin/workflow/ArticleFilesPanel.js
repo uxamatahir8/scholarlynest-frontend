@@ -3,7 +3,7 @@ import { Download, FileImage, Files, Loader2, Sheet } from 'lucide-react';
 import EmptyState from '../../ui/EmptyState';
 import ImageLightboxGallery from '../../ui/ImageLightboxGallery';
 import WorkflowSection from './WorkflowSection';
-import { fileTypeLabels, formatDate, labelize } from './workflowDisplay';
+import { fileTypeLabels, formatDate, labelize, submissionVersionLabel } from './workflowDisplay';
 import api from '../../../utils/api';
 
 const imageExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
@@ -138,7 +138,7 @@ export default function ArticleFilesPanel({ files = [], assets = [], versions = 
       return Number(sourceFile?.article_version_id || fallbackVersionId) === Number(version.id);
     });
     const assetIds = new Set(versionAssets.map((asset) => Number(asset.id)));
-    const primaryFiles = versionFiles.filter((file) => file.file_type !== 'supplementary');
+    const primaryFiles = versionFiles.filter((file) => !['supplementary', 'additional_manuscript_file'].includes(file.file_type));
     const supplementaryItems = [
       ...versionFiles
         .filter((file) => file.file_type === 'supplementary' && !assetIds.has(Number(file.source_asset_id)))
@@ -151,10 +151,6 @@ export default function ArticleFilesPanel({ files = [], assets = [], versions = 
     }, { images: [], sheets: [], files: [] });
     return { version, primaryFiles, grouped };
   }).filter((group) => group.primaryFiles.length > 0 || Object.values(group.grouped).some((items) => items.length > 0));
-
-  const versionTitle = (version) => version.revision_number
-    ? `Revision ${version.revision_number}`
-    : Number(version.version_number) === 1 ? 'Initial Submission' : `Version ${version.version_number}`;
 
   return (
     <WorkflowSection
@@ -177,9 +173,9 @@ export default function ArticleFilesPanel({ files = [], assets = [], versions = 
               <section key={version.id} className="min-w-0 max-w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3">
                   <div>
-                    <h3 className="text-sm font-bold text-[var(--foreground)]">{versionTitle(version)}</h3>
+                    <h3 className="text-sm font-bold text-[var(--foreground)]">{submissionVersionLabel(version)}</h3>
                     <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
-                      {version.revision_tracking_code || `Version ${version.version_number}`} · {formatDate(version.created_at)}
+                      {version.revision_tracking_code || submissionVersionLabel(version)} · {formatDate(version.created_at)}
                     </p>
                   </div>
                   {index === 0 && <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">Latest</span>}

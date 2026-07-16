@@ -83,7 +83,6 @@ export default function ReviewQuestionnaireSettingsPage() {
 
   return (
     <main className="space-y-6">
-      <title>Reviewer Questionnaire - ScholarlyNest</title>
       <header className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Super Admin</p>
         <h1 className="mt-2 text-2xl font-bold text-[var(--foreground)]">Reviewer Questionnaire</h1>

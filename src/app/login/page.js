@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Lock, Mail, Loader2, AlertCircle, Eye, EyeOff, LayoutDashboard } from 'lucide-react';
 import SeoHead from '../../components/SeoHead';
+import PageTitle from '../../components/PageTitle';
 import api from '../../utils/api';
 import { loginSchema, validateWithZod } from '../../lib/validation';
 import { resolveDashboardRedirect, withDashboardRedirect } from '../../utils/authRedirect';
@@ -36,8 +37,18 @@ export default function Login() {
     try {
       const res = await api.post('/auth/google/signin', { credential: response.credential });
       if (res.status === 202 && res.data.message === '2fa_required') {
-        toast('Two-factor authentication code sent to your email.', 'info');
-        router.push(withDashboardRedirect(`/verify-2fa?email=${encodeURIComponent(res.data.email)}`, requestedPath));
+        sessionStorage.setItem('mfa_challenge', JSON.stringify({
+          token: res.data.mfa_challenge_token,
+          methods: res.data.available_methods,
+          defaultMethod: res.data.default_method,
+          requiredMethods: res.data.required_methods,
+          verifiedMethods: res.data.verified_methods,
+          remainingMethods: res.data.remaining_methods,
+          nextMethod: res.data.next_method,
+          recoveryCodeAllowed: res.data.recovery_code_allowed,
+        }));
+        toast(res.data.default_method === 'email' ? 'Authentication code sent to your email.' : 'Enter a code from your authenticator app.', 'info');
+        router.push(withDashboardRedirect('/verify-2fa', requestedPath));
         return;
       }
       const { user: userData, access_token } = res.data;
@@ -150,8 +161,18 @@ export default function Login() {
       toast('Email verification is required. A code was sent to your email.', 'warning');
       router.push(withDashboardRedirect(`/verify?email=${encodeURIComponent(result.email)}`, requestedPath));
     } else if (result.twoFactorRequired) {
-      toast('Two-factor authentication code sent to your email.', 'info');
-      router.push(withDashboardRedirect(`/verify-2fa?email=${encodeURIComponent(result.email)}`, requestedPath));
+      sessionStorage.setItem('mfa_challenge', JSON.stringify({
+        token: result.challengeToken,
+        methods: result.availableMethods,
+        defaultMethod: result.defaultMethod,
+        requiredMethods: result.requiredMethods,
+        verifiedMethods: result.verifiedMethods,
+        remainingMethods: result.remainingMethods,
+        nextMethod: result.nextMethod,
+        recoveryCodeAllowed: result.recoveryCodeAllowed,
+      }));
+      toast(result.defaultMethod === 'email' ? 'Authentication code sent to your email.' : 'Enter a code from your authenticator app.', 'info');
+      router.push(withDashboardRedirect('/verify-2fa', requestedPath));
     } else {
       setError(result.message);
       toast(result.message || 'Invalid credentials provided.', 'error');
@@ -164,6 +185,7 @@ export default function Login() {
   if (authLoading || user) {
     return (
       <div className="flex-grow flex flex-col justify-center items-center py-20">
+        <PageTitle title="Login" />
         <Loader2 className="w-8 h-8 animate-spin text-accent dark:text-accent-gold" />
         <p className="text-xs text-muted mt-4 font-semibold">Verifying session...</p>
       </div>
@@ -173,7 +195,8 @@ export default function Login() {
   return (
     <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
       <SeoHead
-        title="Login — ScholarlyNest"
+        title="Login"
+        ogTitle="Login — ScholarlyNest"
         description="Sign in to your ScholarlyNest account to access your publishing workspace, write articles, or review submissions."
         ogUrl="/login"
       />

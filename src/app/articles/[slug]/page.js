@@ -19,6 +19,8 @@ import AuthorHeaderBlock from '../../../components/article/AuthorHeaderBlock';
 import { isArticleEditableStatus } from '../../../utils/status';
 import { publicArticlePath } from '../../../utils/articleLinks';
 import AdvertisementSlot from '../../../components/advertising/AdvertisementSlot';
+import PageTitle from '../../../components/PageTitle';
+import { humanizeRouteSegment } from '../../../utils/pageTitle';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -293,6 +295,7 @@ export default function ArticleDetail() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center space-y-4 bg-zinc-50/50 dark:bg-zinc-950/40">
+        <PageTitle title={humanizeRouteSegment(articleSlug, 'Article')} />
         <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
         <span className="text-[10px] font-sans font-bold text-zinc-450 dark:text-zinc-550 uppercase tracking-wider">
           Acquiring Research Metadata...
@@ -304,6 +307,7 @@ export default function ArticleDetail() {
   if (error || !article) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-zinc-50/50 dark:bg-zinc-950/40">
+        <PageTitle title="Article Unavailable" />
         <div className="max-w-md w-full text-center space-y-6">
           <AlertCircle className="w-12 h-12 mx-auto text-red-500" />
           <h2 className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">Article Error</h2>
@@ -336,6 +340,7 @@ export default function ArticleDetail() {
     })),
   ];
   const supplementaryFiles = (article.assets || []).filter((asset) => !isImageAsset(asset));
+  const publicationFiles = article.publication_files || [];
   const allPublicationSections = (article.publication_sections || []).filter((section) => section.content_html);
   const publicationAbstract = allPublicationSections.find((section) => section.section_key === 'abstract');
   const abstractHtml = publicationAbstract?.content_html || article.abstract;
@@ -364,7 +369,7 @@ export default function ArticleDetail() {
       label: section.title || sectionLabels[section.section_key] || section.section_key.replaceAll('_', ' '),
     })),
     articleGalleryImages.length > 0 && { id: 'gallery', label: 'Gallery' },
-    ((article.assets && article.assets.length > 0) || article.has_pdf) && { id: 'supplementary-assets', label: 'Supplementary Assets' },
+    ((article.assets && article.assets.length > 0) || publicationFiles.length > 0 || article.has_pdf) && { id: 'supplementary-assets', label: 'Downloads' },
     { id: 'citation', label: 'Citation' },
   ].filter(Boolean);
   const advertisementContext = {
@@ -377,7 +382,8 @@ export default function ArticleDetail() {
   return (
     <div className="min-h-screen bg-zinc-50/20 dark:bg-zinc-950/10 pb-24 px-4 sm:px-6 lg:px-8 text-left">
       <SeoHead
-        title={article.seo_title}
+        title={article.title}
+        ogTitle={article.seo_title || article.title}
         description={article.seo_description}
         keywords={article.seo_keywords}
         ogImage={article.og_image}
@@ -562,7 +568,7 @@ export default function ArticleDetail() {
           {abstractHtml && (
             <section id="abstract" className="scroll-mt-24 bg-zinc-50/50 dark:bg-zinc-900/10 p-6 sm:p-8 rounded-2xl border border-zinc-150 dark:border-zinc-850/80 text-left space-y-4">
               <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
-                Abstract
+                {publicationAbstract?.title || 'Abstract'}
               </h3>
               <div 
                 className="font-serif italic text-base sm:text-lg leading-relaxed text-zinc-700 dark:text-zinc-300 prose dark:prose-invert max-w-none"
@@ -663,10 +669,10 @@ export default function ArticleDetail() {
           </section>
 
           {/* 11. PDF / Supplementary Assets List */}
-          {((article.assets && article.assets.length > 0) || article.has_pdf) && (
+          {((article.assets && article.assets.length > 0) || publicationFiles.length > 0 || article.has_pdf) && (
             <section id="supplementary-assets" className="scroll-mt-24 border-t border-zinc-100 dark:border-zinc-800/80 pt-8 text-left space-y-4">
               <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
-                Supplementary Assets
+                Downloads and Supplementary Assets
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -726,6 +732,14 @@ export default function ArticleDetail() {
                     </div>
                   );
                 })}
+                {publicationFiles.filter((file) => file.show_on_article || file.show_in_downloads).map((file) => (
+                  <div key={`publication-${file.id}`} className="rounded-2xl border border-zinc-200/60 bg-zinc-50/50 p-5 dark:border-zinc-800/80 dark:bg-zinc-900/20">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0"><h4 className="truncate text-xs font-bold text-zinc-900 dark:text-white">{file.title || file.original_name}</h4><span className="text-[9px] font-semibold tracking-wider text-zinc-500">PUBLICATION FILE</span></div>
+                      <a href={file.download_url} className="rounded-xl bg-zinc-100 p-2.5 text-zinc-600 transition-colors hover:bg-amber-600 hover:text-white dark:bg-zinc-800"><Download className="h-4 w-4" /></a>
+                    </div>
+                  </div>
+                ))}
               </div>
             </section>
           )}

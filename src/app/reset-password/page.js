@@ -9,6 +9,7 @@ import { useToast } from '../../context/ToastContext';
 import { Lock, ShieldAlert, Loader2, AlertCircle, Check, X, Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
 import { resetPasswordFormSchema, validateWithZod } from '../../lib/validation';
+import PageTitle from '../../components/PageTitle';
 
 function ResetPasswordForm() {
   const { toast } = useToast();
@@ -322,6 +323,7 @@ function ResetPasswordForm() {
 export default function ResetPassword() {
   return (
     <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
+      <PageTitle title="Reset Password" />
       <Suspense fallback={
         <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md flex flex-col items-center justify-center min-h-[300px]">
           <Loader2 className="w-8 h-8 text-zinc-400 dark:text-zinc-650 animate-spin" />
