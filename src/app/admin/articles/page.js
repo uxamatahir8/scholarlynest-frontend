@@ -16,7 +16,6 @@ import { useToast } from '../../../context/ToastContext';
 import { Button } from '../../../components/ui/Button';
 import { useAuth } from '../../../context/AuthContext';
 import Pagination from '../../../components/ui/Pagination';
-import PublishArticleModal from '../../../components/admin/PublishArticleModal';
 import DeskObserverContext from '../../../components/admin/desk-observer/DeskObserverContext';
 import {
   PUBLISHABLE_STATUSES,
@@ -31,7 +30,6 @@ import {
   isValidArticleQueue,
 } from '../../../utils/articleQueues';
 import { isArticleEditableStatus } from '../../../utils/status';
-import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
 import PageTitle from '../../../components/PageTitle';
 
 const getFullImageUrl = (path) => {
@@ -272,45 +270,6 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
   const rawQueueParam = searchParams.get(ARTICLE_QUEUE_PARAM);
   const queueId = rawQueueParam && isValidArticleQueue(rawQueueParam) ? rawQueueParam : DEFAULT_ARTICLE_QUEUE_ID;
   const selectedQueue = getArticleQueue(queueId);
-
-  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
-  const [articleToPublish, setArticleToPublish] = useState(null);
-
-  const openPublishModal = (article) => {
-    setArticleToPublish(article);
-    setIsPublishModalOpen(true);
-  };
-
-  const handlePublishSubmit = async (publishData) => {
-    try {
-      const payload = new FormData();
-      payload.append('published_year', publishData.published_year);
-      payload.append('published_month', publishData.published_month);
-      if (publishData.magazine_issue_id) payload.append('magazine_issue_id', publishData.magazine_issue_id);
-      if (publishData.doi) payload.append('doi', publishData.doi);
-      if (publishData.page_start) payload.append('page_start', publishData.page_start);
-      if (publishData.page_end) payload.append('page_end', publishData.page_end);
-      if (publishData.publication_pdf) {
-        const pdfUpload = await uploadAndAwaitClean({
-          file: publishData.publication_pdf,
-          purpose: 'article_published_pdf',
-          attachableId: articleToPublish.id,
-        });
-        payload.append('publication_pdf_upload_id', pdfUpload.id);
-      }
-
-      await api.post(`/admin/articles/${articleToPublish.id}/publish`, payload, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      
-      toast(`Article published successfully for ${publishData.published_month} ${publishData.published_year}.`, 'success');
-      setIsPublishModalOpen(false);
-      fetchArticles();
-    } catch (err) {
-      logError(err);
-      toast('Failed to finalize article publication.', 'error');
-    }
-  };
 
   // Live search and magazine filter state
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
@@ -816,13 +775,13 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
                       )}
 
                       {isAdminOrEditor && !isEditor && !observerMode && PUBLISHABLE_STATUSES.has(art.status) && (
-                        <button
-                          onClick={() => openPublishModal(art)}
+                        <Link
+                          href={`/admin/articles/${art.id}/publish`}
                           className="inline-flex items-center space-x-1 text-[10px] font-bold uppercase text-purple-650 hover:underline cursor-pointer"
                         >
                           <BookOpen className="w-3.5 h-3.5" />
                           <span>Publish</span>
-                        </button>
+                        </Link>
                       )}
 
                       <Link
@@ -879,16 +838,6 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
           </div>
         )}
       </div>
-
-      <PublishArticleModal
-        isOpen={isPublishModalOpen}
-        onClose={() => setIsPublishModalOpen(false)}
-        onSubmit={handlePublishSubmit}
-        articleTitle={articleToPublish?.title}
-        articleAbstract={articleToPublish?.abstract || ''}
-        magazineId={articleToPublish?.magazine_id}
-        publicationSections={articleToPublish?.publication_sections || []}
-      />
 
     </div>
   );

@@ -78,7 +78,7 @@ export default function ConsoleShell({ children, auth }) {
     [navigation, pathname],
   );
 
-  const useDocumentScroll = pathname === '/admin/articles/new' || /^\/admin\/articles\/[^/]+\/(edit|workflow)$/.test(pathname || '');
+  const useDocumentScroll = pathname === '/admin/articles/new' || /^\/admin\/articles\/[^/]+\/(edit|workflow|publish)$/.test(pathname || '');
 
   if (authLoading || !user) {
     return (

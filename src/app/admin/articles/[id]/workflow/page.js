@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
   FileText, 
   CheckSquare, 
@@ -29,7 +29,6 @@ import Alert from '../../../../../components/ui/Alert';
 import EmptyState from '../../../../../components/ui/EmptyState';
 import ImageLightboxGallery from '../../../../../components/ui/ImageLightboxGallery';
 import WorkflowActionPanel from '../../../../../components/admin/WorkflowActionPanel';
-import PublishArticleModal from '../../../../../components/admin/PublishArticleModal';
 import { PUBLISHABLE_STATUSES } from '../../../../../components/admin/articleWorkflow';
 import ManuscriptHeader from '../../../../../components/admin/workflow/ManuscriptHeader';
 import ArticleMetadataPanel from '../../../../../components/admin/workflow/ArticleMetadataPanel';
@@ -52,7 +51,6 @@ import {
   submissionVersionLabel,
   hasAcceptedReviewInvitation,
 } from '../../../../../components/admin/workflow/workflowDisplay';
-import { uploadAndAwaitClean } from '../../../../../lib/mediaUploads/DirectUploadClient';
 import { normalizeStatus } from '../../../../../utils/status';
 
 // Helper component for Editorial Decision Tab
@@ -713,6 +711,7 @@ function hasWorkflowActions(article, user, hasRole) {
 
 export default function ArticleWorkflowPage() {
   const params = useParams();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const articleId = params?.id;
   const { user, hasRole, hasPermission, loading: authLoading } = useAuth();
@@ -720,7 +719,6 @@ export default function ArticleWorkflowPage() {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [publishOpen, setPublishOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('metadata');
   const observerReadonly = searchParams.get('observer_readonly') === '1';
 
@@ -755,74 +753,6 @@ export default function ArticleWorkflowPage() {
   ), [article, hasRole]);
 
   const showReviewerIdentity = useMemo(() => canViewReviewerIdentity(user, hasRole), [user, hasRole]);
-
-  const handlePublishSubmit = async (publishData) => {
-    const payload = new FormData();
-    payload.append('title', publishData.title);
-    payload.append('published_year', publishData.published_year);
-    payload.append('published_month', publishData.published_month);
-    if (publishData.magazine_issue_id) payload.append('magazine_issue_id', publishData.magazine_issue_id);
-    if (publishData.doi) payload.append('doi', publishData.doi);
-    if (publishData.page_start) payload.append('page_start', publishData.page_start);
-    if (publishData.page_end) payload.append('page_end', publishData.page_end);
-    [
-      'article_type',
-      'article_category',
-      'open_access_label',
-      'academic_editor',
-      'received_at',
-      'accepted_at',
-      'published_at',
-      'license_statement',
-      'data_availability_statement',
-      'funding_statement',
-      'competing_interests_statement',
-      'abbreviations',
-      'citation_text',
-    ].forEach((key) => {
-      if (publishData[key] !== undefined && publishData[key] !== null && String(publishData[key]).trim() !== '') {
-        payload.append(key, publishData[key]);
-      }
-    });
-    if (publishData.is_peer_reviewed !== undefined) {
-      payload.append('is_peer_reviewed', publishData.is_peer_reviewed ? '1' : '0');
-    }
-    if (publishData.publication_sections) {
-      const publicationSections = [];
-      for (const section of publishData.publication_sections) {
-        let mediaUploadId = section.existing_media_upload_session_id || null;
-        if (section.image_file) {
-          const sectionImageUpload = await uploadAndAwaitClean({
-            file: section.image_file,
-            purpose: 'publication_section_image',
-            attachableId: article.id,
-          });
-          mediaUploadId = sectionImageUpload.id;
-        }
-        publicationSections.push({
-          section_key: section.section_key,
-          title: section.title,
-          content_html: section.content_html,
-          sort_order: section.sort_order,
-          media_upload_session_id: mediaUploadId,
-        });
-      }
-      payload.append('publication_sections', JSON.stringify(publicationSections));
-    }
-    if (publishData.publication_pdf) {
-      const pdfUpload = await uploadAndAwaitClean({
-        file: publishData.publication_pdf,
-        purpose: 'article_published_pdf',
-        attachableId: article.id,
-      });
-      payload.append('publication_pdf_upload_id', pdfUpload.id);
-    }
-
-    await api.post(`/admin/articles/${article.id}/publish`, payload, { headers: { 'Content-Type': 'multipart/form-data' } });
-    toast('Manuscript published successfully.', 'success');
-    setPublishOpen(false);
-    await loadWorkflow();
-  };
 
   const tabs = useMemo(() => {
     if (!article) return [];
@@ -860,7 +790,7 @@ export default function ArticleWorkflowPage() {
                 hasRole={hasRole}
                 hasPermission={hasPermission}
                 onWorkflowChanged={loadWorkflow}
-                onOpenPublish={() => setPublishOpen(true)}
+                onOpenPublish={() => router.push(`/admin/articles/${article.id}/publish`)}
                 toast={toast}
               />
             ) : (
@@ -1058,7 +988,7 @@ export default function ArticleWorkflowPage() {
     }
 
     return list;
-  }, [article, user, hasRole, observerReadonly, showReviewerIdentity, loadWorkflow, publishOpen, toast]);
+  }, [article, user, hasRole, observerReadonly, showReviewerIdentity, loadWorkflow, toast]);
 
   // Handle activeTab adjustment when tabs list changes
   useEffect(() => {
@@ -1083,7 +1013,7 @@ export default function ArticleWorkflowPage() {
         user={user}
         hasRole={hasRole}
         canPublish={canPublish && !observerReadonly}
-        onPublish={() => setPublishOpen(true)}
+        onPublish={() => router.push(`/admin/articles/${article.id}/publish`)}
       />
 
       <WorkflowProgressPath article={article} />
@@ -1114,17 +1044,6 @@ export default function ArticleWorkflowPage() {
         {tabs.find((t) => t.id === activeTab)?.content}
       </div>
 
-      {!observerReadonly && (
-        <PublishArticleModal
-          isOpen={publishOpen}
-          onClose={() => setPublishOpen(false)}
-          articleTitle={article.title}
-          articleAbstract={article.abstract || ''}
-          magazineId={article.magazine_id}
-          publicationSections={article.publication_sections || []}
-          onSubmit={handlePublishSubmit}
-        />
-      )}
     </main>
   );
 }
