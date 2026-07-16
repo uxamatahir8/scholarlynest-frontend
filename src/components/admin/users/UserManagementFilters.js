@@ -3,7 +3,7 @@
 import React from 'react';
 import { Filter, Search, X } from 'lucide-react';
 import { Button } from '../../ui/Button';
-import { Input } from '../../ui/Input';
+import { Input, Select } from '../../ui/Input';
 
 export default function UserManagementFilters({ search, role, roles = [], onSearchChange, onRoleChange, onClear, loading }) {
   const hasFilters = Boolean(search || (role && role !== 'all'));
@@ -36,7 +36,7 @@ export default function UserManagementFilters({ search, role, roles = [], onSear
           <Filter className="h-3.5 w-3.5" aria-hidden="true" />
           Filter by role
         </label>
-        <select
+        <Select
           id="user-role-filter"
           value={role || 'all'}
           onChange={(event) => onRoleChange(event.target.value)}
@@ -48,7 +48,7 @@ export default function UserManagementFilters({ search, role, roles = [], onSear
           {roles.map((item) => (
             <option key={item.id} value={item.name}>{item.display_name || item.name}</option>
           ))}
-        </select>
+        </Select>
       </div>
       <Button type="button" variant="secondary" size="md" onClick={onClear} disabled={loading || !hasFilters}>
         Reset

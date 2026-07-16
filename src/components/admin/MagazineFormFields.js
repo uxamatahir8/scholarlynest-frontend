@@ -1,3 +1,4 @@
+import { Select } from '../ui/Input';
 import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
@@ -30,7 +31,7 @@ export default function MagazineFormFields({ value, onChange, disabled = false }
           Loading eligible editors...
         </div>
       ) : (
-        <select
+        <Select
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
@@ -43,7 +44,7 @@ export default function MagazineFormFields({ value, onChange, disabled = false }
               {editor.name} ({editor.email})
             </option>
           ))}
-        </select>
+        </Select>
       )}
     </div>
   );

@@ -23,7 +23,8 @@ export default function ProfileRedirect() {
   return (
     <div className="flex-grow flex flex-col items-center justify-center py-48 space-y-4">
       <SeoHead
-        title="Redirecting — ScholarlyNest"
+        title={user?.name ? `Profile - ${user.name}` : 'Profile'}
+        ogTitle="Redirecting — ScholarlyNest"
         description="Redirecting you to your academic profile..."
         ogUrl="/profile"
       />

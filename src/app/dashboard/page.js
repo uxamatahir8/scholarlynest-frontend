@@ -10,6 +10,7 @@ import QuickActions from '../../components/dashboard/QuickActions';
 import UniversityGateModal from '../../components/dashboard/UniversityGateModal';
 import { Loader2, ShieldAlert, Award, Calendar, BookOpen, Clock } from 'lucide-react';
 import Link from 'next/link';
+import PageTitle from '../../components/PageTitle';
 
 export default function Dashboard() {
   const { user, loading: authLoading, hasPermission, hasRole } = useAuth();
@@ -116,7 +117,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300 text-left font-sans">
-      <title>{isAdminOrEditor ? 'Publisher Dashboard' : 'Author Dashboard'} - ScholarlyNest</title>
+      <PageTitle title={isAdminOrEditor ? 'Publisher Dashboard' : 'Author Dashboard'} />
       
       {/* Decorative top modal check */}
       <UniversityGateModal />

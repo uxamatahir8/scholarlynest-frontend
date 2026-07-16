@@ -12,6 +12,7 @@ import { Button } from '../../../../../components/ui/Button';
 import ErrorState from '../../../../../components/ui/ErrorState';
 import LoadingState from '../../../../../components/ui/LoadingState';
 import UserForm from '../../../../../components/admin/users/UserForm';
+import PageTitle from '../../../../../components/PageTitle';
 import { isMagazineAssignmentRole, isSubEditorRole } from '../../../../../utils/userManagement';
 import { adminUserSchemaFor, validateWithZod } from '../../../../../lib/validation';
 
@@ -157,7 +158,7 @@ export default function EditUserPage() {
 
   return (
     <main className="mx-auto max-w-5xl space-y-6">
-      <title>Edit User - ScholarlyNest</title>
+      <PageTitle title={values.name ? `Edit User - ${values.name}` : 'Edit User'} />
       <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 sm:flex-row sm:items-start">
         <Button type="button" variant="outline" size="sm" icon={ArrowLeft} onClick={() => router.push('/admin/users')} className="self-start">
           Back to Users

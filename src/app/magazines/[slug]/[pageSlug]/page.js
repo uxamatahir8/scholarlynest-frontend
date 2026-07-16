@@ -60,16 +60,16 @@ export default function MagazineCustomPage() {
   }
 
   const publicationLabel = routePrefix === 'journals' ? 'Journal' : 'Magazine';
-  const pageTitle = data.seo?.title || `${data.page.title} | ${data.magazine?.title || publicationLabel} | ScholarlyNest`;
+  const pageTitle = data.seo?.title || `${data.page.title} - ${data.magazine?.title || publicationLabel}`;
 
   return (
-    <article className="space-y-8">
-      <SeoHead title={pageTitle} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/${pageSlug}`} />
+    <article className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 md:p-8 lg:p-10">
+      <SeoHead title={pageTitle} ogTitle={data.seo?.title || `${data.page.title} | ${data.magazine?.title || publicationLabel} | ScholarlyNest`} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/${pageSlug}`} />
       <div className="border-b border-[var(--border)] pb-6">
-        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Magazine page</p>
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">{publicationLabel} page</p>
         <h2 className="mt-2 font-serif text-4xl font-bold leading-tight text-zinc-950 dark:text-white">{data.page.title}</h2>
       </div>
-      <div className="cms-content-prose max-w-none" dangerouslySetInnerHTML={{ __html: content }} />
+      <div className="cms-content-prose mt-8 max-w-none" dangerouslySetInnerHTML={{ __html: content }} />
     </article>
   );
 }

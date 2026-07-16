@@ -18,16 +18,6 @@ import MagazineFormDialog from './MagazineFormDialog';
 import { compactText } from './publicationUtils';
 import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
 
-const getFullImageUrl = (path) => {
-  if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) return path;
-  if (path.startsWith('/images/') || path.startsWith('images/')) return path.startsWith('/') ? path : `/${path}`;
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-  const domain = apiBase.replace(/\/api$/, '');
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `${domain}${cleanPath}`;
-};
-
 export default function MagazineWorkspace({ publicationType = 'magazine' }) {
   const isJournal = publicationType === 'journal';
   const label = isJournal ? 'Journal' : 'Magazine';
@@ -45,13 +35,12 @@ export default function MagazineWorkspace({ publicationType = 'magazine' }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const isEditor = hasRole('editor');
+  const isSuperAdmin = hasRole('super_admin');
   const canView = hasPermission('magazines.view-any') || hasPermission('magazines.view-own');
-  const canCreate = hasPermission('magazines.create') && !isEditor;
-  const canEdit = hasPermission('magazines.edit') && !isEditor;
-  const canDelete = hasRole('super_admin') && hasPermission('magazines.delete') && !isEditor;
-  const canEditSeo = hasPermission('seo.magazines') && !isEditor;
-  const canManagePublicPages = hasRole('super_admin') || hasRole('admin') || isEditor || canEdit;
+  const canCreate = isSuperAdmin && hasPermission('magazines.create');
+  const canEdit = isSuperAdmin && hasPermission('magazines.edit');
+  const canDelete = isSuperAdmin && hasPermission('magazines.delete');
+  const canEditSeo = isSuperAdmin && hasPermission('seo.magazines');
   const canUseIssueManager = hasRole('super_admin') || hasRole('publisher');
 
   const pageSummary = useMemo(() => {
@@ -107,8 +96,14 @@ export default function MagazineWorkspace({ publicationType = 'magazine' }) {
       payload.append('editor_id', form.editor_id || '');
       if (form.cover_image_file) {
         const coverUpload = await uploadAndAwaitClean({ file: form.cover_image_file, purpose: 'magazine_cover' });
-        payload.append('cover_image_upload_id', coverUpload.id);
+        payload.append('main_image_upload_id', coverUpload.id);
       }
+      if (form.banner_image_file) {
+        const bannerUpload = await uploadAndAwaitClean({ file: form.banner_image_file, purpose: 'publication_banner_image' });
+        payload.append('banner_image_upload_id', bannerUpload.id);
+      }
+      if (form.remove_cover_image) payload.append('cover_image', '');
+      if (form.remove_banner_image) payload.append('banner_image', '');
       if (canEditSeo) {
         payload.append('seo_title', form.seo_title || '');
         payload.append('seo_description', form.seo_description || '');
@@ -157,7 +152,6 @@ export default function MagazineWorkspace({ publicationType = 'magazine' }) {
 
   return (
     <main className="space-y-6">
-      <title>{label} Management - ScholarlyNest</title>
       <header className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -202,8 +196,8 @@ export default function MagazineWorkspace({ publicationType = 'magazine' }) {
             {magazines.map((magazine) => (
               <article key={magazine.id} className="grid gap-4 p-5 md:grid-cols-[96px_minmax(0,1fr)_auto] md:items-center">
                 <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]">
-                  {magazine.cover_image ? (
-                    <img src={magazine.cover_image_url || getFullImageUrl(magazine.cover_image)} alt="" className="h-full w-full object-cover" />
+                  {magazine.main_image_url || magazine.cover_image_url ? (
+                    <img src={magazine.main_image_url || magazine.cover_image_url} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <ImageIcon className="h-7 w-7 text-[var(--muted)]" aria-hidden="true" />
                   )}
@@ -220,8 +214,8 @@ export default function MagazineWorkspace({ publicationType = 'magazine' }) {
                     <Link href={`/${publicPrefix}/${magazine.slug}`} target="_blank" className="inline-flex items-center gap-1 text-sm font-semibold text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] dark:text-amber-400">
                       Public {label.toLowerCase()} <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
                     </Link>
-                    {canManagePublicPages && (
-                      <Link href={`/admin/magazines/${magazine.slug}/pages`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                    {canView && (
+                      <Link href={`/admin/magazines/${magazine.slug}/pages${isJournal ? '?publication_type=journal' : ''}`} className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--foreground)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
                         Public pages <Settings className="h-3.5 w-3.5" aria-hidden="true" />
                       </Link>
                     )}
@@ -233,13 +227,13 @@ export default function MagazineWorkspace({ publicationType = 'magazine' }) {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">
-                  {(canEdit || isEditor || canEditSeo) && (
+                  {canView && (
                     <Button type="button" variant="outline" onClick={() => openEdit(magazine)}>
                       {canEdit || canEditSeo ? 'Edit' : 'View'}
                     </Button>
                   )}
-                  {canManagePublicPages && (
-                    <Link href={`/admin/magazines/${magazine.slug}/pages`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-all hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+                  {canView && (
+                    <Link href={`/admin/magazines/${magazine.slug}/pages${isJournal ? '?publication_type=journal' : ''}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-sm font-semibold text-[var(--foreground)] transition-all hover:bg-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
                       Public Pages <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </Link>
                   )}

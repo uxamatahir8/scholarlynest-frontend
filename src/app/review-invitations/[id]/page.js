@@ -8,6 +8,7 @@ import { safeApiMessage } from '../../../utils/safeErrors';
 import { Button } from '../../../components/ui/Button';
 import Alert from '../../../components/ui/Alert';
 import { reviewerInvitationResponseSchema, validateWithZod } from '../../../lib/validation';
+import PageTitle from '../../../components/PageTitle';
 
 export default function ReviewInvitationPage() {
   const params = useParams();
@@ -61,6 +62,7 @@ export default function ReviewInvitationPage() {
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center px-6 py-12">
+      <PageTitle title={invitation?.article?.title ? `Review Invitation - ${invitation.article.title}` : 'Review Invitation'} />
       <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
         <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">Reviewer Invitation</p>
         <h1 className="mt-2 text-2xl font-bold text-[var(--foreground)]">Respond to Review Invitation</h1>

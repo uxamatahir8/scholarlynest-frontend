@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { 
   FileText, 
   CheckSquare, 
@@ -23,12 +23,12 @@ import { logError } from '../../../../../utils/safeLogger';
 import { useAuth } from '../../../../../context/AuthContext';
 import { useToast } from '../../../../../context/ToastContext';
 import LoadingState from '../../../../../components/ui/LoadingState';
+import PageTitle from '../../../../../components/PageTitle';
 import ErrorState from '../../../../../components/ui/ErrorState';
 import Alert from '../../../../../components/ui/Alert';
 import EmptyState from '../../../../../components/ui/EmptyState';
 import ImageLightboxGallery from '../../../../../components/ui/ImageLightboxGallery';
 import WorkflowActionPanel from '../../../../../components/admin/WorkflowActionPanel';
-import PublishArticleModal from '../../../../../components/admin/PublishArticleModal';
 import { PUBLISHABLE_STATUSES } from '../../../../../components/admin/articleWorkflow';
 import ManuscriptHeader from '../../../../../components/admin/workflow/ManuscriptHeader';
 import ArticleMetadataPanel from '../../../../../components/admin/workflow/ArticleMetadataPanel';
@@ -47,9 +47,10 @@ import {
   isAuthorViewer, 
   formatDate, 
   labelize, 
-  fileTypeLabels 
+  fileTypeLabels,
+  submissionVersionLabel,
+  hasAcceptedReviewInvitation,
 } from '../../../../../components/admin/workflow/workflowDisplay';
-import { uploadAndAwaitClean } from '../../../../../lib/mediaUploads/DirectUploadClient';
 import { normalizeStatus } from '../../../../../utils/status';
 
 // Helper component for Editorial Decision Tab
@@ -101,6 +102,45 @@ function EditorialDecisionTab({ article }) {
             </div>
           )}
         </div>
+      ))}
+    </div>
+  );
+}
+
+function AdditionalManuscriptFilesTab({ files, versions }) {
+  const versionById = new Map((versions || []).map((version) => [Number(version.id), version]));
+  const groups = [...(versions || [])]
+    .sort((a, b) => Number(b.version_number || 0) - Number(a.version_number || 0))
+    .map((version) => ({
+      version,
+      files: files.filter((file) => Number(file.article_version_id) === Number(version.id)),
+    }))
+    .filter((group) => group.files.length > 0);
+  const pending = files.filter((file) => !file.article_version_id || !versionById.has(Number(file.article_version_id)));
+  if (pending.length) groups.unshift({ version: null, files: pending });
+
+  if (groups.length === 0) {
+    return <EmptyState title="No additional manuscript files">No additional manuscript files have been uploaded.</EmptyState>;
+  }
+
+  return (
+    <div className="space-y-5">
+      {groups.map(({ version, files: groupFiles }) => (
+        <section key={version?.id || 'current'} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+          <h3 className="text-sm font-bold text-[var(--foreground)]">
+            {!version ? 'Current Submission' : submissionVersionLabel(version)}
+          </h3>
+          <ul className="mt-3 grid gap-3">
+            {groupFiles.map((file) => (
+              <DownloadRow
+                key={file.id}
+                item={file}
+                title={file.file_title || file.original_name || 'Additional manuscript file'}
+                meta={`${file.original_name} · ${file.mime_type || 'Document'} · ${file.size ? `${(file.size / 1024).toFixed(1)} KB` : 'Size unavailable'} · ${file.uploader?.name || 'Unknown uploader'} · ${formatDate(file.created_at)} · ${file.scan_status || 'clean'}`}
+              />
+            ))}
+          </ul>
+        </section>
       ))}
     </div>
   );
@@ -256,7 +296,7 @@ function VersionTabContent({ version, article, generalFiles, assets, fallbackVer
     return Number(sourceFile?.article_version_id || fallbackVersionId) === Number(version.id);
   });
   const assetIds = new Set(versionAssets.map((asset) => Number(asset.id)));
-  const primaryFiles = versionFiles.filter((file) => file.file_type !== 'supplementary');
+  const primaryFiles = versionFiles.filter((file) => !['supplementary', 'additional_manuscript_file'].includes(file.file_type));
   
   const supplementaryItems = [
     ...versionFiles
@@ -281,7 +321,7 @@ function VersionTabContent({ version, article, generalFiles, assets, fallbackVer
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3 mb-4">
         <div>
           <h3 className="text-base font-bold text-[var(--foreground)]">
-            {Number(version.version_number) === 1 ? 'Initial Submission' : `Revision R${Number(version.version_number) - 1}`}
+            {submissionVersionLabel(version)}
           </h3>
           <p className="mt-1 text-xs text-[var(--muted)]">
             Submitted at {formatDate(version.created_at)} {version.user?.name && `by ${version.user.name}`}
@@ -289,7 +329,7 @@ function VersionTabContent({ version, article, generalFiles, assets, fallbackVer
         </div>
         {isLatest && (
           <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">
-            Latest Version
+            Latest Submission
           </span>
         )}
       </div>
@@ -339,6 +379,117 @@ function VersionTabContent({ version, article, generalFiles, assets, fallbackVer
         {primaryFiles.length === 0 && supplementaryGroups.length === 0 && (
           <EmptyState title="No files">No files are visible for this version.</EmptyState>
         )}
+      </div>
+    </div>
+  );
+}
+
+function AcceptedFilesTab({ acceptedFileSet, compact = false }) {
+  if (!acceptedFileSet) {
+    return <EmptyState title="No accepted file set">Accepted source files will appear after the editorial acceptance decision.</EmptyState>;
+  }
+
+  const versionLabel = submissionVersionLabel(acceptedFileSet.version);
+  const items = acceptedFileSet.items || [];
+  const manuscriptItems = items.filter((item) => item.accepted_role === 'manuscript');
+  const additionalItems = items.filter((item) => item.accepted_role === 'additional');
+  const supplementaryItems = items
+    .filter((item) => item.accepted_role === 'supplementary')
+    .map((item) => ({ kind: 'file', item: item.file, acceptedItem: item }));
+  const groupedSupplementary = supplementaryItems.reduce((groups, entry) => {
+    groups[supplementaryGroup(entry.kind, entry.item)].push(entry);
+    return groups;
+  }, { images: [], sheets: [], files: [] });
+  const supplementaryGroups = [
+    { id: 'images', title: 'Images', icon: FileImage, items: groupedSupplementary.images },
+    { id: 'sheets', title: 'Sheets and Data', icon: Sheet, items: groupedSupplementary.sheets },
+    { id: 'files', title: 'Supplementary Files', icon: Files, items: groupedSupplementary.files },
+  ].filter((group) => group.items.length > 0);
+  const acceptedMeta = (acceptedItem, role) => {
+    const file = acceptedItem.file;
+    return `${fileTypeLabels[file.file_type] || labelize(role)} · ${submissionVersionLabel(acceptedItem.source_version)} · Uploaded ${formatDate(file.created_at)} · Accepted`;
+  };
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3">
+        <div>
+          <h3 className="text-base font-bold text-[var(--foreground)]">{versionLabel}</h3>
+          <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
+            Accepted {formatDate(acceptedFileSet.accepted_at)} by {acceptedFileSet.accepted_by?.name || 'Editorial Team'}
+          </p>
+        </div>
+        <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+          Accepted Version
+        </span>
+      </div>
+
+      <div className="space-y-4">
+        {!compact && (
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+            <p className="text-xs leading-relaxed text-[var(--muted)]">
+              Only clean author files uploaded for {versionLabel} are included. Earlier submission files remain in version history only.
+            </p>
+          </div>
+        )}
+
+        {manuscriptItems.length > 0 && (
+          <div>
+            <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Manuscript Files</h4>
+            <ul className="grid gap-2">
+              {manuscriptItems.map((acceptedItem) => (
+                <DownloadRow
+                  key={acceptedItem.id}
+                  item={acceptedItem.file}
+                  title={acceptedItem.file.file_title || acceptedItem.file.original_name || 'Manuscript'}
+                  meta={acceptedMeta(acceptedItem, 'manuscript')}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {additionalItems.length > 0 && (
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <Files className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Additional Manuscript Files</h4>
+            </div>
+            <ul className="grid gap-2">
+              {additionalItems.map((acceptedItem) => (
+                <DownloadRow
+                  key={acceptedItem.id}
+                  item={acceptedItem.file}
+                  title={acceptedItem.file.file_title || acceptedItem.file.original_name || 'Additional file'}
+                  meta={acceptedMeta(acceptedItem, 'additional')}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {supplementaryGroups.map((group) => (
+          <div key={group.id}>
+            <div className="mb-2 flex items-center gap-2">
+              <group.icon className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{group.title}</h4>
+            </div>
+            {group.id === 'images' ? (
+              <ImageLightboxGallery images={group.items.map(galleryImage)} title="Images" showHeader={false} />
+            ) : (
+              <ul className="grid gap-2">
+                {group.items.map(({ acceptedItem }) => (
+                  <DownloadRow
+                    key={acceptedItem.id}
+                    item={acceptedItem.file}
+                    title={assetTitle(acceptedItem.file)}
+                    meta={acceptedMeta(acceptedItem, 'supplementary')}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -560,6 +711,7 @@ function hasWorkflowActions(article, user, hasRole) {
 
 export default function ArticleWorkflowPage() {
   const params = useParams();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const articleId = params?.id;
   const { user, hasRole, hasPermission, loading: authLoading } = useAuth();
@@ -567,7 +719,6 @@ export default function ArticleWorkflowPage() {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [publishOpen, setPublishOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('metadata');
   const observerReadonly = searchParams.get('observer_readonly') === '1';
 
@@ -602,74 +753,6 @@ export default function ArticleWorkflowPage() {
   ), [article, hasRole]);
 
   const showReviewerIdentity = useMemo(() => canViewReviewerIdentity(user, hasRole), [user, hasRole]);
-
-  const handlePublishSubmit = async (publishData) => {
-    const payload = new FormData();
-    payload.append('title', publishData.title);
-    payload.append('published_year', publishData.published_year);
-    payload.append('published_month', publishData.published_month);
-    if (publishData.magazine_issue_id) payload.append('magazine_issue_id', publishData.magazine_issue_id);
-    if (publishData.doi) payload.append('doi', publishData.doi);
-    if (publishData.page_start) payload.append('page_start', publishData.page_start);
-    if (publishData.page_end) payload.append('page_end', publishData.page_end);
-    [
-      'article_type',
-      'article_category',
-      'open_access_label',
-      'academic_editor',
-      'received_at',
-      'accepted_at',
-      'published_at',
-      'license_statement',
-      'data_availability_statement',
-      'funding_statement',
-      'competing_interests_statement',
-      'abbreviations',
-      'citation_text',
-    ].forEach((key) => {
-      if (publishData[key] !== undefined && publishData[key] !== null && String(publishData[key]).trim() !== '') {
-        payload.append(key, publishData[key]);
-      }
-    });
-    if (publishData.is_peer_reviewed !== undefined) {
-      payload.append('is_peer_reviewed', publishData.is_peer_reviewed ? '1' : '0');
-    }
-    if (publishData.publication_sections) {
-      const publicationSections = [];
-      for (const section of publishData.publication_sections) {
-        let mediaUploadId = section.existing_media_upload_session_id || null;
-        if (section.image_file) {
-          const sectionImageUpload = await uploadAndAwaitClean({
-            file: section.image_file,
-            purpose: 'publication_section_image',
-            attachableId: article.id,
-          });
-          mediaUploadId = sectionImageUpload.id;
-        }
-        publicationSections.push({
-          section_key: section.section_key,
-          title: section.title,
-          content_html: section.content_html,
-          sort_order: section.sort_order,
-          media_upload_session_id: mediaUploadId,
-        });
-      }
-      payload.append('publication_sections', JSON.stringify(publicationSections));
-    }
-    if (publishData.publication_pdf) {
-      const pdfUpload = await uploadAndAwaitClean({
-        file: publishData.publication_pdf,
-        purpose: 'article_published_pdf',
-        attachableId: article.id,
-      });
-      payload.append('publication_pdf_upload_id', pdfUpload.id);
-    }
-
-    await api.post(`/admin/articles/${article.id}/publish`, payload, { headers: { 'Content-Type': 'multipart/form-data' } });
-    toast('Manuscript published successfully.', 'success');
-    setPublishOpen(false);
-    await loadWorkflow();
-  };
 
   const tabs = useMemo(() => {
     if (!article) return [];
@@ -707,7 +790,7 @@ export default function ArticleWorkflowPage() {
                 hasRole={hasRole}
                 hasPermission={hasPermission}
                 onWorkflowChanged={loadWorkflow}
-                onOpenPublish={() => setPublishOpen(true)}
+                onOpenPublish={() => router.push(`/admin/articles/${article.id}/publish`)}
                 toast={toast}
               />
             ) : (
@@ -749,6 +832,7 @@ export default function ArticleWorkflowPage() {
     const isReviewer = hasRole('reviewer');
 
     const reviewerAssignments = (article.reviewer_assignments || []).filter((assignment) => {
+      if (!hasAcceptedReviewInvitation(assignment)) return false;
       if (isReviewer && !canViewReviewWorkflow) {
         return Number(assignment.reviewer_id) === Number(user.id);
       }
@@ -783,12 +867,7 @@ export default function ArticleWorkflowPage() {
     // 5. Sub-Editor Recommendations
     const showSubEditorTabs = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('sub_editor');
     if (showSubEditorTabs) {
-      const subEditorAssignments = (article.sub_editor_assignments || []).filter((assignment) => {
-        if (hasRole('sub_editor') && !hasRole('admin') && !hasRole('super_admin') && !hasRole('editor')) {
-          return Number(assignment.sub_editor_id) === Number(user.id);
-        }
-        return true;
-      });
+      const subEditorAssignments = article.sub_editor_assignments || [];
 
       subEditorAssignments.forEach((assignment) => {
         list.push({
@@ -803,6 +882,15 @@ export default function ArticleWorkflowPage() {
     }
 
     // 5.5 Copyediting Tab
+    if (article.accepted_file_set) {
+      list.push({
+        id: 'accepted-files',
+        label: 'Accepted Files',
+        icon: FileCheck2,
+        content: <AcceptedFilesTab acceptedFileSet={article.accepted_file_set} />,
+      });
+    }
+
     const copyEditedFiles = (article.files || []).filter((file) => file.file_type === 'copy_edited_file');
     const copyEditorAssignments = (article.production_assignments || []).filter((assignment) => assignment.role === 'copy_editor');
     const showCopyeditingTab = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('publisher') || hasRole('copy_editor') || hasRole('sub_editor') || copyEditedFiles.length > 0 || copyEditorAssignments.length > 0;
@@ -833,6 +921,16 @@ export default function ArticleWorkflowPage() {
       });
     }
 
+    const additionalManuscriptFiles = (article.files || []).filter((file) => file.file_type === 'additional_manuscript_file' && file.scan_status === 'clean' && file.article_version_id);
+    if (!hasRole('copy_editor') && (isAuthor || hasEditorialAccess)) {
+      list.push({
+        id: 'additional-manuscript-files',
+        label: 'Additional Manuscript Files',
+        icon: Files,
+        content: <AdditionalManuscriptFilesTab files={additionalManuscriptFiles} versions={article.versions || []} />,
+      });
+    }
+
     // 6. Submission/Revision Versions
     const orderedVersions = [...(article.versions || [])].sort((a, b) => Number(b.version_number || 0) - Number(a.version_number || 0));
     const fallbackVersionId = orderedVersions.at(-1)?.id;
@@ -841,6 +939,7 @@ export default function ArticleWorkflowPage() {
       && file.file_type !== 'copy_edited_file'
       && file.file_type !== 'proof_file'
       && file.file_type !== 'publication_pdf'
+      && file.file_type !== 'additional_manuscript_file'
     );
     const fileForAsset = new Map(generalFiles
       .filter((file) => file.source_asset_id)
@@ -854,10 +953,8 @@ export default function ArticleWorkflowPage() {
       return true;
     });
 
-    visibleVersions.forEach((version, index) => {
-      const versionLabel = Number(version.version_number) === 1
-        ? `${article.tracking_code} - Version 1 (Initial Submission)`
-        : `${article.tracking_code} - Version ${version.version_number}`;
+    if (!hasRole('copy_editor')) visibleVersions.forEach((version, index) => {
+      const versionLabel = `${article.tracking_code} - ${submissionVersionLabel(version)}`;
 
       list.push({
         id: `version-${version.id}`,
@@ -891,7 +988,7 @@ export default function ArticleWorkflowPage() {
     }
 
     return list;
-  }, [article, user, hasRole, observerReadonly, showReviewerIdentity, loadWorkflow, publishOpen, toast]);
+  }, [article, user, hasRole, observerReadonly, showReviewerIdentity, loadWorkflow, toast]);
 
   // Handle activeTab adjustment when tabs list changes
   useEffect(() => {
@@ -899,15 +996,6 @@ export default function ArticleWorkflowPage() {
       setActiveTab(tabs[0].id);
     }
   }, [tabs, activeTab]);
-
-  // Set browser document title dynamically
-  useEffect(() => {
-    if (article?.title) {
-      document.title = `${article.title} Workflow - ScholarlyNest`;
-    } else {
-      document.title = 'Manuscript Workflow - ScholarlyNest';
-    }
-  }, [article]);
 
   if (authLoading || loading) {
     return <LoadingState label="Loading manuscript workflow..." className="min-h-[420px]" />;
@@ -919,13 +1007,13 @@ export default function ArticleWorkflowPage() {
 
   return (
     <main className="space-y-6">
-      <title>{article.title} Workflow - ScholarlyNest</title>
+      <PageTitle title={`Workflow - ${article.title}`} />
       <ManuscriptHeader
         article={article}
         user={user}
         hasRole={hasRole}
         canPublish={canPublish && !observerReadonly}
-        onPublish={() => setPublishOpen(true)}
+        onPublish={() => router.push(`/admin/articles/${article.id}/publish`)}
       />
 
       <WorkflowProgressPath article={article} />
@@ -956,17 +1044,6 @@ export default function ArticleWorkflowPage() {
         {tabs.find((t) => t.id === activeTab)?.content}
       </div>
 
-      {!observerReadonly && (
-        <PublishArticleModal
-          isOpen={publishOpen}
-          onClose={() => setPublishOpen(false)}
-          articleTitle={article.title}
-          articleAbstract={article.abstract || ''}
-          magazineId={article.magazine_id}
-          publicationSections={article.publication_sections || []}
-          onSubmit={handlePublishSubmit}
-        />
-      )}
     </main>
   );
 }

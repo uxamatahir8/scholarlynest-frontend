@@ -1,15 +1,17 @@
-'use client';
-
 import React from 'react';
-import { useAuth } from '../../context/AuthContext';
-import ConsoleShell from '../../components/admin/console/ConsoleShell';
+import AdminLayoutClient from './AdminLayoutClient';
+
+export const metadata = {
+  title: {
+    default: 'Dashboard',
+    template: '%s | ScholarlyNest',
+  },
+};
 
 export default function AdminLayout({ children }) {
-  const auth = useAuth();
-
   return (
-    <ConsoleShell auth={auth}>
+    <AdminLayoutClient>
       {children}
-    </ConsoleShell>
+    </AdminLayoutClient>
   );
 }

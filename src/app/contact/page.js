@@ -11,6 +11,7 @@ import SeoHead from '../../components/SeoHead';
 import api from '../../utils/api';
 import { useToast } from '../../context/ToastContext';
 import { contactSchema, validateWithZod } from '../../lib/validation';
+import AdvertisementSlot from '../../components/advertising/AdvertisementSlot';
 
 export default function ContactPage() {
   const { toast } = useToast();
@@ -89,10 +90,12 @@ export default function ContactPage() {
   return (
     <div className="bg-[var(--background)] min-height-screen transition-premium">
       <SeoHead
-        title="Contact Us — ScholarlyNest"
+        title="Contact Us"
+        ogTitle="Contact Us — ScholarlyNest"
         description="Have questions about manuscript submissions, review status, open-access licensing models, or institutional partnership integrations? Send us an inquiry."
         ogUrl="/contact"
       />
+      <AdvertisementSlot placement="content_top" context={{ context: 'website', page_key: 'contact' }} className="mx-auto max-w-[1440px] px-4 py-6" />
       
       <PageBanner 
         title="Connect with our Editorial Board" 
@@ -256,6 +259,7 @@ export default function ContactPage() {
         </div>
 
       </div>
+      <AdvertisementSlot placement="content_bottom" context={{ context: 'website', page_key: 'contact' }} className="mx-auto max-w-[1440px] px-4 pb-10" />
     </div>
   );
 }

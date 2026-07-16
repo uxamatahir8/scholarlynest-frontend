@@ -15,7 +15,10 @@ const roboto = Roboto({
 });
 
 export const metadata = {
-  title: 'ScholarlyNest - Premium Blog & CMS Platform',
+  title: {
+    default: 'Home | ScholarlyNest',
+    template: '%s | ScholarlyNest',
+  },
   description: 'Advancing technological and scientific dissemination through robust technical posts, open content, and custom editorial reviews.',
 };
 

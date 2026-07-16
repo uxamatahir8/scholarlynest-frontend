@@ -9,7 +9,8 @@ export default function SessionExpired() {
   return (
     <div className="flex-grow flex flex-col justify-center items-center py-20 px-4">
       <SeoHead
-        title="Session Expired — ScholarlyNest"
+        title="Session Expired"
+        ogTitle="Session Expired — ScholarlyNest"
         description="Your academic session has expired. Please log in again."
         ogUrl="/session-expired"
       />

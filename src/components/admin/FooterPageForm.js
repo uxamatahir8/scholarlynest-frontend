@@ -1,5 +1,7 @@
 'use client';
 
+import { Select } from '../ui/Input';
+
 import { safeApiMessage } from '../../utils/safeErrors';
 import { logError } from '../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
@@ -152,7 +154,7 @@ export default function FooterPageForm({ categories, initialData, onSave, onCanc
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1">
             <label className="block text-[10px] font-bold uppercase tracking-wider text-zinc-450 dark:text-zinc-500 mb-1.5 font-mono">Column Category</label>
-            <select
+            <Select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-zinc-50/50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-amber-500 transition-colors text-zinc-905 dark:text-zinc-200 cursor-pointer"
@@ -162,7 +164,7 @@ export default function FooterPageForm({ categories, initialData, onSave, onCanc
                   {cat.name}
                 </option>
               ))}
-            </select>
+            </Select>
             {errors.footer_category_id && <p className="text-[10px] text-red-500 mt-1 font-semibold">{errors.footer_category_id}</p>}
           </div>
 

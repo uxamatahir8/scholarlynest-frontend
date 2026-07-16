@@ -70,7 +70,18 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post('/login', { email, password });
       if (res.status === 202 && res.data.message === '2fa_required') {
-        return { success: false, twoFactorRequired: true, email: res.data.email };
+        return {
+          success: false,
+          twoFactorRequired: true,
+          challengeToken: res.data.mfa_challenge_token,
+          availableMethods: res.data.available_methods,
+          defaultMethod: res.data.default_method,
+          requiredMethods: res.data.required_methods,
+          verifiedMethods: res.data.verified_methods,
+          remainingMethods: res.data.remaining_methods,
+          nextMethod: res.data.next_method,
+          recoveryCodeAllowed: res.data.recovery_code_allowed,
+        };
       }
       const { user: userData, access_token } = res.data;
 
@@ -126,7 +137,11 @@ export const AuthProvider = ({ children }) => {
     if (!user || !user.roles) return false;
     const normalize = (name) => name?.toLowerCase().replace('_', '-');
     const roleList = (Array.isArray(roles) ? roles : [roles]).map(normalize);
-    return user.roles.some((r) => roleList.includes(normalize(r.name)));
+    const editorialRoles = ['editor', 'super-editor', 'magazine-editor', 'journal-editor'];
+    return user.roles.some((r) => {
+      const actualRole = normalize(r.name);
+      return roleList.includes(actualRole) || (roleList.includes('editor') && editorialRoles.includes(actualRole));
+    });
   };
 
   // Helper check for specific permissions

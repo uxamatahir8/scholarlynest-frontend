@@ -55,11 +55,11 @@ export default function MagazineTableOfContentsPage() {
   }
 
   const publicationLabel = routePrefix === 'journals' ? 'Journal' : 'Magazine';
-  const pageTitle = data.seo?.title || `Table of Contents | ${data.magazine.title} | ${publicationLabel} | ScholarlyNest`;
+  const pageTitle = data.seo?.title || `Table of Contents - ${data.magazine.title}`;
 
   return (
     <div>
-      <SeoHead title={pageTitle} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/table-of-contents`} />
+      <SeoHead title={pageTitle} ogTitle={data.seo?.title || `Table of Contents | ${data.magazine.title} | ${publicationLabel} | ScholarlyNest`} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/table-of-contents`} />
       <TableOfContents archive={data.table_of_contents || {}} magazineSlug={slug} onArticleClick={handleTrackClick} />
     </div>
   );
