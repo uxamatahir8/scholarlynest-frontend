@@ -43,6 +43,25 @@ export function labelize(value) {
   return String(value || 'Not recorded').replaceAll('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+export function submissionVersionLabel(version) {
+  const versionNumber = Number(version?.version_number);
+  if (versionNumber === 1) return 'Initial Submission';
+
+  const revisionNumber = Number(version?.revision_number);
+  if (Number.isFinite(revisionNumber) && revisionNumber > 0) return `R${revisionNumber}`;
+  if (Number.isFinite(versionNumber) && versionNumber > 1) return `R${versionNumber - 1}`;
+
+  return 'Initial Submission';
+}
+
+export function hasAcceptedReviewInvitation(assignment) {
+  if (!assignment || assignment.declined_at || assignment.invitation_state === 'declined') return false;
+
+  return Boolean(assignment.accepted_at || assignment.completed_at)
+    || ['accepted', 'completed'].includes(assignment.invitation_state)
+    || ['accepted', 'in_progress', 'completed'].includes(assignment.status);
+}
+
 export function currentMilestoneIndex(status) {
   const normalized = normalizeStatus(status);
   const index = workflowMilestones.findIndex((milestone) => milestone.statuses.includes(normalized));
@@ -103,7 +122,7 @@ export function nextStepText(article, user, hasRole) {
   const status = normalizeStatus(article?.status);
   if (hasRole('reviewer')) {
     const own = (article?.reviewer_assignments || []).find((item) => Number(item.reviewer_id) === Number(user?.id));
-    if (own?.status === 'pending') return 'Accept the review invitation to begin your scorecard.';
+    if (own?.status === 'pending') return 'Accept the review invitation to begin your review.';
     if (own && own.status !== 'completed') return 'Submit your review recommendation and author-facing comments.';
   }
   if (hasRole('sub_editor')) {

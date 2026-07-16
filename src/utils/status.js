@@ -55,7 +55,6 @@ const EDITABLE_ARTICLE_STATUSES = new Set([
   'revision_required',
   'minor_revision_required',
   'major_revision_required',
-  'ready_for_publication',
 ]);
 
 const humanize = (value) => String(value || 'Unknown')

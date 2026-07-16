@@ -9,7 +9,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { 
   FileText, Loader2, Eye, Calendar, User, AlertCircle,
   BookOpen, Download, ShieldAlert, Plus, Edit,
-  Search, ChevronDown, X
+  Search, X
 } from 'lucide-react';
 import api from '../../../utils/api';
 import { useToast } from '../../../context/ToastContext';
@@ -32,6 +32,7 @@ import {
 } from '../../../utils/articleQueues';
 import { isArticleEditableStatus } from '../../../utils/status';
 import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
+import PageTitle from '../../../components/PageTitle';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -150,9 +151,6 @@ function AuthorManuscriptWorkspace({ articles, loading, error, getStatusBadge })
     }
     if (canEdit && REVISION_STATUSES.has(article.status)) {
       return { label: 'Respond to Revision Request', href: `/admin/articles/${article.id}/edit`, icon: Edit };
-    }
-    if (canEdit && article.status === 'ready_for_publication') {
-      return { label: 'Update Publication Details', href: `/admin/articles/${article.id}/edit`, icon: Edit };
     }
     if (canEdit) {
       return { label: 'Edit Manuscript', href: `/admin/articles/${article.id}/edit`, icon: Edit };
@@ -445,11 +443,6 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
     setCurrentPage(1);
   }, [debouncedSearchQuery, selectedMagazineId, selectedStatus, queueId, authorFilter, publicationType]);
 
-  // Set browser document title dynamically
-  useEffect(() => {
-    document.title = isAdminOrEditor ? "Manuscripts Board - ScholarlyNest" : "My Articles - ScholarlyNest";
-  }, [isAdminOrEditor]);
-
   // Fetch articles based on filter
   const fetchArticles = async () => {
     if (!hasPermission('articles.view-any') && !hasPermission('articles.view-own')) return;
@@ -557,7 +550,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300 text-left font-sans">
-      <title>{isAdminOrEditor ? "Manuscripts Board - ScholarlyNest" : "My Articles - ScholarlyNest"}</title>
+      <PageTitle title={isAdminOrEditor ? 'Articles & Workflow' : 'My Articles'} />
       
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-100 dark:border-zinc-900 pb-6">
@@ -615,15 +608,19 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
         )}
 
         {/* Inputs */}
-        <div className="flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-end sm:justify-end">
-          <div className="relative w-full sm:w-[28rem] sm:max-w-md">
+        <div className={`ml-auto grid w-full grid-cols-1 items-stretch gap-3 sm:grid-cols-2 xl:w-3/5 ${
+          isAuthorWorkspace
+            ? 'xl:grid-cols-[2fr_1fr_1fr]'
+            : 'xl:grid-cols-[2fr_1fr_1fr_1fr]'
+        }`}>
+          <div className="relative w-full sm:col-span-2 xl:col-span-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-405" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={isAuthorWorkspace ? 'Search my manuscripts...' : 'Search tracking code, title, issue, or author...'}
-              className="w-full text-xs font-semibold pl-9 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100"
+              className="h-10 w-full rounded-xl border border-zinc-200 bg-white py-2 pl-9 pr-8 text-xs font-semibold text-zinc-900 transition-colors focus:border-amber-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
             />
             {searchQuery && (
               <button type="button" onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-900 p-0.5 cursor-pointer">
@@ -633,7 +630,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
           </div>
 
           {!isAuthorWorkspace && (
-            <Select value={publicationType} onChange={(event) => { setPublicationType(event.target.value); setSelectedMagazineId('all'); updateQuery({ publication_type: event.target.value, magazine_id: 'all' }); }} aria-label="Filter by publication type" className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 sm:w-48">
+            <Select value={publicationType} onChange={(event) => { setPublicationType(event.target.value); setSelectedMagazineId('all'); updateQuery({ publication_type: event.target.value, magazine_id: 'all' }); }} aria-label="Filter by publication type" className="h-10 min-h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
               {!isMagazineEditor && !isJournalEditor && <option value="all">All Publications</option>}
               {!isJournalEditor && <option value="magazine">Magazines</option>}
               {!isMagazineEditor && <option value="journal">Journals</option>}
@@ -641,53 +638,72 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
           )}
 
           {!isAuthorWorkspace && (
-            <Select value={authorFilter} onChange={(event) => { setAuthorFilter(event.target.value); updateQuery({ author_id: event.target.value }); }} aria-label="Filter by author" className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 sm:w-56">
+            /* Destination is intentionally before Author: its options depend on Publication. */
+            <Select
+              value={selectedMagazineId}
+              onChange={(event) => {
+                setSelectedMagazineId(event.target.value);
+                updateQuery({ magazine_id: event.target.value });
+              }}
+              loading={loadingMagazines}
+              aria-label="Filter by destination"
+              className="h-10 min-h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+            >
+              <option value="all">All Destinations</option>
+              {magazines.filter((magazine) => publicationType === 'all' || magazine.publication_type === publicationType).map((magazine) => (
+                <option key={magazine.id} value={magazine.id}>
+                  {magazine.title}
+                </option>
+              ))}
+            </Select>
+          )}
+
+          {!isAuthorWorkspace && (
+            <Select value={authorFilter} onChange={(event) => { setAuthorFilter(event.target.value); updateQuery({ author_id: event.target.value }); }} aria-label="Filter by author" className="h-10 min-h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
               <option value="all">All Authors</option>
               {authorOptions.map((author) => <option key={author.id} value={author.id}>{author.name}</option>)}
             </Select>
           )}
 
           {isAuthorWorkspace && (
-            <div className="relative w-full sm:w-56">
-              <Select
-                value={selectedStatus}
-                onChange={(e) => {
-                  setSelectedStatus(e.target.value);
-                  updateQuery({ status: e.target.value });
-                }}
-                disabled={loadingStatusOptions}
-                className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100 cursor-pointer appearance-none disabled:cursor-wait disabled:text-zinc-400"
-              >
-                <option value="all">All Statuses</option>
-                {statusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label} ({option.count})
-                  </option>
-                ))}
-              </Select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
-            </div>
-          )}
-
-          {/* Magazine selector */}
-          <div className="relative w-full sm:w-56">
             <Select
-              value={selectedMagazineId}
+              value={selectedStatus}
               onChange={(e) => {
-                setSelectedMagazineId(e.target.value);
-                updateQuery({ magazine_id: e.target.value });
+                setSelectedStatus(e.target.value);
+                updateQuery({ status: e.target.value });
               }}
-              className="w-full text-xs font-semibold pl-3 pr-8 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-amber-500 transition-colors text-zinc-900 dark:text-zinc-100 cursor-pointer appearance-none"
+              disabled={loadingStatusOptions}
+              className="h-10 min-h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 disabled:cursor-wait disabled:text-zinc-400 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
             >
-              <option value="all">All Destinations</option>
-              {magazines.filter((m) => publicationType === 'all' || m.publication_type === publicationType).map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.title}
+              <option value="all">All Statuses</option>
+              {statusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label} ({option.count})
                 </option>
               ))}
             </Select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
-          </div>
+          )}
+
+          {/* Author workspaces do not have Publication or Author filters. */}
+          {isAuthorWorkspace && (
+            <Select
+              value={selectedMagazineId}
+              onChange={(event) => {
+                setSelectedMagazineId(event.target.value);
+                updateQuery({ magazine_id: event.target.value });
+              }}
+              loading={loadingMagazines}
+              aria-label="Filter by destination"
+              className="h-10 min-h-10 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 outline-none focus:border-amber-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+            >
+              <option value="all">All Destinations</option>
+              {magazines.map((magazine) => (
+                <option key={magazine.id} value={magazine.id}>
+                  {magazine.title}
+                </option>
+              ))}
+            </Select>
+          )}
         </div>
       </div>
 

@@ -99,7 +99,6 @@ export default function EditorDeskList({ observerMode = false, observerUser = nu
 
   return (
     <div className="space-y-8">
-      <title>Editor Desk - ScholarlyNest</title>
       <ConsolePageHeader
         title={observerMode && observerUser ? `${observerUser.name}'s Editor Desk` : 'Editor Desk'}
         description="Screen submissions, coordinate peer review, and record editorial decisions."

@@ -288,3 +288,40 @@ export function getConsoleRouteMeta(pathname, items) {
   if (match) return { title: match.label, href: match.href };
   return { title: 'Console', href: '/admin' };
 }
+
+export function getConsolePageTitle(pathname, visibleItems = []) {
+  if (!pathname || pathname === '/admin') return 'Dashboard';
+
+  const exactTitles = {
+    '/admin/advertisements': 'Advertising Management',
+    '/admin/advertisements/create': 'Create Advertisement',
+    '/admin/articles/new': 'New Submission',
+    '/admin/cms/faqs': 'FAQ Management',
+    '/admin/magazines/tags': 'Magazine Tags',
+    '/admin/rbac': 'Roles & Permissions',
+    '/admin/search-results': 'Search Results',
+    '/admin/support/new': 'New Support Ticket',
+    '/admin/users/create': 'Create User',
+  };
+  if (exactTitles[pathname]) return exactTitles[pathname];
+
+  if (/^\/admin\/advertisements\/[^/]+\/edit$/.test(pathname)) return 'Edit Advertisement';
+  if (/^\/admin\/advertisements\/[^/]+$/.test(pathname)) return 'Advertisement Details';
+  if (/^\/admin\/articles\/[^/]+\/workflow$/.test(pathname)) return 'Manuscript Workflow';
+  if (/^\/admin\/articles\/[^/]+\/edit$/.test(pathname)) return 'Edit Manuscript';
+  if (/^\/admin\/users\/[^/]+\/edit$/.test(pathname)) return 'Edit User';
+  if (/^\/admin\/magazines\/[^/]+\/pages$/.test(pathname)) return 'Publication Pages';
+  if (/^\/admin\/support\/[^/]+$/.test(pathname)) return 'Support Ticket Chat';
+  if (/^\/admin\/support-tickets\/[^/]+$/.test(pathname)) return 'Review Support Ticket';
+  if (/^\/admin\/cms\/[^/]+$/.test(pathname)) {
+    const slug = pathname.split('/').at(-1);
+    return `${slug.split('-').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} CMS`;
+  }
+
+  const allItems = [...visibleItems, ...flattenConsoleNavigation(consoleNavigation)];
+  const navMatch = [...allItems]
+    .sort((a, b) => b.href.length - a.href.length)
+    .find((item) => (item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`)));
+
+  return navMatch?.label || 'Admin Console';
+}

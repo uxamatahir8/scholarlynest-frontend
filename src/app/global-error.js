@@ -11,6 +11,7 @@ export default function GlobalError({ error, reset }) {
 
   return (
     <html lang="en">
+      <head><title>Application Error | ScholarlyNest</title></head>
       <body className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
         <main className="flex min-h-screen items-center justify-center px-4 py-20 sm:px-6">
           <div className="max-w-xl text-center">

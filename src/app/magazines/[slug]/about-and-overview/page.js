@@ -73,7 +73,7 @@ export default function MagazineAboutPage() {
   const latestArticles = useMemo(() => articles.slice(0, 3), [articles]);
   const submitHref = user ? '/admin/articles/new' : '/login';
   const publicationLabel = routePrefix === 'journals' ? 'Journal' : 'Magazine';
-  const pageTitle = data?.seo?.title || `${magazine?.title || publicationLabel} | ${publicationLabel} | ScholarlyNest`;
+  const pageTitle = data?.seo?.title || `${publicationLabel} - ${magazine?.title || publicationLabel}`;
 
   if (loading) return <LoadingState label="Loading overview..." className="min-h-[320px]" />;
 
@@ -83,7 +83,7 @@ export default function MagazineAboutPage() {
 
   return (
     <div className="space-y-12">
-      <SeoHead title={pageTitle} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/about-and-overview`} />
+      <SeoHead title={pageTitle} ogTitle={data.seo?.title || `${magazine.title} | ${publicationLabel} | ScholarlyNest`} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/about-and-overview`} />
 
       {(magazine.description || cleanAboutHtml) && (
         <section aria-labelledby="about-magazine-heading" className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 md:p-8 lg:p-10">

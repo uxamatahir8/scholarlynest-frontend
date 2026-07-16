@@ -134,7 +134,6 @@ export default function RegistrationSettingsPage() {
 
   return (
     <main className="space-y-6">
-      <title>Registration Settings - ScholarlyNest</title>
       <header className="flex flex-col gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <p className="text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber-400">People and Access</p>

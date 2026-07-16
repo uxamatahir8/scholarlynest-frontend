@@ -154,11 +154,6 @@ export const reviewerWorkflowSubmitSchemaFor = (requiredQuestionIds = []) => z.o
     answer: questionnaireAnswerSchema.optional(),
     comment: optionalString('Question comment', 10000),
   })).optional(),
-  scorecard: z.object({
-    originality: z.coerce.number().int().min(1).max(5),
-    methodology: z.coerce.number().int().min(1).max(5),
-    citation_accuracy: z.coerce.number().int().min(1).max(5),
-  }),
 }).superRefine((data, ctx) => {
   requiredQuestionIds.forEach((questionId) => {
     const response = (data.questionnaire_responses || []).find((item) => Number(item.question_id) === Number(questionId));

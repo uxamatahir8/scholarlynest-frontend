@@ -172,7 +172,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <SeoHead
-        title="ScholarlyNest - Academic Publishing Platform"
+        title="Home"
+        ogTitle="ScholarlyNest - Academic Publishing Platform"
         description="Discover academic magazines, published articles, and public research archives on ScholarlyNest."
         ogUrl="/"
       />

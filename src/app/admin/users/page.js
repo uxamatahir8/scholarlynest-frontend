@@ -155,7 +155,6 @@ export default function UserAccountsPage() {
 
   return (
     <main className="space-y-6">
-      <title>User Management - ScholarlyNest</title>
 
       <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">

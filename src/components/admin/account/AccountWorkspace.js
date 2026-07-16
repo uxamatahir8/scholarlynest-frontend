@@ -361,7 +361,6 @@ export default function AccountWorkspace() {
 
   return (
     <main className="space-y-6">
-      <title>My Account - ScholarlyNest</title>
       <header className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>

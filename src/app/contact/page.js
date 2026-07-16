@@ -90,7 +90,8 @@ export default function ContactPage() {
   return (
     <div className="bg-[var(--background)] min-height-screen transition-premium">
       <SeoHead
-        title="Contact Us — ScholarlyNest"
+        title="Contact Us"
+        ogTitle="Contact Us — ScholarlyNest"
         description="Have questions about manuscript submissions, review status, open-access licensing models, or institutional partnership integrations? Send us an inquiry."
         ogUrl="/contact"
       />

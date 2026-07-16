@@ -160,7 +160,7 @@ const SearchableSelect = forwardRef(function SearchableSelect({
       </button>
 
       {open && (
-        <div className="absolute z-[120] mt-1 w-full min-w-[14rem] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] shadow-lg backdrop-blur">
+        <div className="absolute z-[120] mt-1 w-full overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] shadow-lg backdrop-blur">
           <div className="relative border-b border-[var(--border)] p-2">
             <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" aria-hidden="true" />
             <input ref={searchRef} value={query} onChange={(event) => { setQuery(event.target.value); setHighlighted(0); }} onKeyDown={handleKeys} placeholder={searchPlaceholder} className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-[var(--focus-ring)]" />
@@ -170,7 +170,7 @@ const SearchableSelect = forwardRef(function SearchableSelect({
               const selected = selectedValues.has(option.value);
               return (
                 <button key={`${option.value}-${index}`} type="button" role="option" aria-selected={selected} disabled={option.disabled} onMouseEnter={() => setHighlighted(index)} onClick={() => choose(option)} className={`flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm ${highlighted === index ? 'bg-amber-500/10 text-[var(--foreground)]' : 'text-[var(--foreground)] hover:bg-[var(--surface-muted)]'} disabled:opacity-40`}>
-                  <span>{option.label}</span>{selected && <Check className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
+                  <span className="min-w-0 flex-1 truncate">{option.label}</span>{selected && <Check className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />}
                 </button>
               );
             })}

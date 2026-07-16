@@ -19,6 +19,8 @@ import AuthorHeaderBlock from '../../../components/article/AuthorHeaderBlock';
 import { isArticleEditableStatus } from '../../../utils/status';
 import { publicArticlePath } from '../../../utils/articleLinks';
 import AdvertisementSlot from '../../../components/advertising/AdvertisementSlot';
+import PageTitle from '../../../components/PageTitle';
+import { humanizeRouteSegment } from '../../../utils/pageTitle';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -293,6 +295,7 @@ export default function ArticleDetail() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center space-y-4 bg-zinc-50/50 dark:bg-zinc-950/40">
+        <PageTitle title={humanizeRouteSegment(articleSlug, 'Article')} />
         <Loader2 className="w-8 h-8 animate-spin text-amber-600 dark:text-amber-400" />
         <span className="text-[10px] font-sans font-bold text-zinc-450 dark:text-zinc-550 uppercase tracking-wider">
           Acquiring Research Metadata...
@@ -304,6 +307,7 @@ export default function ArticleDetail() {
   if (error || !article) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-zinc-50/50 dark:bg-zinc-950/40">
+        <PageTitle title="Article Unavailable" />
         <div className="max-w-md w-full text-center space-y-6">
           <AlertCircle className="w-12 h-12 mx-auto text-red-500" />
           <h2 className="font-serif text-2xl font-bold text-zinc-900 dark:text-white">Article Error</h2>
@@ -377,7 +381,8 @@ export default function ArticleDetail() {
   return (
     <div className="min-h-screen bg-zinc-50/20 dark:bg-zinc-950/10 pb-24 px-4 sm:px-6 lg:px-8 text-left">
       <SeoHead
-        title={article.seo_title}
+        title={article.title}
+        ogTitle={article.seo_title || article.title}
         description={article.seo_description}
         keywords={article.seo_keywords}
         ogImage={article.og_image}

@@ -126,7 +126,6 @@ export default function CreateUserPage() {
 
   return (
     <main className="mx-auto max-w-5xl space-y-6">
-      <title>Create User - ScholarlyNest</title>
       <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 sm:flex-row sm:items-start">
         <Button type="button" variant="outline" size="sm" icon={ArrowLeft} onClick={() => router.push('/admin/users')} className="self-start">
           Back to Users

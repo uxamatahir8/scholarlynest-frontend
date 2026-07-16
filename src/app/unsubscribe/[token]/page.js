@@ -60,7 +60,8 @@ export default function UnsubscribePage() {
   return (
     <div className="min-h-screen bg-zinc-50/20 dark:bg-zinc-950/10 flex flex-col justify-center items-center py-20 px-4 sm:px-6">
       <SeoHead
-        title="Manage Subscription — ScholarlyNest"
+        title="Manage Subscription"
+        ogTitle="Manage Subscription — ScholarlyNest"
         description="Manage your ScholarlyNest email subscription settings."
         ogUrl="/unsubscribe"
       />

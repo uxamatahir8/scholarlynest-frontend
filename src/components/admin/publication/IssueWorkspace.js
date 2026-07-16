@@ -320,7 +320,6 @@ export default function IssueWorkspace() {
 
   return (
     <main className="space-y-6">
-      <title>Issue Management - ScholarlyNest</title>
       <header className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>

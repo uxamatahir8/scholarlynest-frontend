@@ -30,6 +30,7 @@ import { Button } from '../../ui/Button';
 import EmptyState from '../../ui/EmptyState';
 import ErrorState from '../../ui/ErrorState';
 import LoadingState from '../../ui/LoadingState';
+import PageTitle from '../../PageTitle';
 import StatusBadge from '../../ui/StatusBadge';
 import { ConfirmationModal } from '../../ui/ConfirmationModal';
 import CoAuthorRepeater from '../../article/CoAuthorRepeater';
@@ -611,6 +612,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
         : 'Submitted, review, production, published, rejected, withdrawn, and archived manuscripts are managed from the workflow view.';
     return (
       <div className="space-y-6">
+        <PageTitle title={title ? `Edit Manuscript - ${title}` : 'Edit Manuscript'} />
         <Link href="/admin/articles" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--foreground)]">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to My Manuscripts
@@ -648,6 +650,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
 
   return (
     <div className="w-full space-y-8 text-left">
+      <PageTitle title={isEdit ? `Edit Manuscript - ${title || `Article #${articleId}`}` : 'New Submission'} />
       <div className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <Link href="/admin/articles" className="mb-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--foreground)]">
