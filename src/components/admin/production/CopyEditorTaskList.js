@@ -1,5 +1,7 @@
 'use client';
 
+import { Select } from '../../ui/Input';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -128,7 +130,7 @@ export default function CopyEditorTaskList({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <label className="text-sm font-semibold text-[var(--foreground)]">
             Task status
-            <select
+            <Select
               value={status}
               onChange={(event) => updateQuery({ status: event.target.value, page: 1 })}
               className="mt-1 block min-h-10 min-w-48 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-2 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
@@ -136,7 +138,7 @@ export default function CopyEditorTaskList({
               <option value="active">Active Tasks</option>
               <option value="pending">Pending Only</option>
               <option value="completed">Recently Completed</option>
-            </select>
+            </Select>
           </label>
           <p className="text-sm text-[var(--muted)]">
             Showing {start}-{end} of {meta.total} copyediting tasks.

@@ -177,7 +177,6 @@ export default function FooterCmsAdmin() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300 text-left font-sans">
-      <title>Footer CMS - ScholarlyNest</title>
 
       {/* Navigation Breadcrumb */}
       <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-900">

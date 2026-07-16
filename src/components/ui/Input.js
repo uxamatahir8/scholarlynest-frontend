@@ -1,5 +1,6 @@
-import React, { forwardRef, useId } from 'react';
+import React, { forwardRef, useId, useMemo } from 'react';
 import { Textarea } from './Textarea';
+import SearchableSelect, { optionsFromChildren } from './SearchableSelect';
 
 export const baseControlStyles = 'w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm font-medium text-[var(--foreground)] shadow-sm transition-all duration-200 placeholder:text-zinc-400 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-60 read-only:bg-[var(--surface-muted)] dark:placeholder:text-zinc-650';
 
@@ -30,27 +31,25 @@ Input.displayName = 'Input';
 export { Textarea };
 
 export const Select = forwardRef(({ className = '', error, helperText, children, id, 'aria-describedby': describedBy, ...props }, ref) => {
-  const generatedId = useId();
-  const selectId = id || generatedId;
-  const errorId = error ? `${selectId}-error` : undefined;
-  const helperId = helperText ? `${selectId}-helper` : undefined;
-  const description = [describedBy, helperId, errorId].filter(Boolean).join(' ') || undefined;
+  const options = useMemo(() => optionsFromChildren(children), [children]);
+  const placeholderOption = options.find((option) => option.value === '');
+  const selectableOptions = options.filter((option) => option.value !== '');
 
   return (
-    <div className="w-full relative">
-      <select
-        id={selectId}
-        className={`${baseControlStyles} ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30' : ''} pr-8 cursor-pointer ${className}`}
-        ref={ref}
-        aria-invalid={error ? 'true' : undefined}
-        aria-describedby={description}
-        {...props}
-      >
-        {children}
-      </select>
-      {helperText && <span id={helperId} className="mt-1.5 block text-xs text-[var(--muted)]">{helperText}</span>}
-      {error && <span id={errorId} className="mt-1.5 block text-xs font-semibold text-red-600 dark:text-red-400">{error}</span>}
-    </div>
+    <SearchableSelect
+      {...props}
+      ref={ref}
+      id={id}
+      value={props.value ?? props.defaultValue ?? ''}
+      options={selectableOptions}
+      placeholder={placeholderOption?.label || props.placeholder || 'Select an option'}
+      clearable={Boolean(placeholderOption) && !props.required}
+      className={className}
+      error={error}
+      helperText={helperText}
+      aria-describedby={describedBy}
+      onChange={(value) => props.onChange?.({ target: { value, name: props.name }, currentTarget: { value, name: props.name } })}
+    />
   );
 });
 Select.displayName = 'Select';

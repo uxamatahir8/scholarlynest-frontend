@@ -1,5 +1,7 @@
 'use client';
 
+import { Select } from '../../../../components/ui/Input';
+
 import { safeApiMessage } from '../../../../utils/safeErrors';
 import { logError } from '../../../../utils/safeLogger';
 import React, { useState, useEffect } from 'react';
@@ -251,7 +253,7 @@ export default function AdminMagazineTags() {
           {loadingMagazines ? (
             <span className="text-xs text-zinc-450 font-semibold uppercase animate-pulse">Loading issues...</span>
           ) : (
-            <select
+            <Select
               value={selectedMagazineId}
               onChange={(e) => setSelectedMagazineId(e.target.value)}
               className="text-xs font-semibold px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-400 transition-colors w-full md:w-56 cursor-pointer"
@@ -260,7 +262,7 @@ export default function AdminMagazineTags() {
               {magazines.map((m) => (
                 <option key={m.id} value={m.id}>{m.title}</option>
               ))}
-            </select>
+            </Select>
           )}
         </div>
       </div>
@@ -359,7 +361,7 @@ export default function AdminMagazineTags() {
             <form onSubmit={handleAddTag} className="p-6 space-y-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 font-mono block">Target Magazine</label>
-                <select
+                <Select
                   value={newTagMagazineId}
                   onChange={(e) => setNewTagMagazineId(e.target.value)}
                   className="w-full text-xs font-semibold px-3 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-400 transition-colors cursor-pointer"
@@ -367,7 +369,7 @@ export default function AdminMagazineTags() {
                   {magazines.map((m) => (
                     <option key={m.id} value={m.id}>{m.title}</option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div className="space-y-1">

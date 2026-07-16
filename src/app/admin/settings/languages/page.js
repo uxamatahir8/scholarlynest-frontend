@@ -161,7 +161,6 @@ export default function LanguageManagement() {
 
   return (
     <div className="p-6 sm:p-8 w-full space-y-6 animate-in fade-in duration-300 text-left">
-      <title>Manage Languages - ScholarlyNest</title>
 
       <div className="flex items-center justify-between pb-4 border-b border-zinc-200/80 dark:border-zinc-800">
         <Link href="/admin" className="inline-flex items-center text-xs font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--accent)] transition-colors">

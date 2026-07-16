@@ -12,6 +12,7 @@ import Field from '../ui/Field';
 import { Input, Select } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import EmptyState from '../ui/EmptyState';
+import FlatpickrInput from '../ui/FlatpickrInput';
 import WorkflowSection from './workflow/WorkflowSection';
 import { labelize } from './workflow/workflowDisplay';
 import {
@@ -99,8 +100,9 @@ export default function WorkflowActionPanel({
   const [reviewerId, setReviewerId] = useState('');
   const [manualReviewer, setManualReviewer] = useState({ name: '', email: '', affiliation: '' });
   const [productionForm, setProductionForm] = useState({ user_id: '', role: 'copy_editor', due_date: '' });
+  const [authorFinalReason, setAuthorFinalReason] = useState('');
   const [subEditorForm, setSubEditorForm] = useState({ recommendation: 'minor_revision', comments: '', internal_notes: '' });
-  const [reviewForm, setReviewForm] = useState({ recommendation: 'minor_revision', comments_for_author: '', confidential_comments: '', originality: 3, methodology: 3, citation_accuracy: 3 });
+  const [reviewForm, setReviewForm] = useState({ recommendation: 'minor_revision', comments_for_author: '', confidential_comments: '' });
   const [questionnaireResponses, setQuestionnaireResponses] = useState({});
   const [questionnaireComments, setQuestionnaireComments] = useState({});
   const [decisionForm, setDecisionForm] = useState({ decision: 'accepted', decision_source: 'mixed_editorial_decision', comments_for_author: '', internal_notes: '' });
@@ -149,22 +151,32 @@ export default function WorkflowActionPanel({
     })
   ), [workflowContext, user, isAdmin, isCopyEditor]);
 
+  const hasCopyEditorAssignment = useMemo(() => (
+    (workflowContext?.production_assignments || []).some((item) => item.role === 'copy_editor')
+  ), [workflowContext]);
+
+  const reviewerAssignmentsByEmail = useMemo(() => {
+    const assignmentsByEmail = new Map();
+    [...(article?.reviewer_assignments || [])]
+      .sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
+      .forEach((assignment) => {
+        const email = String(assignment.invitee_email || assignment.reviewer?.email || '').trim().toLowerCase();
+        if (email) assignmentsByEmail.set(email, assignment);
+      });
+    return assignmentsByEmail;
+  }, [article?.reviewer_assignments]);
+
   const allReviewersToShow = useMemo(() => {
     const suggestedList = article?.reviewer_preferences?.suggested || [];
-    const assignmentsList = article?.reviewer_assignments || [];
+    const suggestedEmails = new Set(suggestedList.map((reviewer) => String(reviewer.email || '').trim().toLowerCase()));
 
     const getAssignmentForEmail = (email) => {
       const normalized = String(email || '').trim().toLowerCase();
-      if (!normalized) return null;
-      return assignmentsList.find((assignment) => (
-        String(assignment.invitee_email || '').trim().toLowerCase() === normalized
-      ));
+      return normalized ? reviewerAssignmentsByEmail.get(normalized) || null : null;
     };
 
-    const manualInvitations = assignmentsList.filter(
-      (assignment) => !suggestedList.some(
-        (suggested) => String(suggested.email || '').trim().toLowerCase() === String(assignment.invitee_email || '').trim().toLowerCase()
-      )
+    const manualInvitations = [...reviewerAssignmentsByEmail.values()].filter(
+      (assignment) => !suggestedEmails.has(String(assignment.invitee_email || '').trim().toLowerCase())
     ).map((assignment) => ({
       id: assignment.id,
       name: assignment.invitee_name || assignment.reviewer?.name,
@@ -189,10 +201,10 @@ export default function WorkflowActionPanel({
         ...reviewer,
         isManual: true,
         state: reviewer.status,
-        existingAssignment: assignmentsList.find(a => a.id === reviewer.id),
+        existingAssignment: reviewerAssignmentsByEmail.get(String(reviewer.email || '').trim().toLowerCase()),
       })),
     ];
-  }, [article?.reviewer_preferences, article?.reviewer_assignments]);
+  }, [article?.reviewer_preferences, reviewerAssignmentsByEmail]);
 
   const loadAssignees = async (role) => {
     if (assignees[role] || !article?.magazine_id) return;
@@ -292,10 +304,7 @@ export default function WorkflowActionPanel({
 
   const reviewerAssignmentForEmail = (email) => {
     const normalized = String(email || '').trim().toLowerCase();
-    if (!normalized) return null;
-    return (article.reviewer_assignments || []).find((assignment) => (
-      String(assignment.invitee_email || '').trim().toLowerCase() === normalized
-    ));
+    return normalized ? reviewerAssignmentsByEmail.get(normalized) || null : null;
   };
 
   const questionnairePayload = () => reviewerQuestions.map((question) => ({
@@ -318,11 +327,6 @@ export default function WorkflowActionPanel({
     comments_for_author: reviewForm.comments_for_author,
     confidential_comments: reviewForm.confidential_comments,
     questionnaire_responses: questionnairePayload(),
-    scorecard: {
-      originality: reviewForm.originality,
-      methodology: reviewForm.methodology,
-      citation_accuracy: reviewForm.citation_accuracy,
-    },
   });
 
   const validateReviewSubmission = () => {
@@ -335,6 +339,7 @@ export default function WorkflowActionPanel({
   const status = article.status;
   const canScreen = canEditorial && ['submitted', 'pending', 'screening'].includes(status);
   const pendingTransferRequest = article?.pending_transfer_request;
+  const publicationLabel = article?.publication_type === 'journal' || article?.magazine?.publication_type === 'journal' ? 'Journal' : 'Magazine';
   const canRequestTransfer = Boolean(article?.can_request_transfer) && canScreen;
   const canRespondTransferRequest = Boolean(article?.can_respond_transfer_request) && status === 'in_transit' && pendingTransferRequest;
   const canAssignSubEditor = canEditorial && ['under_review', 'resubmitted'].includes(status);
@@ -342,7 +347,9 @@ export default function WorkflowActionPanel({
   const canFinalDecision = canEditorial && REVIEWABLE_STATUSES.has(status);
   const canShowPublish = canPublish && PUBLISHABLE_STATUSES.has(status);
   const canPostPublication = canPublish && status === 'published';
-  const canShowProductionAssignment = canAssignProduction && productionStatuses.has(status);
+  const canShowProductionAssignment = canAssignProduction
+    && productionStatuses.has(status)
+    && !hasCopyEditorAssignment;
   const canAuthorFinalReview = Boolean(article?.can_author_final_review);
   const canCompleteProduction = (isAdmin || isCopyEditor) && myProductionAssignment;
   const productionTaskLabel = myProductionAssignment?.role === 'copy_editor'
@@ -353,7 +360,7 @@ export default function WorkflowActionPanel({
     ? 'Mark Copyediting Complete'
     : 'Complete Task';
   const productionCompleteMessage = myProductionAssignment?.role === 'copy_editor'
-    ? 'This will mark your copyediting task as complete and move the manuscript toward publication readiness.'
+    ? 'This will send the copyedited manuscript to the author for a 14-day publication approval window.'
     : 'This will mark your production task as complete and move the manuscript toward publication readiness.';
 
   useEffect(() => {
@@ -367,7 +374,7 @@ export default function WorkflowActionPanel({
   return (
     <WorkflowSection
       title="Next Action"
-      description="Only actions currently available to your role and manuscript state are shown. Backend authorization remains authoritative."
+      description=""
       icon={ClipboardCheck}
     >
       <div className="space-y-4">
@@ -382,7 +389,7 @@ export default function WorkflowActionPanel({
         )}
 
         {canScreen && (
-          <ActionBlock title="Editorial Screening" description="Decide whether this manuscript moves into review, is rejected during screening, or should be transferred to another magazine.">
+          <ActionBlock title="Editorial Screening" description={`Decide whether this manuscript moves into review, is rejected during screening, or should be transferred to another ${publicationLabel}.`}>
             <div className="grid gap-3 md:grid-cols-3">
               <Field label="Decision" required>
                 <Select value={screenForm.decision} onChange={(event) => setScreenForm({ ...screenForm, decision: event.target.value })}>
@@ -405,11 +412,11 @@ export default function WorkflowActionPanel({
             {screenForm.decision === 'transfer' ? (
               <>
                 <Alert tone="info" title="Transfer requires author approval">
-                  The author will receive a request to accept or reject the proposed magazine transfer. The manuscript will move to In Transit while waiting.
+                  The author will receive a request to accept or reject the proposed {publicationLabel.toLowerCase()} transfer. The manuscript will move to In Transit while waiting.
                 </Alert>
-                <Field label="Target Magazine" required>
+                <Field label={`Target ${publicationLabel}`} required>
                   <Select value={transferForm.to_magazine_id} onChange={(event) => setTransferForm({ ...transferForm, to_magazine_id: event.target.value })}>
-                    <option value="">Select target magazine</option>
+                    <option value="">Select target {publicationLabel.toLowerCase()}</option>
                     {transferTargets.map((magazine) => (
                       <option key={magazine.id} value={magazine.id}>{magazine.name || magazine.title}</option>
                     ))}
@@ -549,6 +556,7 @@ export default function WorkflowActionPanel({
                         {allReviewersToShow.map((reviewer) => {
                           const assignment = reviewer.existingAssignment;
                           const showReminder = assignment && reviewer.state === 'invited';
+                          const showResend = assignment && reviewer.state === 'declined';
                           return (
                           <div key={reviewer.isManual ? 'manual-' + reviewer.id : 'suggested-' + (reviewer.id || reviewer.email)} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -587,6 +595,32 @@ export default function WorkflowActionPanel({
                                       Send Reminder
                                     </Button>
                                   )}
+                                  {showResend && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      icon={UserPlus}
+                                      isLoading={busyAction === `resend-${assignment.id}`}
+                                      onClick={() => {
+                                        const invitation = {
+                                          name: reviewer.name,
+                                          email: reviewer.email,
+                                          affiliation: reviewer.affiliation || '',
+                                        };
+                                        if (!validateAction(workflowManualReviewerSchema, invitation)) return;
+                                        askConfirmation({
+                                          key: `resend-${assignment.id}`,
+                                          title: 'Resend reviewer invitation?',
+                                          message: 'This will send a fresh secure invitation to the reviewer who previously declined.',
+                                          confirmText: 'Resend Invite',
+                                          variant: 'primary',
+                                          run: () => runAction(`resend-${assignment.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, invitation), 'Reviewer invitation resent.'),
+                                        });
+                                      }}
+                                    >
+                                      Resend Invite
+                                    </Button>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2">
@@ -616,25 +650,27 @@ export default function WorkflowActionPanel({
                                       Send Reminder
                                     </Button>
                                   )}
-                                  {!reviewer.existingAssignment && (
+                                  {(!reviewer.existingAssignment || showResend) && (
                                     <Button
                                       type="button"
                                       size="sm"
                                       icon={UserPlus}
-                                      isLoading={busyAction === `suggested-${reviewer.id}`}
+                                      isLoading={busyAction === `${showResend ? 'resend' : 'suggested'}-${reviewer.id}`}
                                       onClick={() => {
                                         if (!validateAction(workflowSuggestedReviewerSchema, { suggested_preference_id: reviewer.id })) return;
                                         askConfirmation({
-                                          key: `suggested-${reviewer.id}`,
-                                          title: 'Invite suggested reviewer?',
-                                          message: 'This will send a secure review invitation to the suggested reviewer.',
-                                          confirmText: 'Send Invitation',
+                                          key: `${showResend ? 'resend' : 'suggested'}-${reviewer.id}`,
+                                          title: showResend ? 'Resend reviewer invitation?' : 'Invite suggested reviewer?',
+                                          message: showResend
+                                            ? 'This will send a fresh secure invitation to the reviewer who previously declined.'
+                                            : 'This will send a secure review invitation to the suggested reviewer.',
+                                          confirmText: showResend ? 'Resend Invite' : 'Send Invitation',
                                           variant: 'primary',
-                                          run: () => runAction(`suggested-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { suggested_preference_id: reviewer.id }), 'Reviewer invitation sent.'),
+                                          run: () => runAction(`${showResend ? 'resend' : 'suggested'}-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { suggested_preference_id: reviewer.id }), showResend ? 'Reviewer invitation resent.' : 'Reviewer invitation sent.'),
                                         });
                                       }}
                                     >
-                                      Invite
+                                      {showResend ? 'Resend Invite' : 'Invite'}
                                     </Button>
                                   )}
                                 </div>
@@ -738,7 +774,7 @@ export default function WorkflowActionPanel({
         )}
 
         {isReviewer && myReviewerAssignment && myReviewerAssignment.status !== 'completed' && (
-          <ActionBlock title="Reviewer Work" description="Accept your invitation, then submit your scorecard and recommendation.">
+          <ActionBlock title="Reviewer Work" description="Accept your invitation, then submit your review and recommendation.">
             {myReviewerAssignment.status === 'pending' ? (
               <>
                 <Alert tone="info" title="Review invitation pending">Accept the invitation before submitting a review.</Alert>
@@ -770,13 +806,6 @@ export default function WorkflowActionPanel({
                     </Select>
                   </Field>
                 )}
-                <div className="grid gap-3 md:grid-cols-3">
-                  {['originality', 'methodology', 'citation_accuracy'].map((key) => (
-                    <Field key={key} label={key.replaceAll('_', ' ')}>
-                      <Input type="number" min="1" max="5" value={reviewForm[key]} onChange={(event) => setReviewForm({ ...reviewForm, [key]: Number(event.target.value) })} />
-                    </Field>
-                  ))}
-                </div>
                 <Field label="Comments for Author">
                   <Textarea value={reviewForm.comments_for_author} onChange={(event) => setReviewForm({ ...reviewForm, comments_for_author: event.target.value })} rows={3} />
                 </Field>
@@ -996,25 +1025,52 @@ export default function WorkflowActionPanel({
         )}
 
         {canAuthorFinalReview && (
-          <ActionBlock title="Author Final Review" description="Approve the proofread manuscript for publication.">
-            <Alert tone="info" title="Proofreading complete">
-              Review the final proof before publication. Approval is limited to the manuscript owner or corresponding author.
+          <ActionBlock title="Author Publication Review" description="Approve the copyedited article or return it to copyediting.">
+            <Alert tone="info" title="Copyediting complete">
+              Review the copyedited article before publication. If no response is received by {article.author_final_review_due_at ? new Date(article.author_final_review_due_at).toLocaleDateString() : 'the 14-day deadline'}, approval will be recorded automatically.
             </Alert>
-            <Button
-              type="button"
-              icon={FileCheck2}
-              isLoading={busyAction === 'author-final-review'}
-              onClick={() => askConfirmation({
-                key: 'author-final-review',
-                title: 'Approve final review?',
-                message: 'This confirms the final proof may move to ready for publication.',
-                confirmText: 'Approve Final Review',
-                variant: 'primary',
-                run: () => runAction('author-final-review', () => api.post(`/admin/articles/${article.id}/author-final-review`), 'Final review approved.'),
-              })}
-            >
-              Approve Final Review
-            </Button>
+            <Field label="Reason for returning to copyediting">
+              <Textarea
+                value={authorFinalReason}
+                onChange={(event) => setAuthorFinalReason(event.target.value)}
+                rows={3}
+                placeholder="Required only when publication is denied"
+              />
+            </Field>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                icon={FileCheck2}
+                isLoading={busyAction === 'author-final-approve'}
+                onClick={() => askConfirmation({
+                  key: 'author-final-approve',
+                  title: 'Approve publication?',
+                  message: 'This will mark the article ready for publication.',
+                  confirmText: 'Approve Publication',
+                  variant: 'primary',
+                  run: () => runAction('author-final-approve', () => api.post(`/admin/articles/${article.id}/author-final-review`, { decision: 'accepted' }), 'Publication approved.'),
+                })}
+              >
+                Approve Publication
+              </Button>
+              <Button
+                type="button"
+                icon={XCircle}
+                variant="danger"
+                isLoading={busyAction === 'author-final-deny'}
+                disabled={!authorFinalReason.trim()}
+                onClick={() => askConfirmation({
+                  key: 'author-final-deny',
+                  title: 'Return to copyediting?',
+                  message: 'Publication will be denied for now and the copy editor will receive your requested changes.',
+                  confirmText: 'Deny Publication',
+                  variant: 'danger',
+                  run: () => runAction('author-final-deny', () => api.post(`/admin/articles/${article.id}/author-final-review`, { decision: 'denied', reason: authorFinalReason.trim() }), 'Article returned to copyediting.'),
+                })}
+              >
+                Deny Publication
+              </Button>
+            </div>
           </ActionBlock>
         )}
 
@@ -1039,7 +1095,7 @@ export default function WorkflowActionPanel({
                 </Select>
               </Field>
               <Field label="Due Date">
-                <Input type="date" value={productionForm.due_date} onChange={(event) => setProductionForm({ ...productionForm, due_date: event.target.value })} />
+                <FlatpickrInput value={productionForm.due_date} onChange={(value) => setProductionForm({ ...productionForm, due_date: value })} aria-label="Production due date" />
               </Field>
             </div>
             <Button

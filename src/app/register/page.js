@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { Lock, Mail, User as UserIcon, Loader2, AlertCircle, Eye, EyeOff, Check, X, School, Info, ArrowRight, BookOpen, Contact } from 'lucide-react';
 import SeoHead from '../../components/SeoHead';
+import PageTitle from '../../components/PageTitle';
 import api from '../../utils/api';
 import { registerFinalSchema, registerStepOneSchema, validateWithZod } from '../../lib/validation';
 
@@ -222,6 +223,7 @@ export default function Register() {
   if (authLoading || user) {
     return (
       <div className="flex-grow flex flex-col justify-center items-center py-20">
+        <PageTitle title="Register" />
         <Loader2 className="w-8 h-8 animate-spin text-accent dark:text-accent-gold" />
         <p className="text-xs text-muted mt-4 font-semibold">Verifying session...</p>
       </div>
@@ -233,7 +235,8 @@ export default function Register() {
     return (
       <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
         <SeoHead
-          title="Registration Closed — ScholarlyNest"
+          title="Registration Closed"
+          ogTitle="Registration Closed — ScholarlyNest"
           description="Scholar registration is currently closed. Learn how to establish institutional profiles."
           ogUrl="/register"
         />
@@ -285,7 +288,8 @@ export default function Register() {
   return (
     <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
       <SeoHead
-        title="Register — ScholarlyNest"
+        title="Register"
+        ogTitle="Register — ScholarlyNest"
         description="Create your academic profile to write papers, submit manuscripts, and join the ScholarlyNest research community."
         ogUrl="/register"
       />

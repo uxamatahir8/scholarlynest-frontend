@@ -1,5 +1,7 @@
 'use client';
 
+import { Select } from '../../ui/Input';
+
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -294,9 +296,9 @@ export default function SupportTicketWorkspace({ mode = 'list', admin = false, t
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500" htmlFor="issue_type">Issue type</label>
-                <select id="issue_type" value={form.issue_type} onChange={(event) => setForm((current) => ({ ...current, issue_type: event.target.value }))} className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
+                <Select id="issue_type" value={form.issue_type} onChange={(event) => setForm((current) => ({ ...current, issue_type: event.target.value }))} className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
                   {ISSUE_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500" htmlFor="title">Title</label>
@@ -341,9 +343,9 @@ export default function SupportTicketWorkspace({ mode = 'list', admin = false, t
             {admin && ticket.can_update_status && (
               <div className="w-full max-w-xs">
                 <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500" htmlFor="ticket-status">Status</label>
-                <select id="ticket-status" value={ticket.status} disabled={saving} onChange={(event) => updateStatus(event.target.value)} className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
+                <Select id="ticket-status" value={ticket.status} disabled={saving} onChange={(event) => updateStatus(event.target.value)} className="mt-2 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
                   {STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
+                </Select>
               </div>
             )}
           </div>
@@ -426,14 +428,14 @@ export default function SupportTicketWorkspace({ mode = 'list', admin = false, t
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" aria-hidden="true" />
             <input value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search tickets" className="w-full rounded-lg border border-zinc-200 bg-white py-2 pl-9 pr-3 text-sm dark:border-zinc-800 dark:bg-zinc-950" />
           </div>
-          <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <Select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
             <option value="">All statuses</option>
             {STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
-          <select value={filters.issue_type} onChange={(event) => setFilters((current) => ({ ...current, issue_type: event.target.value }))} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
+          </Select>
+          <Select value={filters.issue_type} onChange={(event) => setFilters((current) => ({ ...current, issue_type: event.target.value }))} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
             <option value="">All issue types</option>
             {ISSUE_TYPES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select>
+          </Select>
           <Button type="button" variant="outline" icon={RefreshCw} onClick={loadList} loading={loading}>Refresh</Button>
         </div>
       </section>

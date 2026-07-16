@@ -13,6 +13,7 @@ import { Button } from '../../ui/Button';
 import ErrorState from '../../ui/ErrorState';
 import LoadingState from '../../ui/LoadingState';
 import ContentStatusBadge from './ContentStatusBadge';
+import PageTitle from '../../PageTitle';
 import { cmsPageDetails, formatDate } from './contentUtils';
 
 const RichEditor = dynamic(() => import('../../ui/RichEditor'), {
@@ -124,7 +125,7 @@ export default function CmsPageWorkspace({ slug }) {
 
   return (
     <main className="space-y-6">
-      <title>{`${pageInfo.name} - CMS - ScholarlyNest`}</title>
+      <PageTitle title={`${pageInfo.name} CMS`} />
       <header className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>

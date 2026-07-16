@@ -8,6 +8,9 @@ import api from '../../../utils/api';
 import { logWarn } from '../../../utils/safeLogger';
 import LoadingState from '../../../components/ui/LoadingState';
 import ErrorState from '../../../components/ui/ErrorState';
+import AdvertisementSlot from '../../../components/advertising/AdvertisementSlot';
+import PageTitle from '../../../components/PageTitle';
+import { humanizeRouteSegment } from '../../../utils/pageTitle';
 
 const getFullImageUrl = (path) => {
   if (!path) return '';
@@ -59,12 +62,14 @@ export default function MagazinePublicLayout({ children }) {
   }
 
   if (loading) {
-    return <main className="min-h-screen bg-[var(--background)] px-4 pt-32"><LoadingState label="Loading magazine..." /></main>;
+    const publicationLabel = routePrefix === 'journals' ? 'Journal' : 'Magazine';
+    return <main className="min-h-screen bg-[var(--background)] px-4 pt-32"><PageTitle title={`${publicationLabel} - ${humanizeRouteSegment(slug, publicationLabel)}`} /><LoadingState label={`Loading ${publicationLabel.toLowerCase()}...`} /></main>;
   }
 
   if (error || !magazine) {
     return (
       <main className="min-h-screen bg-[var(--background)] px-4 pt-32 sm:px-6 lg:px-8">
+        <PageTitle title="Publication Not Found" />
         <div className="mx-auto max-w-xl">
           <ErrorState title="Magazine not available">{error || 'Magazine could not be resolved.'}</ErrorState>
           <Link href={`/${routePrefix}`} className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300">
@@ -85,37 +90,30 @@ export default function MagazinePublicLayout({ children }) {
     })),
   ];
   const coverImage = magazine.cover_image_url || getFullImageUrl(magazine.cover_image);
+  const bannerImage = magazine.banner_image_url || getFullImageUrl(magazine.banner_image);
+  const heroImage = bannerImage || coverImage;
+  const pageKey = pathname?.split('/').filter(Boolean).at(-1) === slug ? 'about-and-overview' : pathname?.split('/').filter(Boolean).at(-1);
+  const advertisementContext = { context: 'publication', publication_type: routePrefix === 'journals' ? 'journal' : 'magazine', publication_slug: slug, page_key: pageKey };
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
-      <section className="relative isolate overflow-hidden bg-zinc-950" aria-labelledby="magazine-title">
-        {coverImage ? (
+      <PageTitle title={`${routePrefix === 'journals' ? 'Journal' : 'Magazine'} - ${magazine.title}`} />
+      <section
+        className={`relative isolate overflow-hidden bg-zinc-100 dark:bg-zinc-950 ${bannerImage ? '' : 'min-h-[190px] sm:min-h-[260px] lg:min-h-[360px]'}`}
+        aria-label={`${magazine.title} banner`}
+      >
+        {heroImage ? (
           <img
-            src={coverImage}
+            src={heroImage}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover object-center"
+            className={bannerImage
+              ? 'mx-auto block h-auto w-auto max-w-full'
+              : 'absolute inset-0 h-full w-full object-cover object-center'}
             aria-hidden="true"
           />
         ) : (
           <div className="absolute inset-0 bg-zinc-900" aria-hidden="true" />
         )}
-        <div className="absolute inset-0 bg-zinc-950/55" aria-hidden="true" />
-        <div className="relative mx-auto flex min-h-[340px] w-full max-w-[1440px] items-end px-4 py-12 sm:min-h-[380px] sm:px-6 lg:px-8">
-          <div className="max-w-4xl">
-            <Link href={`/${routePrefix}`} className="inline-flex items-center gap-2 text-sm font-bold text-amber-200 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300">
-              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              All {routePrefix}
-            </Link>
-            <h1 id="magazine-title" className="mt-5 font-serif text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
-              {magazine.title}
-            </h1>
-            {magazine.description && (
-              <p className="mt-4 max-w-3xl text-base leading-8 text-zinc-100 sm:text-lg">
-                {magazine.description}
-              </p>
-            )}
-          </div>
-        </div>
       </section>
 
       <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[300px_1fr] lg:px-8">
@@ -147,9 +145,14 @@ export default function MagazinePublicLayout({ children }) {
               );
             })}
           </nav>
+          <AdvertisementSlot placement="sidebar_sticky" context={advertisementContext} className="mt-6" />
         </aside>
 
-        <main className="min-w-0">{children}</main>
+        <main className="min-w-0 space-y-8">
+          <AdvertisementSlot placement="content_top" context={advertisementContext} />
+          {children}
+          <AdvertisementSlot placement="content_bottom" context={advertisementContext} />
+        </main>
       </div>
     </div>
   );

@@ -21,7 +21,7 @@ export default function ImportantLinks({ isAdmin }) {
     },
     {
       title: 'Peer Review Timeline Documentation',
-      description: 'Understand review phases, scorecard scopes, and revision cycles.',
+      description: 'Understand review phases, recommendations, and revision cycles.',
       href: '/docs/review-timeline',
       icon: <Clock className="w-4 h-4 text-zinc-500" />,
       external: false

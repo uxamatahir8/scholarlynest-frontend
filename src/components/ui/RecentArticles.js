@@ -33,7 +33,7 @@ const getAuthorNames = (article) => {
   return article.user?.name || 'ScholarlyNest Author';
 };
 
-export default function RecentArticles() {
+export default function RecentArticles({ publicationType = 'magazine' }) {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,7 +41,7 @@ export default function RecentArticles() {
   useEffect(() => {
     let active = true;
 
-    api.get('/articles/latest', { params: { limit: 10 } })
+    api.get('/articles/latest', { params: { limit: 10, publication_type: publicationType } })
       .then((response) => {
         if (!active) return;
         setArticles((response.data?.status === 'success' ? response.data.data : response.data) || []);
@@ -57,7 +57,7 @@ export default function RecentArticles() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [publicationType]);
 
   if (loading) {
     return (
@@ -75,15 +75,19 @@ export default function RecentArticles() {
   }
 
   return (
-    <section className="border-t border-[var(--border)] bg-[var(--background)] py-16 lg:py-20" id="latest-research">
+    <section className="border-t border-[var(--border)] bg-[var(--background)] py-16 lg:py-20" id={`latest-${publicationType}-research`}>
       <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 sm:px-6 lg:grid-cols-[0.42fr_0.58fr] lg:px-8">
         <div className="max-w-xl">
-          <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Latest published research</p>
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+            {publicationType === 'journal' ? 'Latest journal research' : 'Latest published magazine articles'}
+          </p>
           <h2 className="mt-2 font-serif text-3xl font-bold tracking-tight text-zinc-950 dark:text-white sm:text-4xl">
-            Recently added to the archive
+            {publicationType === 'journal' ? 'Recently added journal articles' : 'Recently added to the archive'}
           </h2>
           <p className="mt-3 text-base leading-7 text-zinc-600 dark:text-zinc-350">
-            Published articles from public magazine archives, shown with author and publication context.
+            {publicationType === 'journal'
+              ? 'Published articles from public journal archives, shown with author and publication context.'
+              : 'Published articles from public magazine archives, shown with author and publication context.'}
           </p>
           <Link href="/search" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-amber-500 dark:text-amber-300">
             Search all research <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -94,10 +98,11 @@ export default function RecentArticles() {
           {articles.slice(0, 5).map((article) => {
             const articleLink = publicArticlePath(article);
             const excerpt = stripHtml(article.abstract);
+            const prefix = article.magazine?.publication_type === 'journal' ? 'journals' : 'magazines';
             return (
               <article key={article.id} className="py-5">
                 {article.magazine && (
-                  <Link href={`/magazines/${article.magazine.slug}/about-and-overview`} className="text-sm font-semibold text-amber-700 underline-offset-4 hover:underline dark:text-amber-300">
+                  <Link href={`/${prefix}/${article.magazine.slug}/about-and-overview`} className="text-sm font-semibold text-amber-700 underline-offset-4 hover:underline dark:text-amber-300">
                     {article.magazine.title}
                   </Link>
                 )}

@@ -15,6 +15,7 @@ import Field from '../../ui/Field';
 import { Input } from '../../ui/Input';
 import LoadingState from '../../ui/LoadingState';
 import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
+import AuthenticatorMfaPanel from './AuthenticatorMfaPanel';
 import {
   changePasswordSchema,
   currentEmailCodeSchema,
@@ -360,7 +361,6 @@ export default function AccountWorkspace() {
 
   return (
     <main className="space-y-6">
-      <title>My Account - ScholarlyNest</title>
       <header className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -486,23 +486,8 @@ export default function AccountWorkspace() {
             </div>
           </Section>
 
-          <Section eyebrow="Two-Factor" title="Two-Factor Authentication" description="When enabled, sign-in requires a code sent to your email.">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
-                <div className="flex items-center gap-3">
-                  {user.two_factor_enabled ? <ShieldCheck className="h-5 w-5 text-emerald-600" /> : <ShieldOff className="h-5 w-5 text-[var(--muted)]" />}
-                  <div>
-                    <p className="text-sm font-bold text-[var(--foreground)]">{user.two_factor_enabled ? 'Enabled' : 'Disabled'}</p>
-                    <p className="text-xs text-[var(--muted)]">No recovery-code display is supported by the current backend.</p>
-                  </div>
-                </div>
-              </div>
-              {user.two_factor_enabled ? (
-                <Button type="button" variant="danger" icon={LockKeyhole} onClick={requestDisableTwoFactor} isLoading={twoFactorLoading}>Disable 2FA</Button>
-              ) : (
-                <Button type="button" icon={ShieldCheck} onClick={enableTwoFactor} isLoading={twoFactorLoading}>Enable 2FA</Button>
-              )}
-            </div>
+          <Section eyebrow="Multi-Factor" title="Multi-Factor Authentication" description="Protect sign-in with email codes, an authenticator app, and single-use recovery codes.">
+            <AuthenticatorMfaPanel refreshUser={refreshUser} />
           </Section>
 
         </aside>

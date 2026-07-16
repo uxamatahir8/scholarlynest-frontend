@@ -200,7 +200,6 @@ export default function RolesPermissionsPage() {
 
   return (
     <main className="space-y-6">
-      <title>Roles and Permissions - ScholarlyNest</title>
       <header className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]">People and Access</p>

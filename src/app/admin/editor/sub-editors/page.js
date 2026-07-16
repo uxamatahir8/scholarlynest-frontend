@@ -97,7 +97,7 @@ export default function MySubEditorsPage() {
   if (!roleAllowed) {
     return (
       <div className="rounded-xl border border-dashed border-red-200 bg-red-50 p-6 text-center text-xs text-red-700">
-        Access restricted. This page is available to Editors and Administrators only.
+        Access restricted. This page is available to Super Editors, Magazine Editors, Journal Editors, and Administrators only.
       </div>
     );
   }

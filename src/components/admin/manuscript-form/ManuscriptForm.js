@@ -1,5 +1,7 @@
 'use client';
 
+import { Select } from '../../ui/Input';
+
 import { safeApiMessage } from '../../../utils/safeErrors';
 import { logError } from '../../../utils/safeLogger';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -28,6 +30,7 @@ import { Button } from '../../ui/Button';
 import EmptyState from '../../ui/EmptyState';
 import ErrorState from '../../ui/ErrorState';
 import LoadingState from '../../ui/LoadingState';
+import PageTitle from '../../PageTitle';
 import StatusBadge from '../../ui/StatusBadge';
 import { ConfirmationModal } from '../../ui/ConfirmationModal';
 import CoAuthorRepeater from '../../article/CoAuthorRepeater';
@@ -35,6 +38,7 @@ import ReviewerPreferenceRepeater, { normalizeReviewerPreferences } from '../../
 import ArticleAssetBufferedDropzone from '../../article/ArticleAssetBufferedDropzone';
 import ArticleAssetDropzone from '../../article/ArticleAssetDropzone';
 import ArticleImagesDropzone from '../../article/ArticleImagesDropzone';
+import AdditionalManuscriptFilesField from '../../article/AdditionalManuscriptFilesField';
 import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClient';
 import {
   appendAcademicMetadata,
@@ -180,6 +184,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [keywordInput, setKeywordInput] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
   const [supplementaryFiles, setSupplementaryFiles] = useState([]);
+  const [additionalManuscriptFiles, setAdditionalManuscriptFiles] = useState([]);
   const [articleImages, setArticleImages] = useState([]);
   const [queuedArticleImages, setQueuedArticleImages] = useState([]);
   const [assets, setAssets] = useState([]);
@@ -223,8 +228,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (!owner) missing.push({ key: 'owner', label: 'Choose one article owner', target: '#authors-affiliations' });
     if (correspondingAuthors.length === 0) missing.push({ key: 'corresponding', label: 'Choose a corresponding author', target: '#authors-affiliations' });
     if (isRevision && !revisionResponseFile) missing.push({ key: 'revisionResponse', label: 'Upload a response to the revision request', target: '#revision-response' });
+    if (additionalManuscriptFiles.some((row) => row.status !== 'uploaded')) missing.push({ key: 'additionalManuscriptFiles', label: 'Finish or remove each additional manuscript file', target: '#manuscript-files' });
     return missing;
-  }, [abstract, correspondingAuthors.length, isRevision, magazineId, owner, publicationType, revisionResponseFile, title, visibleAuthors.length]);
+  }, [abstract, additionalManuscriptFiles, correspondingAuthors.length, isRevision, magazineId, owner, publicationType, revisionResponseFile, title, visibleAuthors.length]);
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -276,6 +282,19 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
           setTitle(nextArticle.title || '');
           setAbstract(nextArticle.abstract || '');
           setAssets(nextArticle.assets || []);
+          setAdditionalManuscriptFiles((nextArticle.files || [])
+            .filter((file) => file.file_type === 'additional_manuscript_file' && !file.article_version_id)
+            .map((file) => ({
+              clientId: `document-${file.id}`,
+              fileTitle: file.file_title || '',
+              file: null,
+              uploadId: null,
+              articleFileId: file.id,
+              fileName: file.original_name || '',
+              status: file.scan_status === 'clean' ? 'uploaded' : 'failed',
+              progress: file.scan_status === 'clean' ? 100 : 0,
+              error: file.scan_status === 'clean' ? '' : 'The uploaded file could not be verified.',
+            })));
           setArticleImages(nextArticle.article_images || (nextArticle.assets || []).filter((asset) => asset.asset_type === 'image'));
           setSuggestedReviewers(nextArticle.reviewer_preferences?.suggested || []);
           setOpposedReviewers(nextArticle.reviewer_preferences?.opposed || []);
@@ -387,7 +406,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (['title', 'abstract', 'magazineId', 'publicationType', 'publication_type'].includes(key)) return 0;
     if (['authors', 'coAuthors', 'owner', 'corresponding'].includes(key)) return 1;
     if (['suggestedReviewers', 'opposedReviewers'].includes(key)) return 2;
-    if (['revisionResponse'].includes(key)) return 4;
+    if (['revisionResponse', 'additionalManuscriptFiles'].includes(key)) return 4;
     return 3;
   };
 
@@ -404,6 +423,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (!title.trim()) errors.title = 'Please add a manuscript title.';
     if (!cleanRichText(abstract)) errors.abstract = 'Please add an abstract.';
     if (isRevision && !revisionResponseFile) errors.revisionResponse = 'Please upload a PDF, DOC, or DOCX response to the revision request.';
+    if (scope === 'submit' && additionalManuscriptFiles.some((row) => !row.fileTitle.trim() || row.status !== 'uploaded')) errors.additionalManuscriptFiles = 'Finish uploading or remove every additional manuscript file row.';
     if (scope === 'submit' && !termsAccepted) errors.termsAccepted = 'You must accept the terms and conditions before submitting.';
     if (isSuperAdmin) {
       Object.assign(errors, validateAuthors(authors, { isSuperAdmin: true, user }));
@@ -446,6 +466,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (uploadIds.pdf_upload_id) formData.append('pdf_upload_id', uploadIds.pdf_upload_id);
     if (uploadIds.revision_response_upload_id) formData.append('revision_response_upload_id', uploadIds.revision_response_upload_id);
     (uploadIds.additional_file_ids || []).forEach((fileId) => formData.append('additional_file_ids[]', fileId));
+    formData.append('additional_manuscript_files', JSON.stringify(additionalManuscriptFiles
+      .filter((row) => row.status === 'uploaded')
+      .map((row) => ({ file_title: row.fileTitle.trim(), upload_id: row.uploadId, article_file_id: row.articleFileId }))));
     if (changeSummary.trim()) formData.append('change_summary', changeSummary.trim());
     formData.append('tags', JSON.stringify(selectedTags));
     const normalizedAuthors = normalizeAuthorRows(isSuperAdmin ? authors : visibleAuthors);
@@ -589,6 +612,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
         : 'Submitted, review, production, published, rejected, withdrawn, and archived manuscripts are managed from the workflow view.';
     return (
       <div className="space-y-6">
+        <PageTitle title={title ? `Edit Manuscript - ${title}` : 'Edit Manuscript'} />
         <Link href="/admin/articles" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--foreground)]">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to My Manuscripts
@@ -626,6 +650,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
 
   return (
     <div className="w-full space-y-8 text-left">
+      <PageTitle title={isEdit ? `Edit Manuscript - ${title || `Article #${articleId}`}` : 'New Submission'} />
       <div className="flex flex-col gap-4 border-b border-[var(--border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <Link href="/admin/articles" className="mb-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--foreground)]">
@@ -705,7 +730,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               <div className="grid gap-5 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)]">
                 <div>
                   <label htmlFor="magazine-select" className={labelClass}>Select {publicationLabel} <span className="text-amber-700">*</span></label>
-                  <select
+                  <Select
                     id="magazine-select"
                     value={magazineId}
                     onChange={(event) => {
@@ -720,7 +745,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                     {availablePublications.map((magazine) => (
                       <option key={magazine.id} value={magazine.id}>{magazine.title}</option>
                     ))}
-                  </select>
+                  </Select>
                   <FieldError id="magazine-select-error">{validationErrors.magazineId}</FieldError>
                 </div>
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-5">
@@ -849,7 +874,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               ].map(([field, label, options]) => (
                 <div key={field}>
                   <label className={labelClass}>{label}</label>
-                  <select
+                  <Select
                     value={academicMetadata[field]}
                     onChange={(event) => updateAcademicMetadata(field, event.target.value)}
                     className={selectClass}
@@ -859,7 +884,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                     {academicMetadata[field] && !options.some((option) => option.name === academicMetadata[field]) && (
                       <option value={academicMetadata[field]}>{academicMetadata[field]}</option>
                     )}
-                  </select>
+                  </Select>
                 </div>
               ))}
             </div>
@@ -980,6 +1005,14 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               ) : (
                 <ArticleAssetBufferedDropzone files={supplementaryFiles} onFilesChanged={setSupplementaryFiles} />
               )}
+
+              <AdditionalManuscriptFilesField
+                rows={additionalManuscriptFiles}
+                onChange={setAdditionalManuscriptFiles}
+                articleId={isEdit ? articleId : null}
+                disabled={saving}
+              />
+              <FieldError id="additional-manuscript-files-error">{validationErrors.additionalManuscriptFiles}</FieldError>
 
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-5">
                 <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">Article Images</h3>

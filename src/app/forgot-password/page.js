@@ -9,6 +9,7 @@ import { useToast } from '../../context/ToastContext';
 import { KeyRound, Mail, Loader2, AlertCircle } from 'lucide-react';
 import api from '../../utils/api';
 import { forgotPasswordSchema, validateWithZod } from '../../lib/validation';
+import PageTitle from '../../components/PageTitle';
 
 export default function ForgotPassword() {
   const { toast } = useToast();
@@ -53,15 +54,19 @@ export default function ForgotPassword() {
 
   if (authLoading || user) {
     return (
-      <div className="flex-grow flex flex-col justify-center items-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-accent dark:text-accent-gold" />
-        <p className="text-xs text-muted mt-4 font-semibold">Verifying session...</p>
-      </div>
+      <>
+        <PageTitle title="Forgot Password" />
+        <div className="flex-grow flex flex-col justify-center items-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-accent dark:text-accent-gold" />
+          <p className="text-xs text-muted mt-4 font-semibold">Verifying session...</p>
+        </div>
+      </>
     );
   }
 
   return (
     <div className="flex-grow flex flex-col justify-center max-w-md mx-auto w-full py-12 px-4 sm:px-6">
+      <PageTitle title="Forgot Password" />
 
       <div className="bg-surface dark:bg-[#121316] border border-border dark:border-zinc-800/80 rounded-2xl p-8 shadow-md space-y-6">
 

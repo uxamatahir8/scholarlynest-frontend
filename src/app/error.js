@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { logError } from '../utils/safeLogger';
+import PageTitle from '../components/PageTitle';
 
 export default function ErrorBoundary({ error, reset }) {
   useEffect(() => {
@@ -11,6 +12,7 @@ export default function ErrorBoundary({ error, reset }) {
 
   return (
     <main className="flex min-h-[80vh] items-center justify-center bg-[var(--background)] px-4 py-20 sm:px-6">
+      <PageTitle title="Application Error" />
       <div className="max-w-xl text-center">
         <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Something went wrong</p>
         <h1 className="mt-3 font-serif text-4xl font-bold text-zinc-950 dark:text-white">This page could not be loaded.</h1>

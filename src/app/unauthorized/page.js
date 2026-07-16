@@ -110,7 +110,8 @@ export default function Unauthorized() {
   return (
     <div className="flex-grow flex flex-col justify-center items-center py-20 px-4">
       <SeoHead
-        title="Unauthorized Access — ScholarlyNest"
+        title="Unauthorized Access"
+        ogTitle="Unauthorized Access — ScholarlyNest"
         description="Access restricted to authorized scholarly accounts."
         ogUrl="/unauthorized"
       />
