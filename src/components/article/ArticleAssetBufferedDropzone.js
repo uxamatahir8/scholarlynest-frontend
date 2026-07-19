@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, File, FileSpreadsheet, FileText, Image, AlertCircle } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
-export default function ArticleAssetBufferedDropzone({ files, onFilesChanged }) {
+export default function ArticleAssetBufferedDropzone({ files, onFilesChanged, heading = 'Supplementary Assets' }) {
   const { toast } = useToast();
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
@@ -120,7 +120,7 @@ export default function ArticleAssetBufferedDropzone({ files, onFilesChanged }) 
 
   return (
     <div className="space-y-4 font-sans text-left">
-      <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-white font-serif">Supplementary Assets</h3>
+      <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-900 dark:text-white font-serif">{heading}</h3>
       
       {/* Drag & Drop Area */}
       <div

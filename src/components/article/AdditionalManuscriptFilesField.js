@@ -10,7 +10,7 @@ const newRow = () => ({ clientId: crypto.randomUUID(), fileTitle: '', file: null
 
 export { newRow as createAdditionalManuscriptFileRow };
 
-export default function AdditionalManuscriptFilesField({ rows, onChange, articleId = null, disabled = false }) {
+export default function AdditionalManuscriptFilesField({ rows, onChange, articleId = null, disabled = false, heading = 'Additional Manuscript Files' }) {
   const rowsRef = useRef(rows);
   const uploadLocks = useRef(new Set());
   rowsRef.current = rows;
@@ -83,7 +83,7 @@ export default function AdditionalManuscriptFilesField({ rows, onChange, article
 
   return (
     <section className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-5" aria-labelledby="additional-manuscript-files-heading">
-      <h3 id="additional-manuscript-files-heading" className="text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">Additional Manuscript Files</h3>
+      <h3 id="additional-manuscript-files-heading" className="text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">{heading}</h3>
       <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">Add supporting files such as a cover letter, author declaration, ethics approval, graphical abstract, dataset description, or other manuscript-related documents.</p>
 
       <div className="mt-4 space-y-4">

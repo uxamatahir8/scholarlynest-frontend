@@ -1030,7 +1030,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
               <div>
                 <FilePicker
                   id="main-manuscript-file"
-                  label="Article PDF/Word file"
+                  label="Article File"
                   accept="application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   fileName={pdfFile?.name || ''}
                   existingLabel={existingManuscript?.original_name || (hasExistingPdf ? 'Existing article file attached' : '')}
@@ -1043,22 +1043,23 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                 />
               </div>
 
-              {isEdit && !isRevision ? (
-                <ArticleAssetDropzone articleId={articleId} assets={assets} onAssetsChanged={setAssets} />
-              ) : (
-                <ArticleAssetBufferedDropzone files={supplementaryFiles} onFilesChanged={setSupplementaryFiles} />
-              )}
-
               <AdditionalManuscriptFilesField
                 rows={additionalManuscriptFiles}
                 onChange={setAdditionalManuscriptFiles}
                 articleId={isEdit ? articleId : null}
                 disabled={saving}
+                heading="Additional Files"
               />
               <FieldError id="additional-manuscript-files-error">{validationErrors.additionalManuscriptFiles}</FieldError>
 
+              {isEdit && !isRevision ? (
+                <ArticleAssetDropzone articleId={articleId} assets={assets} onAssetsChanged={setAssets} />
+              ) : (
+                <ArticleAssetBufferedDropzone files={supplementaryFiles} onFilesChanged={setSupplementaryFiles} heading="Supplementary Files" />
+              )}
+
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-5">
-                <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">Article Images</h3>
+                <h3 className="mb-2 text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">Images</h3>
                 <ArticleImagesDropzone
                   articleId={isEdit && !isRevision ? articleId : null}
                   images={isRevision ? [] : articleImages}
