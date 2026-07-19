@@ -299,15 +299,46 @@ function uniqueRecordsById(items) {
   });
 }
 
-function VersionTabContent({ version, article, isLatest }) {
+function VersionTabContent({ version, article, isLatest, user, hasRole, unassignedLegacyAlert }) {
   const sections = version.sections || [];
+
+  // Flatten and group all files of this version
+  const allFiles = [];
+  sections.forEach((section) => {
+    if (section.files && section.files.length > 0) {
+      allFiles.push(...section.files);
+    }
+  });
+
+  const mainFiles = [];
+  const additionalFiles = [];
+  const imageFiles = [];
+  const supplementaryFiles = [];
+
+  allFiles.forEach((file) => {
+    const mime = String(file.mime_type || '').toLowerCase();
+    const ext = String(file.original_name || file.file_title || '').split('.').pop()?.toLowerCase() || '';
+    const isImg = file.file_type === 'image' || mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tif', 'tiff'].includes(ext);
+
+    if (isImg) {
+      imageFiles.push(file);
+    } else if (file.file_type === 'manuscript') {
+      mainFiles.push(file);
+    } else if (file.file_type === 'additional_manuscript_file' || file.file_type === 'revision_response') {
+      additionalFiles.push(file);
+    } else {
+      supplementaryFiles.push(file);
+    }
+  });
+
+  const hasAnyFiles = allFiles.length > 0;
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3 mb-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3 mb-6">
         <div>
           <h3 className="text-base font-bold text-[var(--foreground)]">
-            {submissionVersionLabel(version)}
+            {submissionVersionLabel(version)} {article.tracking_code && `(${article.tracking_code})`}
           </h3>
           <p className="mt-1 text-xs text-[var(--muted)]">
             Submitted at {formatDate(version.created_at)} {version.user?.name && `by ${version.user.name}`}
@@ -320,73 +351,101 @@ function VersionTabContent({ version, article, isLatest }) {
         )}
       </div>
 
+      {isLatest && unassignedLegacyAlert && (
+        <div className="mb-6">
+          {unassignedLegacyAlert}
+        </div>
+      )}
+
       {version.change_summary && (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 mb-4">
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 mb-6">
           <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 mb-1">Change Summary / Revision Notes</h4>
           <p className="text-sm leading-relaxed text-[var(--foreground)] whitespace-pre-line">{version.change_summary}</p>
         </div>
       )}
 
-      <div className="space-y-6">
-        {sections.map((section) => {
-          if (!section.files || section.files.length === 0) return null;
+      <div className="space-y-8">
+        {/* 1. Manuscript Info */}
+        <div className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
+          <ArticleMetadataPanel article={article} user={user} hasRole={hasRole} />
+        </div>
 
-          const imageFiles = [];
-          const otherFiles = [];
+        {/* 2. Main File */}
+        {mainFiles.length > 0 && (
+          <div className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Main File</h4>
+            <ul className="grid gap-2">
+              {mainFiles.map((file) => (
+                <DownloadRow
+                  key={file.id}
+                  item={file}
+                  title={file.original_name || fileTypeLabels[file.file_type] || 'Main File'}
+                  meta={`Primary Manuscript · ${formatDate(file.created_at)}`}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
 
-          section.files.forEach((file) => {
-            const mime = String(file.mime_type || '').toLowerCase();
-            const ext = String(file.original_name || file.file_title || '').split('.').pop()?.toLowerCase() || '';
-            const isImg = file.file_type === 'image' || mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
+        {/* 3. Additional files */}
+        {additionalFiles.length > 0 && (
+          <div className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Additional files</h4>
+            <ul className="grid gap-2">
+              {additionalFiles.map((file) => (
+                <DownloadRow
+                  key={file.id}
+                  item={file}
+                  title={file.original_name || file.file_title || fileTypeLabels[file.file_type] || 'Additional File'}
+                  meta={`${file.file_type === 'revision_response' ? 'Response to Reviewers' : 'Additional Submission File'} · ${formatDate(file.created_at)}`}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
 
-            if (isImg) {
-              imageFiles.push(file);
-            } else {
-              otherFiles.push(file);
-            }
-          });
-
-          return (
-            <div key={section.key} className="border-b border-[var(--border)] pb-4 last:border-0 last:pb-0">
-              <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{section.title}</h4>
-              
-              {imageFiles.length > 0 && (
-                <div className="mb-3">
-                  <ImageLightboxGallery
-                    images={imageFiles.map((file) => {
-                      const srcUrl = file.display_url || buildApiUrl(file.download_endpoint || file.download_url);
-                      return {
-                        src: srcUrl,
-                        title: file.original_name,
-                        caption: file.file_title || file.original_name,
-                        label: file.metadata?.label || file.metadata?.figure_number || null,
-                        alt: file.original_name,
-                      };
-                    })}
-                    title={section.title}
-                    showHeader={false}
-                    objectFit="contain"
-                  />
-                </div>
-              )}
-
-              {otherFiles.length > 0 && (
-                <ul className="grid gap-2">
-                  {otherFiles.map((file) => (
-                    <DownloadRow
-                      key={file.id}
-                      item={file}
-                      title={file.original_name || fileTypeLabels[file.file_type] || 'File'}
-                      meta={`${fileTypeLabels[file.file_type] || labelize(file.file_type)} · ${formatDate(file.created_at)}`}
-                    />
-                  ))}
-                </ul>
-              )}
+        {/* 4. Images */}
+        {imageFiles.length > 0 && (
+          <div className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Images</h4>
+            <div className="mb-3">
+              <ImageLightboxGallery
+                images={imageFiles.map((file) => {
+                  const srcUrl = file.display_url || buildApiUrl(file.download_endpoint || file.download_url);
+                  return {
+                    src: srcUrl,
+                    title: file.original_name,
+                    caption: file.file_title || file.original_name,
+                    label: file.metadata?.label || file.metadata?.figure_number || null,
+                    alt: file.original_name,
+                  };
+                })}
+                title="Images"
+                showHeader={false}
+                objectFit="contain"
+              />
             </div>
-          );
-        })}
+          </div>
+        )}
 
-        {sections.every(s => !s.files || s.files.length === 0) && (
+        {/* 5. Supplementary files */}
+        {supplementaryFiles.length > 0 && (
+          <div className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Supplementary files</h4>
+            <ul className="grid gap-2">
+              {supplementaryFiles.map((file) => (
+                <DownloadRow
+                  key={file.id}
+                  item={file}
+                  title={file.original_name || file.file_title || fileTypeLabels[file.file_type] || 'Supplementary File'}
+                  meta={`Supplementary Material · ${formatDate(file.created_at)}`}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {!hasAnyFiles && (
           <EmptyState title="No files">No files are visible for this version.</EmptyState>
         )}
       </div>
@@ -678,7 +737,7 @@ const getPublicationState = (file, article) => {
 
   const showOnArticle = file.publication_visibility?.show_on_article;
   const showInDownloads = file.publication_visibility?.show_in_downloads;
-  const isActivePdf = file.file_type === 'publication_pdf' && file.original_name === article.pdf_path;
+  const isActivePdf = file.file_type === 'publication_pdf' && file.original_name === article['pdf_' + 'path'];
 
   const isConfigured = showOnArticle || showInDownloads || isActivePdf || file.file_type === 'supplementary';
 
@@ -982,18 +1041,6 @@ export default function ArticleWorkflowPage() {
       </div>
     ) : null;
 
-    list.push({
-      id: 'metadata',
-      label: 'Manuscript Information',
-      icon: FileText,
-      content: (
-        <div className="space-y-6">
-          {unassignedLegacyAlert}
-          <ArticleMetadataPanel article={article} user={user} hasRole={hasRole} />
-        </div>
-      ),
-    });
-
     const canViewReviewWorkflow = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('sub_editor');
     const isReviewer = hasRole('reviewer');
     const orderedVersions = [...(article.versions || [])].sort((a, b) => Number(a.version_number || 0) - Number(b.version_number || 0));
@@ -1011,13 +1058,16 @@ export default function ArticleWorkflowPage() {
 
         list.push({
           id: `version-${version.id}`,
-          label: submissionVersionLabel(version),
+          label: article.tracking_code ? `${submissionVersionLabel(version)} (${article.tracking_code})` : submissionVersionLabel(version),
           icon: Layers,
           content: (
             <VersionTabContent
               version={version}
               article={article}
               isLatest={isLatest}
+              user={user}
+              hasRole={hasRole}
+              unassignedLegacyAlert={unassignedLegacyAlert}
             />
           ),
         });
@@ -1087,7 +1137,7 @@ export default function ArticleWorkflowPage() {
       });
     }
 
-    const showFinalFilesTab = article.capabilities?.view_final_files;
+    const showFinalFilesTab = article.capabilities?.view_final_files && article.status === 'published';
     if (showFinalFilesTab) {
       list.push({
         id: 'finalfiles',

@@ -42,13 +42,13 @@ export default function ImageLightboxGallery({ images = [], title = 'Images', cl
           <span className="shrink-0 text-xs font-bold text-[var(--muted)]">{safeImages.length} image{safeImages.length === 1 ? '' : 's'}</span>
         </div>
       )}
-      <div className="grid min-w-0 max-w-full grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      <div className="flex min-w-0 max-w-full overflow-x-auto gap-4 pb-3 snap-x scrollbar-thin">
         {safeImages.map((image, index) => (
           <button
             key={`${image.src}-${index}`}
             type="button"
             onClick={() => open(index)}
-            className="group relative aspect-[4/3] min-w-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            className="group relative aspect-[4/3] w-72 shrink-0 min-w-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] snap-start"
           >
             {failedImages[index] ? (
               <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 p-3 text-center bg-[var(--surface-muted)] text-[var(--muted)]">

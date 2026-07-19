@@ -64,6 +64,13 @@ export const ARTICLE_QUEUES = {
     description: 'Rejected article records visible to your current role.',
     statuses: ['rejected'],
   },
+  'in-transit': {
+    id: 'in-transit',
+    label: 'In Transit',
+    heading: 'In Transit Manuscripts',
+    description: 'Manuscripts currently in transit between publications.',
+    statuses: ['in_transit'],
+  },
 };
 
 export const DEFAULT_ARTICLE_QUEUE_ID = 'all';
@@ -74,6 +81,7 @@ export const ARTICLE_QUEUE_TABS = [
   ARTICLE_QUEUES.submitted,
   ARTICLE_QUEUES['active-review'],
   ARTICLE_QUEUES['revision-follow-up'],
+  ARTICLE_QUEUES['in-transit'],
   ARTICLE_QUEUES.accepted,
   ARTICLE_QUEUES.ready,
   ARTICLE_QUEUES.published,

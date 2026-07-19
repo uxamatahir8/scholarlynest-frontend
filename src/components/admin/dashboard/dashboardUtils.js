@@ -7,6 +7,7 @@ export function articleQueueItem(article, actionLabel = 'Open Article') {
     status: article.author_status || article.status,
     context: article.magazine?.title || article.user?.name || 'Manuscript record',
     href: article.id ? `/admin/articles/${article.id}/workflow` : '/admin/articles',
+    trackingCode: article.latest_tracking_code || article.tracking_code,
     actionLabel,
   };
 }
@@ -37,6 +38,7 @@ export function assignmentQueueItem(assignment, actionLabel = 'Open Task') {
     context: article.magazine?.title || 'Assigned manuscript',
     dueDate: assignment.due_date,
     href: article.id ? `/admin/articles/${article.id}/workflow` : undefined,
+    trackingCode: article.latest_tracking_code || article.tracking_code,
     actionLabel: primaryActionLabel,
   };
 }
@@ -53,6 +55,7 @@ export function publicationQueueItem(article, actionLabel = 'Open Publishing') {
     status: article.status,
     context: [article.magazine?.title, issueLabel].filter(Boolean).join(' / ') || 'Publication record',
     href: article.id ? `/admin/articles/${article.id}/workflow` : '/admin/publisher',
+    trackingCode: article.latest_tracking_code || article.tracking_code,
     actionLabel,
   };
 }
