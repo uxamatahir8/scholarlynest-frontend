@@ -82,6 +82,9 @@ async function putWithProgress(url, blob, headers, onProgress, offset = 0, total
 }
 
 export function getUploadErrorMessage(error) {
+  if (error?.message && error.message.includes('This file type is not supported')) {
+    return error.message;
+  }
   const validationErrors = error?.response?.data?.errors;
   if (validationErrors && typeof validationErrors === 'object') {
     const first = Object.values(validationErrors).flat().find((message) => typeof message === 'string');
@@ -90,6 +93,7 @@ export function getUploadErrorMessage(error) {
 
   const apiMessage = error?.response?.data?.message;
   if (typeof apiMessage === 'string' && apiMessage.trim()) {
+    if (apiMessage.includes('This file type is not supported')) return apiMessage;
     if (/expired|cannot be completed|cannot be resumed/i.test(apiMessage)) return 'Upload URL expired. Please retry.';
     if (error?.response?.status === 403) return 'You do not have permission to upload this file.';
     return apiMessage;
