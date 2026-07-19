@@ -452,7 +452,7 @@ export default function ArticleDetail() {
           )}
         </div>
 
-        <div ref={articleLayoutRef} style={{ '--article-rail-start': `${railStartOffset}px` }} data-testid="article-layout" className={`mx-auto grid w-full max-w-[1600px] items-start gap-8 lg:grid-cols-[minmax(190px,230px)_minmax(0,820px)] lg:justify-center ${advertisements?.right_sidebar?.length ? 'xl:grid-cols-[minmax(190px,230px)_minmax(0,820px)_minmax(260px,320px)]' : ''}`}>
+        <div ref={articleLayoutRef} style={{ '--article-rail-start': `${railStartOffset}px` }} data-testid="article-layout" className={`mx-auto grid w-full max-w-[1600px] items-start gap-8 lg:grid-cols-[minmax(190px,230px)_minmax(0,900px)] lg:justify-center ${advertisements?.right_sidebar?.length ? 'xl:grid-cols-[minmax(190px,230px)_minmax(0,900px)_minmax(195px,240px)]' : ''}`}>
           <aside data-testid="article-left-rail" className="hidden self-stretch space-y-7 pt-[var(--article-rail-start)] lg:block">
             <div data-testid="article-toc-sticky" className="sticky top-[var(--article-sticky-offset)]"><ArticleTableOfContents items={contentNav} /></div>
             <AdvertisementSlot placement="left_sidebar" ads={advertisements?.left_sidebar} context={advertisementContext} />
