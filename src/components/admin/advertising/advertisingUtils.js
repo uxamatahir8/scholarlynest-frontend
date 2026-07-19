@@ -6,9 +6,10 @@ const placementMap = {
   footer_banner: ['Footer Banner', '970×250 or 728×90 recommended'],
 };
 
-export function formatAdvertisementPlacement(value) {
+export function formatAdvertisementPlacement(value, sidebarSide = null) {
   const [label, helper] = placementMap[value] || [String(value || '').replaceAll('_', ' '), ''];
-  return { label, helper };
+  const sideLabel = sidebarSide === 'right' ? 'Right Side' : sidebarSide === 'left' ? 'Left Side' : '';
+  return { label: value === 'sidebar_sticky' && sideLabel ? `${label} · ${sideLabel}` : label, helper };
 }
 
 export function formatAdvertisementStatus(advertisement) {

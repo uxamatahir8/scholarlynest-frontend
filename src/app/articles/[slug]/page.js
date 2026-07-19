@@ -426,14 +426,14 @@ export default function ArticleDetail() {
           )}
         </div>
 
-        <div className={`mx-auto grid w-full max-w-[1600px] items-start gap-6 lg:grid-cols-[minmax(190px,230px)_minmax(0,820px)] lg:justify-center ${advertisements?.right_sidebar?.length ? 'min-[1440px]:grid-cols-[minmax(190px,230px)_minmax(0,820px)_minmax(260px,320px)]' : ''}`}>
-          <aside className="hidden space-y-7 lg:block">
-            <div className="sticky top-[var(--article-sticky-offset)]"><ArticleTableOfContents items={contentNav} /></div>
+        <div data-testid="article-layout" className={`mx-auto grid w-full max-w-[1600px] items-start gap-8 lg:grid-cols-[minmax(190px,230px)_minmax(0,820px)] lg:justify-center ${advertisements?.right_sidebar?.length ? 'xl:grid-cols-[minmax(190px,230px)_minmax(0,820px)_minmax(260px,320px)]' : ''}`}>
+          <aside data-testid="article-left-rail" className="hidden self-stretch space-y-7 lg:block">
+            <div data-testid="article-toc-sticky" className="sticky top-[var(--article-sticky-offset)]"><ArticleTableOfContents items={contentNav} /></div>
             <AdvertisementSlot placement="left_sidebar" ads={advertisements?.left_sidebar} context={advertisementContext} />
           </aside>
 
         {/* Centralized Reading Column */}
-        <div className="min-w-0 space-y-8">
+        <div data-testid="article-main-content" className="min-w-0 space-y-8">
         <article className="min-w-0 space-y-10 rounded-3xl border border-zinc-100 bg-white/90 p-6 shadow-sm dark:border-zinc-900/60 dark:bg-zinc-900/35 sm:p-10 lg:p-12 [&_.prose]:text-[17px] [&_.prose]:leading-[1.75]">
           
           {/* 1. Magazine Context Banner */}
@@ -568,7 +568,8 @@ export default function ArticleDetail() {
           )}
 
           <AdvertisementSlot placement="content_top" ads={advertisements?.content_top} context={advertisementContext} />
-          <div className="space-y-5 lg:hidden"><AdvertisementSlot placement="left_sidebar" ads={advertisements?.left_sidebar} context={advertisementContext} /><AdvertisementSlot placement="right_sidebar" ads={advertisements?.right_sidebar} context={advertisementContext} /></div>
+          <div className="space-y-5 lg:hidden"><AdvertisementSlot placement="left_sidebar" ads={advertisements?.left_sidebar} context={advertisementContext} /></div>
+          <div className="xl:hidden"><AdvertisementSlot placement="right_sidebar" ads={advertisements?.right_sidebar} context={advertisementContext} /></div>
 
           {/* 7. Abstract */}
           {abstractHtml && (
@@ -767,7 +768,7 @@ export default function ArticleDetail() {
 
         </article>
         </div>
-        {advertisements?.right_sidebar?.length > 0 && <aside className="hidden min-[1440px]:block" aria-label="Article advertising"><div className="sticky top-[var(--article-sticky-offset)]"><AdvertisementSlot placement="right_sidebar" ads={advertisements.right_sidebar} context={advertisementContext} /></div></aside>}
+        {advertisements?.right_sidebar?.length > 0 && <aside data-testid="article-right-rail" className="hidden self-stretch xl:block" aria-label="Article advertising"><div data-testid="article-right-ads-sticky" className="sticky top-[var(--article-sticky-offset)]"><AdvertisementSlot placement="right_sidebar" ads={advertisements.right_sidebar} context={advertisementContext} /></div></aside>}
       </div>
 
       </div>
