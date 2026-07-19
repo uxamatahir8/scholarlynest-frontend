@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -98,6 +98,10 @@ export default function ArticleDetail() {
   const [nextArticleTitle, setNextArticleTitle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [railStartOffset, setRailStartOffset] = useState(0);
+  const articleLayoutRef = useRef(null);
+  const articleContentRef = useRef(null);
+  const articleTitleRef = useRef(null);
 
   const isPrimaryAuthor = user && article && article.user_id === user.id;
   const isCoAuthorEditor = user && article && article.article_authors?.some(
@@ -198,6 +202,28 @@ export default function ArticleDetail() {
       .catch(() => { if (active) setAdvertisements({}); });
     return () => { active = false; };
   }, [article?.id, article?.magazine?.slug, article?.magazine?.publication_type, article?.slug]);
+
+  useEffect(() => {
+    const layout = articleLayoutRef.current;
+    const title = articleTitleRef.current;
+    const content = articleContentRef.current;
+    if (!layout || !title || !content) return undefined;
+
+    const alignRailsToTitle = () => {
+      const nextOffset = Math.max(0, Math.round(title.getBoundingClientRect().top - layout.getBoundingClientRect().top));
+      setRailStartOffset((current) => current === nextOffset ? current : nextOffset);
+    };
+    alignRailsToTitle();
+    const observer = new ResizeObserver(alignRailsToTitle);
+    observer.observe(layout);
+    observer.observe(content);
+    observer.observe(title);
+    window.addEventListener('resize', alignRailsToTitle);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', alignRailsToTitle);
+    };
+  }, [article?.id]);
 
   const handlePdfDownload = async () => {
     if (!article?.has_pdf) {
@@ -426,15 +452,15 @@ export default function ArticleDetail() {
           )}
         </div>
 
-        <div data-testid="article-layout" className={`mx-auto grid w-full max-w-[1600px] items-start gap-8 lg:grid-cols-[minmax(190px,230px)_minmax(0,820px)] lg:justify-center ${advertisements?.right_sidebar?.length ? 'xl:grid-cols-[minmax(190px,230px)_minmax(0,820px)_minmax(260px,320px)]' : ''}`}>
-          <aside data-testid="article-left-rail" className="hidden self-stretch space-y-7 lg:block">
+        <div ref={articleLayoutRef} style={{ '--article-rail-start': `${railStartOffset}px` }} data-testid="article-layout" className={`mx-auto grid w-full max-w-[1600px] items-start gap-8 lg:grid-cols-[minmax(190px,230px)_minmax(0,820px)] lg:justify-center ${advertisements?.right_sidebar?.length ? 'xl:grid-cols-[minmax(190px,230px)_minmax(0,820px)_minmax(260px,320px)]' : ''}`}>
+          <aside data-testid="article-left-rail" className="hidden self-stretch space-y-7 pt-[var(--article-rail-start)] lg:block">
             <div data-testid="article-toc-sticky" className="sticky top-[var(--article-sticky-offset)]"><ArticleTableOfContents items={contentNav} /></div>
             <AdvertisementSlot placement="left_sidebar" ads={advertisements?.left_sidebar} context={advertisementContext} />
           </aside>
 
         {/* Centralized Reading Column */}
         <div data-testid="article-main-content" className="min-w-0 space-y-8">
-        <article className="min-w-0 space-y-10 rounded-3xl border border-zinc-100 bg-white/90 p-6 shadow-sm dark:border-zinc-900/60 dark:bg-zinc-900/35 sm:p-10 lg:p-12 [&_.prose]:text-[17px] [&_.prose]:leading-[1.75]">
+        <article ref={articleContentRef} className="min-w-0 space-y-10 rounded-3xl border border-zinc-100 bg-white/90 p-6 shadow-sm dark:border-zinc-900/60 dark:bg-zinc-900/35 sm:p-10 lg:p-12 [&_.prose]:text-[17px] [&_.prose]:leading-[1.75]">
           
           {/* 1. Magazine Context Banner */}
           {article.magazine && (
@@ -491,7 +517,7 @@ export default function ArticleDetail() {
             </span>
             
             {/* 3. Title */}
-            <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-zinc-900 dark:text-white leading-tight tracking-tight">
+            <h1 ref={articleTitleRef} className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-zinc-900 dark:text-white leading-tight tracking-tight">
               {article.title}
             </h1>
             
@@ -768,7 +794,7 @@ export default function ArticleDetail() {
 
         </article>
         </div>
-        {advertisements?.right_sidebar?.length > 0 && <aside data-testid="article-right-rail" className="hidden self-stretch xl:block" aria-label="Article advertising"><div data-testid="article-right-ads-sticky" className="sticky top-[var(--article-sticky-offset)]"><AdvertisementSlot placement="right_sidebar" ads={advertisements.right_sidebar} context={advertisementContext} /></div></aside>}
+        {advertisements?.right_sidebar?.length > 0 && <aside data-testid="article-right-rail" className="hidden self-stretch pt-[var(--article-rail-start)] xl:block" aria-label="Article advertising"><div data-testid="article-right-ads-sticky" className="sticky top-[var(--article-sticky-offset)]"><AdvertisementSlot placement="right_sidebar" ads={advertisements.right_sidebar} context={advertisementContext} /></div></aside>}
       </div>
 
       </div>
