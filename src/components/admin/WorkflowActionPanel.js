@@ -341,7 +341,9 @@ export default function WorkflowActionPanel({
   const pendingTransferRequest = article?.pending_transfer_request;
   const publicationLabel = article?.publication_type === 'journal' || article?.magazine?.publication_type === 'journal' ? 'Journal' : 'Magazine';
   const canRequestTransfer = Boolean(article?.can_request_transfer) && canScreen;
-  const canRespondTransferRequest = Boolean(article?.can_respond_transfer_request) && status === 'in_transit' && pendingTransferRequest;
+  const canRespondTransferRequest = Boolean(article?.can_respond_transfer_request)
+    && status === 'in_transit'
+    && pendingTransferRequest?.status === 'pending';
   const canAssignSubEditor = canEditorial && ['under_review', 'resubmitted'].includes(status);
   const canShowReviewerAssignment = canAssignReviewer && ['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted'].includes(status);
   const canFinalDecision = canEditorial && REVIEWABLE_STATUSES.has(status);

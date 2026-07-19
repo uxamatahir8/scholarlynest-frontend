@@ -6,6 +6,19 @@ import { labelize } from './workflowDisplay';
 
 export default function AssignmentSummary({ article, canSeeReviewerIdentity }) {
   const rows = [];
+  const pendingTransfer = article.pending_transfer_request?.status === 'pending'
+    ? article.pending_transfer_request
+    : null;
+
+  if (pendingTransfer) {
+    rows.push({
+      key: `transfer-${pendingTransfer.id}`,
+      label: 'Transfer requested by',
+      name: pendingTransfer.requested_by?.name || 'Editorial team',
+      status: 'Pending Author Decision',
+      details: `${pendingTransfer.from_magazine?.title || 'Current publication'} → ${pendingTransfer.to_magazine?.title || 'Requested publication'}`,
+    });
+  }
 
   (article.sub_editor_assignments || []).forEach((assignment) => {
     rows.push({
@@ -47,6 +60,7 @@ export default function AssignmentSummary({ article, canSeeReviewerIdentity }) {
                 <p className="text-sm font-bold text-[var(--foreground)]">{row.name}</p>
                 <p className="text-xs font-semibold text-[var(--muted)]">{row.status}</p>
               </div>
+              {row.details && <p className="mt-2 text-xs text-[var(--muted)]">{row.details}</p>}
             </li>
           ))}
         </ul>

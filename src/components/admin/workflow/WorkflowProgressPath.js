@@ -8,6 +8,9 @@ import { normalizeStatus } from '../../../utils/status';
 export default function WorkflowProgressPath({ article }) {
   const normalized = normalizeStatus(article?.status);
   const isRejected = normalized === 'rejected';
+  const statusLabel = normalized === 'in_transit'
+    ? 'Transfer Pending Author Decision'
+    : article?.author_status || article?.status;
   
   const activeIndex = currentMilestoneIndex(article?.status || 'draft');
 
@@ -32,7 +35,7 @@ export default function WorkflowProgressPath({ article }) {
       <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] pb-2 mb-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Workflow Progress</h3>
         <span className="rounded-full bg-[var(--surface)] px-2.5 py-0.5 text-xs font-bold border border-[var(--border)] text-[var(--foreground)]">
-          {article?.author_status || article?.status ? String(article.author_status || article.status).replaceAll('_', ' ').toUpperCase() : 'UNKNOWN'}
+          {statusLabel ? String(statusLabel).replaceAll('_', ' ').toUpperCase() : 'UNKNOWN'}
         </span>
       </div>
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-zinc-200 dark:scrollbar-zinc-800">

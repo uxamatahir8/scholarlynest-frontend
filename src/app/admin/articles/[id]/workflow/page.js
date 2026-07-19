@@ -681,6 +681,12 @@ function hasWorkflowActions(article, user, hasRole) {
   const canAssignProduction = isAdmin || isPublisher;
 
   const status = normalizeStatus(article.status);
+
+  if (
+    status === 'in_transit'
+    && article.can_respond_transfer_request
+    && article.pending_transfer_request?.status === 'pending'
+  ) return true;
   
   if (canEditorial && (status === 'submitted' || status === 'resubmitted')) return true;
   if (isAdmin) return true;
