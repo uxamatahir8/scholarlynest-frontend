@@ -454,8 +454,10 @@ export default function ArticleDetail() {
 
         <div ref={articleLayoutRef} style={{ '--article-rail-start': `${railStartOffset}px` }} data-testid="article-layout" className={`mx-auto grid w-full max-w-[1600px] items-start gap-8 lg:grid-cols-[minmax(190px,230px)_minmax(0,900px)] lg:justify-center ${advertisements?.right_sidebar?.length ? 'xl:grid-cols-[minmax(190px,230px)_minmax(0,900px)_minmax(195px,240px)]' : ''}`}>
           <aside data-testid="article-left-rail" className="hidden self-stretch space-y-7 pt-[var(--article-rail-start)] lg:block">
-            <div data-testid="article-toc-sticky" className="sticky top-[var(--article-sticky-offset)]"><ArticleTableOfContents items={contentNav} /></div>
-            <AdvertisementSlot placement="left_sidebar" ads={advertisements?.left_sidebar} context={advertisementContext} />
+            <div data-testid="article-left-rail-sticky" className="sticky top-[var(--article-sticky-offset)] space-y-7">
+              <ArticleTableOfContents items={contentNav} />
+              <AdvertisementSlot placement="left_sidebar" ads={advertisements?.left_sidebar} context={advertisementContext} />
+            </div>
           </aside>
 
         {/* Centralized Reading Column */}
