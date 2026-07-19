@@ -37,15 +37,15 @@ export default function ImageLightboxGallery({ images = [], title = 'Images', cl
           <span className="shrink-0 text-xs font-bold text-[var(--muted)]">{safeImages.length} image{safeImages.length === 1 ? '' : 's'}</span>
         </div>
       )}
-      <div className="flex min-w-0 max-w-full gap-3 overflow-x-auto pb-2">
+      <div className="grid min-w-0 max-w-full grid-cols-1 gap-4 sm:grid-cols-2">
         {safeImages.map((image, index) => (
           <button
             key={`${image.src}-${index}`}
             type="button"
             onClick={() => open(index)}
-            className="group relative h-36 w-52 shrink-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            className="group relative aspect-[4/3] min-w-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
           >
-            <img src={image.src} alt={image.alt || image.title || 'Article image'} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+            <img src={image.src} alt={image.alt || image.title || 'Article image'} width={image.width || 800} height={image.height || 600} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
             {(image.title || image.caption) && (
               <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-3 text-xs font-bold text-white">
                 <span className="block truncate">{image.title || image.caption}</span>

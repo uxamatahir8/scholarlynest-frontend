@@ -19,6 +19,7 @@ import AuthorHeaderBlock from '../../../components/article/AuthorHeaderBlock';
 import { isArticleEditableStatus } from '../../../utils/status';
 import { publicArticlePath } from '../../../utils/articleLinks';
 import AdvertisementSlot from '../../../components/advertising/AdvertisementSlot';
+import ArticleTableOfContents from '../../../components/article/ArticleTableOfContents';
 import PageTitle from '../../../components/PageTitle';
 import { humanizeRouteSegment } from '../../../utils/pageTitle';
 
@@ -87,6 +88,7 @@ export default function ArticleDetail() {
   const { user } = useAuth();
 
   const [article, setArticle] = useState(null);
+  const [advertisements, setAdvertisements] = useState(null);
   const [authorMetrics, setAuthorMetrics] = useState(null);
   const [previousArticleId, setPreviousArticleId] = useState(null);
   const [nextArticleId, setNextArticleId] = useState(null);
@@ -187,6 +189,15 @@ export default function ArticleDetail() {
     if (!article || routeMagazineSlug || !article.magazine?.slug) return;
     router.replace(publicArticlePath(article, articleSlug));
   }, [article, articleSlug, routeMagazineSlug, router]);
+
+  useEffect(() => {
+    if (!article?.magazine?.slug) return;
+    let active = true;
+    api.get('/advertisements/resolve', { params: { context: 'article', publication_type: article.magazine.publication_type || 'magazine', publication_slug: article.magazine.slug, article_slug: article.slug } })
+      .then(({ data }) => { if (active) setAdvertisements(data?.advertisements || {}); })
+      .catch(() => { if (active) setAdvertisements({}); });
+    return () => { active = false; };
+  }, [article?.id, article?.magazine?.slug, article?.magazine?.publication_type, article?.slug]);
 
   const handlePdfDownload = async () => {
     if (!article?.has_pdf) {
@@ -364,6 +375,7 @@ export default function ArticleDetail() {
   const contentNav = [
     abstractHtml && { id: 'abstract', label: 'Abstract' },
     article.seo_keywords && { id: 'keywords', label: 'Keywords' },
+    article.full_text && { id: 'article-text', label: 'Article Text' },
     ...publicationSections.map((section) => ({
       id: `section-${section.section_key}`,
       label: section.title || sectionLabels[section.section_key] || section.section_key.replaceAll('_', ' '),
@@ -374,13 +386,14 @@ export default function ArticleDetail() {
   ].filter(Boolean);
   const advertisementContext = {
     context: 'article',
+    article_id: article.id,
     publication_type: article.magazine?.publication_type || 'magazine',
     publication_slug: article.magazine?.slug,
     article_slug: article.slug,
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50/20 dark:bg-zinc-950/10 pb-24 px-4 sm:px-6 lg:px-8 text-left">
+    <div style={{ '--article-sticky-offset': 'calc(5rem + 1.5rem)' }} className="min-h-screen bg-zinc-50/20 px-4 pb-24 text-left dark:bg-zinc-950/10 sm:px-6 lg:px-8">
       <SeoHead
         title={article.title}
         ogTitle={article.seo_title || article.title}
@@ -413,25 +426,15 @@ export default function ArticleDetail() {
           )}
         </div>
 
-        <div className="mx-auto grid w-full max-w-[1440px] gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
-          <aside className="hidden space-y-6 pt-[192px] lg:sticky lg:top-24 lg:block lg:self-start">
-            <nav className="rounded-2xl border border-zinc-150 bg-white/80 p-4 text-left shadow-sm dark:border-zinc-850 dark:bg-zinc-900/50" aria-label="Article sections">
-              <p className="mb-3 text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">Sections</p>
-              <div className="space-y-1">
-                {contentNav.map((item) => (
-                  <a key={item.id} href={`#${item.id}`} className="block rounded-lg px-3 py-2 text-xs font-bold text-zinc-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-zinc-300 dark:hover:text-amber-300">
-                    {item.label}
-                  </a>
-                ))}
-              </div>
-            </nav>
-            <AdvertisementSlot placement="sidebar_sticky" context={advertisementContext} />
+        <div className={`mx-auto grid w-full max-w-[1600px] items-start gap-6 lg:grid-cols-[minmax(190px,230px)_minmax(0,820px)] lg:justify-center ${advertisements?.right_sidebar?.length ? 'min-[1440px]:grid-cols-[minmax(190px,230px)_minmax(0,820px)_minmax(260px,320px)]' : ''}`}>
+          <aside className="hidden space-y-7 lg:block">
+            <div className="sticky top-[var(--article-sticky-offset)]"><ArticleTableOfContents items={contentNav} /></div>
+            <AdvertisementSlot placement="left_sidebar" ads={advertisements?.left_sidebar} context={advertisementContext} />
           </aside>
 
         {/* Centralized Reading Column */}
         <div className="min-w-0 space-y-8">
-        <AdvertisementSlot placement="content_top" context={advertisementContext} />
-        <article className="min-w-0 bg-white/80 dark:bg-zinc-900/35 border border-zinc-100 dark:border-zinc-900/60 rounded-3xl p-6 sm:p-10 lg:p-12 shadow-sm space-y-10">
+        <article className="min-w-0 space-y-10 rounded-3xl border border-zinc-100 bg-white/90 p-6 shadow-sm dark:border-zinc-900/60 dark:bg-zinc-900/35 sm:p-10 lg:p-12 [&_.prose]:text-[17px] [&_.prose]:leading-[1.75]">
           
           {/* 1. Magazine Context Banner */}
           {article.magazine && (
@@ -473,7 +476,7 @@ export default function ArticleDetail() {
           {/* Featured Header Cover (Optional) */}
           {(article.featured_image_url || article.featured_image) && (
             <div className="w-full h-64 sm:h-96 rounded-2xl overflow-hidden border border-zinc-200/40 dark:border-zinc-850 bg-zinc-50 shadow-sm relative group">
-              <img 
+              <img width="1200" height="675" loading="eager" decoding="async"
                 src={article.featured_image_url || getFullImageUrl(article.featured_image)}
                 alt={article.title} 
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.01]" 
@@ -564,12 +567,15 @@ export default function ArticleDetail() {
             </div>
           )}
 
+          <AdvertisementSlot placement="content_top" ads={advertisements?.content_top} context={advertisementContext} />
+          <div className="space-y-5 lg:hidden"><AdvertisementSlot placement="left_sidebar" ads={advertisements?.left_sidebar} context={advertisementContext} /><AdvertisementSlot placement="right_sidebar" ads={advertisements?.right_sidebar} context={advertisementContext} /></div>
+
           {/* 7. Abstract */}
           {abstractHtml && (
             <section id="abstract" className="scroll-mt-24 bg-zinc-50/50 dark:bg-zinc-900/10 p-6 sm:p-8 rounded-2xl border border-zinc-150 dark:border-zinc-850/80 text-left space-y-4">
-              <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
+              <h2 className="font-serif text-xl font-bold text-zinc-900 dark:text-white sm:text-2xl">
                 {publicationAbstract?.title || 'Abstract'}
-              </h3>
+              </h2>
               <div 
                 className="font-serif italic text-base sm:text-lg leading-relaxed text-zinc-700 dark:text-zinc-300 prose dark:prose-invert max-w-none"
                 dangerouslySetInnerHTML={{ __html: abstractHtml }}
@@ -598,26 +604,26 @@ export default function ArticleDetail() {
 
           {/* 9. Full Text */}
           {article.full_text && (
-            <div className="text-left space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800/80">
-              <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white mb-2">
+            <section id="article-text" className="scroll-mt-28 space-y-4 border-t border-zinc-100 pt-4 text-left dark:border-zinc-800/80">
+              <h2 className="mb-2 font-serif text-xl font-bold text-zinc-900 dark:text-white sm:text-2xl">
                 Article Text
-              </h3>
+              </h2>
               <div 
                 className="font-serif text-base sm:text-lg leading-relaxed text-zinc-800 dark:text-zinc-200 prose dark:prose-invert max-w-none first-letter:text-4xl first-letter:font-serif first-letter:font-bold first-letter:text-amber-600 dark:first-letter:text-amber-400 first-letter:mr-2 first-letter:float-left first-letter:leading-none"
                 dangerouslySetInnerHTML={{ __html: article.full_text }}
               />
-            </div>
+            </section>
           )}
 
           {publicationSections.length > 0 && (
             <div className="space-y-8 border-t border-zinc-100 pt-8 text-left dark:border-zinc-800/80">
               {publicationSections.map((section) => (
                 <section key={section.section_key} id={`section-${section.section_key}`} className="scroll-mt-24 space-y-3">
-                  <h3 className="font-serif text-lg sm:text-xl font-bold text-zinc-900 dark:text-white">
+                  <h2 className="font-serif text-xl font-bold text-zinc-900 dark:text-white sm:text-2xl">
                     {section.title || sectionLabels[section.section_key] || section.section_key.replaceAll('_', ' ')}
-                  </h3>
+                  </h2>
                   {section.image_url && (
-                    <img src={section.image_url} alt={section.title || 'Publication section image'} className="max-h-[420px] w-full rounded-2xl border border-zinc-150 object-cover dark:border-zinc-850" />
+                    <img src={section.image_url} alt={section.title || 'Publication section image'} width="1200" height="675" loading="lazy" decoding="async" className="max-h-[420px] w-full rounded-2xl border border-zinc-150 object-cover dark:border-zinc-850" />
                   )}
                   <div
                     className="prose prose-zinc max-w-none font-serif text-base leading-relaxed text-zinc-800 dark:prose-invert dark:text-zinc-200"
@@ -744,6 +750,8 @@ export default function ArticleDetail() {
             </section>
           )}
 
+          <AdvertisementSlot placement="content_bottom" ads={advertisements?.content_bottom} context={advertisementContext} />
+
           {/* Sequential Navigation Pagination */}
           <div className="border-t border-zinc-100 dark:border-zinc-800/80 pt-8 mt-8">
             <ArticlePagination
@@ -758,10 +766,9 @@ export default function ArticleDetail() {
           </div>
 
         </article>
-        <AdvertisementSlot placement="content_bottom" context={advertisementContext} />
-        <AdvertisementSlot placement="sidebar_sticky" context={advertisementContext} className="lg:hidden" />
         </div>
-        </div>
+        {advertisements?.right_sidebar?.length > 0 && <aside className="hidden min-[1440px]:block" aria-label="Article advertising"><div className="sticky top-[var(--article-sticky-offset)]"><AdvertisementSlot placement="right_sidebar" ads={advertisements.right_sidebar} context={advertisementContext} /></div></aside>}
+      </div>
 
       </div>
 
