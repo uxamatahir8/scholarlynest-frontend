@@ -8,7 +8,7 @@ import {
   Loader2, AlertCircle, Calendar, CheckCircle2, Info, X, Code,
   ChevronRight, FileSpreadsheet, File, Image, FileQuestion, Mail
 } from 'lucide-react';
-import api from '../../../utils/api';
+import api, { buildApiUrl } from '../../../utils/api';
 import { logError } from '../../../utils/safeLogger';
 import { useToast } from '../../../context/ToastContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -62,7 +62,12 @@ const isImageAsset = (asset) => {
   return asset?.asset_type === 'image' || mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
 };
 
-const assetDownloadUrl = (asset) => asset?.download_url || `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/articles/assets/${asset.id}/download`;
+const assetDownloadUrl = (asset) => {
+  if (!asset) return '#';
+  if (asset.display_url) return asset.display_url;
+  const rawUrl = asset.download_endpoint || asset.download_url || `/articles/assets/${asset.id}/download`;
+  return buildApiUrl(rawUrl);
+};
 
 const sectionLabels = {
   introduction: 'Introduction',
@@ -233,8 +238,7 @@ export default function ArticleDetail() {
 
     try {
       setDownloading(true);
-      const baseApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-      const fileUrl = `${baseApiUrl}/articles/${article.id}/download-pdf`;
+      const fileUrl = buildApiUrl(`/articles/${article.id}/download-pdf`);
       
       const link = document.createElement('a');
       link.href = fileUrl;
@@ -770,8 +774,25 @@ export default function ArticleDetail() {
                 {publicationFiles.filter((file) => file.show_on_article || file.show_in_downloads).map((file) => (
                   <div key={`publication-${file.id}`} className="rounded-2xl border border-zinc-200/60 bg-zinc-50/50 p-5 dark:border-zinc-800/80 dark:bg-zinc-900/20">
                     <div className="flex items-center justify-between gap-4">
-                      <div className="min-w-0"><h4 className="truncate text-xs font-bold text-zinc-900 dark:text-white">{file.title || file.original_name}</h4><span className="text-[9px] font-semibold tracking-wider text-zinc-500">PUBLICATION FILE</span></div>
-                      <a href={file.download_url} className="rounded-xl bg-zinc-100 p-2.5 text-zinc-600 transition-colors hover:bg-amber-600 hover:text-white dark:bg-zinc-800"><Download className="h-4 w-4" /></a>
+                      <div className="flex items-center space-x-3.5 min-w-0">
+                        <div className="p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/10 shrink-0">
+                          {getFileIcon(file.mime_type, file.original_name)}
+                        </div>
+                        <div className="text-left min-w-0">
+                          <h4 className="text-xs font-bold text-zinc-900 dark:text-white truncate" title={file.title || file.original_name}>
+                            {file.title || file.original_name}
+                          </h4>
+                          <span className="text-[9px] text-zinc-500 dark:text-zinc-400 font-semibold tracking-wider font-mono">
+                            PUBLICATION FILE
+                          </span>
+                        </div>
+                      </div>
+                      <a
+                        href={file.download_url}
+                        className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800/80 hover:bg-amber-600 dark:hover:bg-amber-400 text-zinc-600 dark:text-zinc-350 hover:text-white dark:hover:text-zinc-950 transition-colors cursor-pointer"
+                      >
+                        <Download className="w-4 h-4" />
+                      </a>
                     </div>
                   </div>
                 ))}

@@ -61,4 +61,31 @@ api.interceptors.response.use(
   }
 );
 
+export function buildApiUrl(path) {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api').replace(/\/$/, '');
+  const hasApiSuffix = apiBase.endsWith('/api');
+  
+  let cleanPath = path;
+  if (cleanPath.startsWith('/')) {
+    cleanPath = cleanPath.slice(1);
+  }
+  
+  const startsWithApi = cleanPath.startsWith('api/');
+  
+  if (hasApiSuffix) {
+    if (startsWithApi) {
+      cleanPath = cleanPath.slice(4);
+    }
+  } else {
+    if (!startsWithApi) {
+      cleanPath = 'api/' + cleanPath;
+    }
+  }
+  
+  return `${apiBase}/${cleanPath}`;
+}
+
 export default api;

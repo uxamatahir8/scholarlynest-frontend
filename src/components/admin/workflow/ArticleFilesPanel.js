@@ -4,7 +4,7 @@ import EmptyState from '../../ui/EmptyState';
 import ImageLightboxGallery from '../../ui/ImageLightboxGallery';
 import WorkflowSection from './WorkflowSection';
 import { fileTypeLabels, formatDate, labelize, submissionVersionLabel } from './workflowDisplay';
-import api from '../../../utils/api';
+import api, { buildApiUrl } from '../../../utils/api';
 
 const imageExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
 const sheetExtensions = new Set(['xls', 'xlsx', 'csv']);
@@ -18,9 +18,7 @@ const sheetMimes = new Set([
 
 export function fileDownloadUrl(path) {
   if (!path) return '#';
-  const apiBase = (api.defaults.baseURL || '').replace(/\/$/, '');
-  const suffix = path.startsWith('/api/') ? path.replace(/^\/api/, '') : path;
-  let url = path.startsWith('http') ? path : `${apiBase}${suffix}`;
+  let url = buildApiUrl(path);
 
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('auth_token');
@@ -64,7 +62,7 @@ export function supplementaryGroup(kind, item) {
 export function galleryImage(entry) {
   const item = entry.item;
   return {
-    src: fileDownloadUrl(item.download_url),
+    src: item.display_url || fileDownloadUrl(item.download_endpoint || item.download_url),
     title: assetTitle(item),
     caption: item.caption,
     description: item.description,
@@ -76,29 +74,50 @@ export function DownloadRow({ item, title, meta }) {
   const [opening, setOpening] = useState(false);
   const [openError, setOpenError] = useState('');
 
-  const openFile = () => {
-    if (!item.download_url) return;
+  const openFile = async () => {
+    const rawEndpoint = item.download_endpoint || item.download_url;
+    if (!rawEndpoint || opening) return;
+    
+    setOpening(true);
     setOpenError('');
+    
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : '';
-      const apiBase = (api.defaults.baseURL || '').replace(/\/$/, '');
-      const rawUrl = item.download_url.startsWith('http')
-        ? item.download_url
-        : `${apiBase}${item.download_url}`;
-      const separator = rawUrl.includes('?') ? '&' : '?';
-      const finalUrl = `${rawUrl}${separator}token=${token || ''}`;
-
-      const link = document.createElement('a');
-      link.href = finalUrl;
-      link.target = '_blank';
-      link.download = item.original_name || 'download';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const endpoint = buildApiUrl(rawEndpoint);
+      const isPdf = item.mime_type === 'application/pdf' || (item.original_name || '').toLowerCase().endsWith('.pdf');
+      const params = { json: 1 };
+      if (isPdf) {
+        params.preview = 1;
+      }
+      
+      const response = await api.get(endpoint, { params });
+      
+      if (!response.data || !response.data.download_url) {
+        throw new Error('No download URL returned');
+      }
+      
+      const anchor = document.createElement('a');
+      anchor.href = response.data.download_url;
+      anchor.rel = 'noopener';
+      if (isPdf) {
+        anchor.target = '_blank';
+      } else {
+        anchor.download = response.data.filename || item.original_name || 'download';
+      }
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
     } catch (err) {
-      setOpenError('Unable to open this file. Please try again.');
+      console.error(err);
+      const msg = err?.response?.data?.message || 'Unable to open this file. Please try again.';
+      setOpenError(msg);
+    } finally {
+      setOpening(false);
     }
   };
+
+  const isPdf = item.mime_type === 'application/pdf' || (item.original_name || '').toLowerCase().endsWith('.pdf');
+  const buttonLabel = isPdf ? 'Preview' : 'Download';
+  const loadingLabel = isPdf ? 'Previewing…' : 'Downloading…';
 
   return (
     <li className="min-w-0 max-w-full overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface-muted)] p-3">
@@ -111,10 +130,10 @@ export function DownloadRow({ item, title, meta }) {
           type="button"
           onClick={openFile}
           disabled={opening || !item.download_url}
-          className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-bold text-[var(--foreground)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] sm:w-auto"
+          className="inline-flex min-h-10 w-full shrink-0 items-center justify-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 text-sm font-bold text-[var(--foreground)] hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] sm:w-auto cursor-pointer"
         >
           {opening ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
-          {opening ? 'Opening…' : 'Open'}
+          {opening ? loadingLabel : buttonLabel}
         </button>
       </div>
       {openError && <p className="mt-2 text-xs font-semibold text-red-600 dark:text-red-400" role="alert">{openError}</p>}

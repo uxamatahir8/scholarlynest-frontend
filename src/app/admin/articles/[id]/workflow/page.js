@@ -17,7 +17,7 @@ import {
   FileCheck2,
   CheckCircle2
 } from 'lucide-react';
-import api from '../../../../../utils/api';
+import api, { buildApiUrl } from '../../../../../utils/api';
 import { safeApiMessage } from '../../../../../utils/safeErrors';
 import { logError } from '../../../../../utils/safeLogger';
 import { useAuth } from '../../../../../context/AuthContext';
@@ -354,11 +354,9 @@ function VersionTabContent({ version, article, isLatest }) {
                 <div className="mb-3">
                   <ImageLightboxGallery
                     images={imageFiles.map((file) => {
-                      const dlUrl = file.download_url
-                        ? (file.download_url.startsWith('http') ? file.download_url : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}${file.download_url}`)
-                        : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/articles/files/${file.id}/download`;
+                      const srcUrl = file.display_url || buildApiUrl(file.download_endpoint || file.download_url);
                       return {
-                        src: dlUrl,
+                        src: srcUrl,
                         title: file.original_name,
                         caption: file.file_title || file.original_name,
                         label: file.metadata?.label || file.metadata?.figure_number || null,
@@ -695,6 +693,7 @@ const getPublicationState = (file, article) => {
 };
 
 function FinalFilesTab({ article }) {
+  const [downloadingId, setDownloadingId] = useState(null);
   const allFiles = article.files || [];
   
   const sectionsConfig = {
@@ -710,27 +709,43 @@ function FinalFilesTab({ article }) {
     other_public_files: { title: 'Other Public Files', order: 10 },
   };
 
-  const downloadFileSecurely = (file) => {
+  const downloadFileSecurely = async (file) => {
+    const rawEndpoint = file.download_endpoint || file.download_url;
+    if (!rawEndpoint || downloadingId) return;
+    
+    setDownloadingId(file.id);
+    
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : '';
-      const apiBase = (api.defaults.baseURL || '').replace(/\/$/, '');
-      const rawUrl = file.download_url || `/api/articles/files/${file.id}/download`;
-      const fullUrl = rawUrl.startsWith('http')
-        ? rawUrl
-        : `${apiBase}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
-      const separator = fullUrl.includes('?') ? '&' : '?';
-      const finalUrl = `${fullUrl}${separator}token=${token || ''}`;
-
-      const link = document.createElement('a');
-      link.href = finalUrl;
-      link.target = '_blank';
-      link.download = file.original_name || 'download';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const endpoint = buildApiUrl(rawEndpoint);
+      const isPdf = file.mime_type === 'application/pdf' || (file.original_name || '').toLowerCase().endsWith('.pdf');
+      const params = { json: 1 };
+      if (isPdf) {
+        params.preview = 1;
+      }
+      
+      const response = await api.get(endpoint, { params });
+      
+      if (!response.data || !response.data.download_url) {
+        throw new Error('No download URL returned');
+      }
+      
+      const anchor = document.createElement('a');
+      anchor.href = response.data.download_url;
+      anchor.rel = 'noopener';
+      if (isPdf) {
+        anchor.target = '_blank';
+      } else {
+        anchor.download = response.data.filename || file.original_name || 'download';
+      }
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
     } catch (err) {
       logError(err);
-      alert('Unable to download this file. Please try again.');
+      const msg = err?.response?.data?.message || 'Unable to download this file. Please try again.';
+      alert(msg);
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -816,13 +831,21 @@ function FinalFilesTab({ article }) {
                           </span>
                         </td>
                         <td className="py-3 pl-4 text-right whitespace-nowrap font-medium">
-                          <button
-                            type="button"
-                            onClick={() => downloadFileSecurely(file)}
-                            className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)] hover:bg-[var(--surface-muted)] border border-[var(--border)] transition-colors cursor-pointer"
-                          >
-                            Download
-                          </button>
+                          {(() => {
+                            const isPdf = file.mime_type === 'application/pdf' || (file.original_name || '').toLowerCase().endsWith('.pdf');
+                            const buttonLabel = isPdf ? 'Preview' : 'Download';
+                            const loadingLabel = isPdf ? 'Previewing…' : 'Downloading…';
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => downloadFileSecurely(file)}
+                                disabled={downloadingId !== null}
+                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)] hover:bg-[var(--surface-muted)] border border-[var(--border)] transition-colors disabled:opacity-50 cursor-pointer"
+                              >
+                                {downloadingId === file.id ? loadingLabel : buttonLabel}
+                              </button>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );
