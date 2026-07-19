@@ -289,9 +289,19 @@ function SubEditorRecommendationTabContent({ assignment, article }) {
 }
 
 // Helper component for Submission Version Tab
+function uniqueRecordsById(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const id = Number(item?.id);
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 function VersionTabContent({ version, article, generalFiles, assets, fallbackVersionId, fileForAsset, isLatest }) {
-  const versionFiles = generalFiles.filter((file) => Number(file.article_version_id || fallbackVersionId) === Number(version.id));
-  const versionAssets = assets.filter((asset) => {
+  const versionFiles = uniqueRecordsById(generalFiles).filter((file) => Number(file.article_version_id || fallbackVersionId) === Number(version.id));
+  const versionAssets = uniqueRecordsById(assets).filter((asset) => {
     const sourceFile = fileForAsset.get(Number(asset.id));
     return Number(sourceFile?.article_version_id || fallbackVersionId) === Number(version.id);
   });

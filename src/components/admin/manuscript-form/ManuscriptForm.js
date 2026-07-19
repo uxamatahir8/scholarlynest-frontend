@@ -4,7 +4,7 @@ import { Select } from '../../ui/Input';
 
 import { safeApiMessage } from '../../../utils/safeErrors';
 import { logError } from '../../../utils/safeLogger';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -197,6 +197,8 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [saving, setSaving] = useState(false);
   const [savingMessage, setSavingMessage] = useState('');
   const [currentStep, setCurrentStep] = useState(0);
+  const submissionLockRef = useRef(false);
+  const newSubmissionDraftRef = useRef(null);
 
   const status = normalizeStatus(article?.status || 'draft');
   const isRevision = REVISION_STATUSES.has(status);
@@ -503,6 +505,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   };
 
   const persistManuscript = async (intent) => {
+    if (submissionLockRef.current) return;
     if (!validateForm({ scope: intent === 'submit' ? 'submit' : 'current' })) {
       toast('Please review the highlighted manuscript requirements.', 'error');
       return;
@@ -513,6 +516,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     }
 
     try {
+      submissionLockRef.current = true;
       setSaving(true);
       setSubmittingIntent(intent);
       setSavingMessage(intent === 'submit' ? 'Submitting manuscript...' : 'Saving draft...');
@@ -537,10 +541,14 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
       }
       let savedArticle;
       if (!isEdit && intent === 'submit') {
-        setSavingMessage('Creating submission draft...');
-        const draftResponse = await api.post('/articles', buildFormData('draft', uploadIds), { headers: { 'Content-Type': 'multipart/form-data' } });
-        savedArticle = draftResponse.data?.article;
-        const nextArticleId = savedArticle?.id;
+        let nextArticleId = newSubmissionDraftRef.current;
+        if (!nextArticleId) {
+          setSavingMessage('Creating submission draft...');
+          const draftResponse = await api.post('/articles', buildFormData('draft', uploadIds), { headers: { 'Content-Type': 'multipart/form-data' } });
+          savedArticle = draftResponse.data?.article;
+          nextArticleId = savedArticle?.id;
+          newSubmissionDraftRef.current = nextArticleId || null;
+        }
         if (!nextArticleId) throw new Error('The submission draft could not be created.');
         setSavingMessage('Uploading and checking supporting files...');
         uploadIds.additional_file_ids = [
@@ -580,6 +588,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
       logError(err);
       toast(safeApiMessage(err, intent === 'submit' ? 'Unable to submit manuscript.' : 'Unable to save draft.'), 'error');
     } finally {
+      submissionLockRef.current = false;
       setSaving(false);
       setSubmittingIntent('');
       setSavingMessage('');
