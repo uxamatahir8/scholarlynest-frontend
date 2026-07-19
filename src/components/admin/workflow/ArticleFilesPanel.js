@@ -76,29 +76,27 @@ export function DownloadRow({ item, title, meta }) {
   const [opening, setOpening] = useState(false);
   const [openError, setOpenError] = useState('');
 
-  const openFile = async () => {
-    if (!item.download_url || opening) return;
-    setOpening(true);
+  const openFile = () => {
+    if (!item.download_url) return;
     setOpenError('');
-    const previewWindow = window.open('about:blank', '_blank');
-    if (previewWindow) previewWindow.opener = null;
-
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : '';
       const apiBase = (api.defaults.baseURL || '').replace(/\/$/, '');
-      const requestUrl = item.download_url.startsWith(apiBase)
-        ? item.download_url.slice(apiBase.length)
-        : item.download_url.replace(/^\/api/, '');
-      const separator = requestUrl.includes('?') ? '&' : '?';
-      const response = await api.get(`${requestUrl}${separator}stream=1`, { responseType: 'blob' });
-      const objectUrl = URL.createObjectURL(response.data);
-      if (previewWindow) previewWindow.location.href = objectUrl;
-      else window.location.assign(objectUrl);
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
-    } catch {
-      previewWindow?.close();
+      const rawUrl = item.download_url.startsWith('http')
+        ? item.download_url
+        : `${apiBase}${item.download_url}`;
+      const separator = rawUrl.includes('?') ? '&' : '?';
+      const finalUrl = `${rawUrl}${separator}token=${token || ''}`;
+
+      const link = document.createElement('a');
+      link.href = finalUrl;
+      link.target = '_blank';
+      link.download = item.original_name || 'download';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
       setOpenError('Unable to open this file. Please try again.');
-    } finally {
-      setOpening(false);
     }
   };
 

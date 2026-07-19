@@ -88,6 +88,7 @@ export default function WorkflowActionPanel({
   onWorkflowChanged,
   onOpenPublish,
   toast,
+  hideIfNoAction = false,
 }) {
   const [busyAction, setBusyAction] = useState('');
   const [confirmAction, setConfirmAction] = useState(null);
@@ -372,6 +373,10 @@ export default function WorkflowActionPanel({
   const hasAnyAction = canScreen || canRespondTransferRequest || canAssignSubEditor || canShowReviewerAssignment || (isSubEditor && mySubEditorAssignment)
     || (isReviewer && myReviewerAssignment) || canFinalDecision || canAuthorFinalReview || canShowProductionAssignment || canCompleteProduction
     || completedProductionAssignment || canShowPublish || canPostPublication;
+
+  if (hideIfNoAction && !hasAnyAction) {
+    return null;
+  }
 
   return (
     <WorkflowSection
