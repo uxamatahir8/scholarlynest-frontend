@@ -114,7 +114,7 @@ function Section({ id, eyebrow, title, description, children }) {
   );
 }
 
-function FilePicker({ id, label, accept, fileName, existingLabel, onChange, onClear, help, error }) {
+function FilePicker({ id, label, accept, fileName, existingLabel, onChange, onClear, help, error, disabled = false, busyLabel = '' }) {
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -122,10 +122,10 @@ function FilePicker({ id, label, accept, fileName, existingLabel, onChange, onCl
           <label htmlFor={id} className={labelClass}>{label}</label>
           {help && <p className={helpClass}>{help}</p>}
         </div>
-        <label className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--secondary)] px-4 py-2 text-sm font-bold text-[var(--secondary-foreground)] transition hover:bg-[var(--surface-muted)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]">
-          <Upload className="h-4 w-4" aria-hidden="true" />
-          Choose File
-          <input id={id} type="file" accept={accept} className="sr-only" onChange={onChange} />
+        <label className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--secondary)] px-4 py-2 text-sm font-bold text-[var(--secondary-foreground)] transition ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-[var(--surface-muted)] focus-within:ring-2 focus-within:ring-[var(--focus-ring)]'}`}>
+          {busyLabel ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Upload className="h-4 w-4" aria-hidden="true" />}
+          {busyLabel || 'Choose File'}
+          <input id={id} type="file" accept={accept} className="sr-only" onChange={onChange} disabled={disabled} />
         </label>
       </div>
       {(fileName || existingLabel) && (
@@ -134,7 +134,7 @@ function FilePicker({ id, label, accept, fileName, existingLabel, onChange, onCl
             <FileText className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
             <span className="truncate">{fileName || existingLabel}</span>
           </div>
-          {fileName && (
+          {(fileName || existingLabel) && onClear && (
             <button
               type="button"
               onClick={onClear}
@@ -183,6 +183,9 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const [selectedTags, setSelectedTags] = useState([]);
   const [keywordInput, setKeywordInput] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
+  const [existingManuscript, setExistingManuscript] = useState(null);
+  const [removingManuscript, setRemovingManuscript] = useState(false);
+  const [manuscriptUploadProgress, setManuscriptUploadProgress] = useState(0);
   const [supplementaryFiles, setSupplementaryFiles] = useState([]);
   const [additionalManuscriptFiles, setAdditionalManuscriptFiles] = useState([]);
   const [articleImages, setArticleImages] = useState([]);
@@ -218,7 +221,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   const publicationLabel = publicationType === 'journal' ? 'Journal' : 'Magazine';
   const owner = visibleAuthors.find((author) => author.is_owner);
   const correspondingAuthors = visibleAuthors.filter((author) => author.is_corresponding);
-  const hasExistingPdf = Boolean(article?.has_pdf);
+  const hasExistingPdf = Boolean(existingManuscript || (!isRevision && article?.has_pdf));
 
   const readiness = useMemo(() => {
     const missing = [];
@@ -230,9 +233,10 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (!owner) missing.push({ key: 'owner', label: 'Choose one article owner', target: '#authors-affiliations' });
     if (correspondingAuthors.length === 0) missing.push({ key: 'corresponding', label: 'Choose a corresponding author', target: '#authors-affiliations' });
     if (isRevision && !revisionResponseFile) missing.push({ key: 'revisionResponse', label: 'Upload a response to the revision request', target: '#revision-response' });
+    if (!pdfFile && !hasExistingPdf) missing.push({ key: 'manuscript', label: 'Upload a manuscript file', target: '#manuscript-files' });
     if (additionalManuscriptFiles.some((row) => row.status !== 'uploaded')) missing.push({ key: 'additionalManuscriptFiles', label: 'Finish or remove each additional manuscript file', target: '#manuscript-files' });
     return missing;
-  }, [abstract, additionalManuscriptFiles, correspondingAuthors.length, isRevision, magazineId, owner, publicationType, revisionResponseFile, title, visibleAuthors.length]);
+  }, [abstract, additionalManuscriptFiles, correspondingAuthors.length, hasExistingPdf, isRevision, magazineId, owner, pdfFile, publicationType, revisionResponseFile, title, visibleAuthors.length]);
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -276,6 +280,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
         if (articleRes?.data) {
           const nextArticle = articleRes.data;
           setArticle(nextArticle);
+          setExistingManuscript((nextArticle.files || []).find((file) => file.file_type === 'manuscript' && !file.article_version_id && file.scan_status === 'clean') || null);
           setPublicationType(nextArticle.publication_type || nextArticle.magazine?.publication_type || 'magazine');
           if (Number.isInteger(Number(nextArticle.resume_step))) {
             setCurrentStep(Math.max(0, Math.min(4, Number(nextArticle.resume_step) - 1)));
@@ -380,6 +385,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
   };
 
   const handlePdfChange = (event) => {
+    if (existingManuscript || saving) return;
     const file = event.target.files?.[0];
     if (!file) return;
     const ext = file.name.split('.').pop()?.toLowerCase();
@@ -388,6 +394,27 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
       return;
     }
     setPdfFile(file);
+  };
+
+  const removeManuscript = async () => {
+    const confirmed = window.confirm('Remove this manuscript file?\n\nThe uploaded manuscript will be removed from this draft submission. You will need to upload a new manuscript before submitting.');
+    if (!confirmed) return;
+    if (pdfFile) {
+      setPdfFile(null);
+      return;
+    }
+    if (!existingManuscript) return;
+    try {
+      setRemovingManuscript(true);
+      const response = await api.delete(`/articles/${articleId}/manuscript-files/${existingManuscript.id}`);
+      setExistingManuscript(null);
+      setArticle((current) => current ? { ...current, has_pdf: false, files: (current.files || []).filter((file) => file.id !== existingManuscript.id) } : current);
+      toast(response.data?.message || 'The manuscript was removed.', response.data?.storage_cleanup_pending ? 'info' : 'success');
+    } catch (err) {
+      toast(safeApiMessage(err, 'Unable to remove the manuscript.'), 'error');
+    } finally {
+      setRemovingManuscript(false);
+    }
   };
 
   const handleRevisionResponseChange = (event) => {
@@ -408,7 +435,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (['title', 'abstract', 'magazineId', 'publicationType', 'publication_type'].includes(key)) return 0;
     if (['authors', 'coAuthors', 'owner', 'corresponding'].includes(key)) return 1;
     if (['suggestedReviewers', 'opposedReviewers'].includes(key)) return 2;
-    if (['revisionResponse', 'additionalManuscriptFiles'].includes(key)) return 4;
+    if (['manuscript', 'revisionResponse', 'additionalManuscriptFiles'].includes(key)) return 4;
     return 3;
   };
 
@@ -425,6 +452,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
     if (!title.trim()) errors.title = 'Please add a manuscript title.';
     if (!cleanRichText(abstract)) errors.abstract = 'Please add an abstract.';
     if (isRevision && !revisionResponseFile) errors.revisionResponse = 'Please upload a PDF, DOC, or DOCX response to the revision request.';
+    if (scope === 'submit' && !pdfFile && !hasExistingPdf) errors.manuscript = 'Upload a manuscript file before submitting this article.';
     if (scope === 'submit' && additionalManuscriptFiles.some((row) => !row.fileTitle.trim() || row.status !== 'uploaded')) errors.additionalManuscriptFiles = 'Finish uploading or remove every additional manuscript file row.';
     if (scope === 'submit' && !termsAccepted) errors.termsAccepted = 'You must accept the terms and conditions before submitting.';
     if (isSuperAdmin) {
@@ -523,11 +551,14 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
       const uploadIds = {};
       if (pdfFile) {
         setSavingMessage('Uploading article file...');
+        setManuscriptUploadProgress(0);
         const pdfUpload = await uploadAndAwaitClean({
           file: pdfFile,
           purpose: isRevision ? 'article_revision' : 'article_manuscript',
           attachableId: isEdit ? articleId : undefined,
+          onProgress: setManuscriptUploadProgress,
         });
+        setManuscriptUploadProgress(100);
         uploadIds.pdf_upload_id = pdfUpload.id;
       }
       if (isRevision && revisionResponseFile) {
@@ -1002,10 +1033,13 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
                   label="Article PDF/Word file"
                   accept="application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   fileName={pdfFile?.name || ''}
-                  existingLabel={!isRevision && hasExistingPdf ? 'Existing article file attached' : ''}
+                  existingLabel={existingManuscript?.original_name || (hasExistingPdf ? 'Existing article file attached' : '')}
                   onChange={handlePdfChange}
-                  onClear={() => setPdfFile(null)}
+                  onClear={canEditForm && !saving && !removingManuscript ? removeManuscript : null}
+                  disabled={saving || removingManuscript || hasExistingPdf}
+                  busyLabel={saving && pdfFile ? `Uploading… ${manuscriptUploadProgress}%` : removingManuscript ? 'Removing…' : ''}
                   help="Only one PDF, DOC, or DOCX file is allowed."
+                  error={validationErrors.manuscript}
                 />
               </div>
 
