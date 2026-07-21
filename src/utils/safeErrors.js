@@ -5,12 +5,31 @@ const ALLOWED_MESSAGE_KEYS = new Set([
   'Registration is currently closed.',
 ]);
 
-export const safeApiMessage = (error, fallback = 'We could not complete that request. Please try again.') => {
+const MFA_METHODS = new Set(['email', 'totp', 'recovery_code']);
+const INTERNAL_DETAIL_PATTERN = /(?:exception|stack trace|sqlstate|\/(?:home|srv|var)\/|\bat\s+\S+:\d+)/i;
+
+const responsePayload = (error) => {
+  const payload = error?.['response']?.data;
+  return payload && typeof payload === 'object' && !Array.isArray(payload) ? payload : null;
+};
+
+const safeText = (value) => {
+  if (typeof value !== 'string') return null;
+  const normalized = value.replace(/\s+/g, ' ').trim();
+  if (!normalized || normalized.length > 300 || INTERNAL_DETAIL_PATTERN.test(normalized)) return null;
+  return normalized;
+};
+
+export const safeApiMessage = (error, fallback = 'We could not complete that request. Please try again.', options = {}) => {
+  const strict = options.strict === true;
+  const status = error?.[ 'response' ]?.status;
+
   if (typeof error?.userMessage === 'string' && error.userMessage.trim()) {
-    return error.userMessage;
+    if (!strict) return error.userMessage;
+    if (Number.isFinite(status) && status >= 500) return fallback;
+    return safeText(error.userMessage) || fallback;
   }
 
-  const status = error?.[ 'response' ]?.status;
   if (status === 429) {
     const retryAfter = Number(error?.response?.headers?.['retry-after']);
     return Number.isFinite(retryAfter) && retryAfter > 0
@@ -18,7 +37,12 @@ export const safeApiMessage = (error, fallback = 'We could not complete that req
       : 'Too many attempts. Please wait a moment and try again.';
   }
 
-  const message = error?.[ 'response' ]?.data?.message;
+  if (strict && Number.isFinite(status) && status >= 500) {
+    return fallback;
+  }
+
+  const rawMessage = responsePayload(error)?.message;
+  const message = strict ? safeText(rawMessage) : rawMessage;
 
   if (typeof message === 'string') {
     if (ALLOWED_MESSAGE_KEYS.has(message)) {
@@ -79,4 +103,50 @@ export const safeApiMessage = (error, fallback = 'We could not complete that req
   }
 
   return fallback;
+};
+
+export const safeMfaChallengeState = (error) => {
+  if (error?.['response']?.status !== 422) return null;
+  const payload = responsePayload(error);
+  if (!payload) return null;
+
+  const safeMethods = (value) => Array.isArray(value)
+    ? value.filter((method) => typeof method === 'string' && MFA_METHODS.has(method))
+    : null;
+  const requiredMethods = safeMethods(payload.required_methods);
+  const verifiedMethods = safeMethods(payload.verified_methods);
+  const remainingMethods = safeMethods(payload.remaining_methods);
+  const nextMethod = payload.next_method === null || MFA_METHODS.has(payload.next_method)
+    ? payload.next_method
+    : undefined;
+  const state = {};
+
+  if (requiredMethods) state.required_methods = requiredMethods;
+  if (verifiedMethods) state.verified_methods = verifiedMethods;
+  if (remainingMethods) state.remaining_methods = remainingMethods;
+  if (nextMethod !== undefined) state.next_method = nextMethod;
+  if (typeof payload.recovery_code_allowed === 'boolean') {
+    state.recovery_code_allowed = payload.recovery_code_allowed;
+  }
+
+  return Object.keys(state).length ? state : null;
+};
+
+export const safeApiValidationErrors = (error, allowedFields = []) => {
+  if (error?.['response']?.status !== 422) return {};
+  const rawErrors = responsePayload(error)?.errors;
+  if (!rawErrors || typeof rawErrors !== 'object' || Array.isArray(rawErrors)) return {};
+
+  const allowed = new Set(allowedFields);
+  return Object.entries(rawErrors).reduce((result, [field, messages]) => {
+    const baseField = field.split('.')[0];
+    if (!allowed.has(baseField)) return result;
+    const safeMessages = (Array.isArray(messages) ? messages : [messages])
+      .map(safeText)
+      .filter(Boolean);
+    if (safeMessages.length) {
+      result[baseField] = [...(result[baseField] || []), ...safeMessages];
+    }
+    return result;
+  }, {});
 };

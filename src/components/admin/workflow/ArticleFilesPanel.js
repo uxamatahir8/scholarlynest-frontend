@@ -5,6 +5,8 @@ import ImageLightboxGallery from '../../ui/ImageLightboxGallery';
 import WorkflowSection from './WorkflowSection';
 import { fileTypeLabels, formatDate, labelize, submissionVersionLabel } from './workflowDisplay';
 import api, { buildApiUrl } from '../../../utils/api';
+import { safeApiMessage } from '../../../utils/safeErrors';
+import { logError } from '../../../utils/safeLogger';
 
 const imageExtensions = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
 const sheetExtensions = new Set(['xls', 'xlsx', 'csv']);
@@ -107,9 +109,8 @@ export function DownloadRow({ item, title, meta }) {
       anchor.click();
       anchor.remove();
     } catch (err) {
-      console.error(err);
-      const msg = err?.response?.data?.message || 'Unable to open this file. Please try again.';
-      setOpenError(msg);
+      logError(err);
+      setOpenError(safeApiMessage(err, 'Unable to open this file. Please try again.', { strict: true }));
     } finally {
       setOpening(false);
     }

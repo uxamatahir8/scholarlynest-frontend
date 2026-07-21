@@ -4,6 +4,7 @@ import React from 'react';
 import { Menu, Monitor, Moon, Sun } from 'lucide-react';
 import ConsoleBreadcrumbs from './ConsoleBreadcrumbs';
 import ConsoleUserMenu from './ConsoleUserMenu';
+import NotificationBell from '../../notifications/NotificationBell';
 
 export default function ConsoleTopbar({
   user,
@@ -48,6 +49,7 @@ export default function ConsoleTopbar({
         >
           <ThemeIcon className="h-4 w-4" aria-hidden="true" />
         </button>
+        <NotificationBell />
         <ConsoleUserMenu
           user={user}
           onLogout={onLogout}

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, Check, KeyRound, Loader2, Mail, ShieldCheck, Smartphone } from 'lucide-react';
 import api from '../../utils/api';
-import { safeApiMessage } from '../../utils/safeErrors';
+import { safeApiMessage, safeMfaChallengeState } from '../../utils/safeErrors';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { resolveDashboardRedirect } from '../../utils/authRedirect';
@@ -106,10 +106,9 @@ function VerifyMfaForm() {
       toast('Identity verified. Welcome back!', 'success');
       router.replace(resolveDashboardRedirect(searchParams.get('redirect'), response.data.user));
     } catch (err) {
-      if (err.response?.data) {
-        updateChallenge(err.response.data);
-      }
-      const message = safeApiMessage(err, 'The authentication code is invalid or expired.');
+      const safeChallengeState = safeMfaChallengeState(err);
+      if (safeChallengeState) updateChallenge(safeChallengeState);
+      const message = safeApiMessage(err, 'The authentication code is invalid or expired.', { strict: true });
       setError(message);
       setTimeout(() => errorRef.current?.focus(), 50);
     } finally {
