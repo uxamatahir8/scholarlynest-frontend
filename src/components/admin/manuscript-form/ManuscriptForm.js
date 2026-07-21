@@ -249,7 +249,7 @@ export default function ManuscriptForm({ mode = 'create', articleId = null }) {
         setLoading(true);
         setError('');
         const requests = [
-          api.get('/magazines', { params: { all: true } }),
+          api.get('/magazines', { params: { all: true, publication_type: 'all' } }),
           api.get('/article-types', { params: { active_only: 1 } }),
           api.get('/article-categories', { params: { active_only: 1 } }),
           api.get('/subject-areas', { params: { active_only: 1 } }),

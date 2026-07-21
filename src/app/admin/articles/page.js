@@ -357,7 +357,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
       try {
         setLoadingMagazines(true);
         const endpoint = isAuthorWorkspace ? '/magazines' : '/admin/magazines';
-        const response = await api.get(endpoint, { params: { all: true } });
+        const response = await api.get(endpoint, { params: { all: true, publication_type: 'all' } });
         setMagazines(Array.isArray(response.data) ? response.data : (response.data?.data || []));
       } catch (err) {
         logError('Failed to fetch magazines for filter', err);
