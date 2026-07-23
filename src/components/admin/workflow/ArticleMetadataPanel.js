@@ -34,13 +34,13 @@ export default function ArticleMetadataPanel({ article, user, hasRole }) {
       {!isReviewerOnly && (article.article_authors || []).length > 0 && (
         <div className="mt-5 border-t border-[var(--border)] pt-5">
           <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Authors and Affiliations</h3>
-          <ul className="mt-3 grid gap-3">
+          <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {article.article_authors.map((author) => {
               const authorEmail = author.co_author_email || author.email || '';
               return (
-                <li key={author.id || authorEmail || author.co_author_name} className="rounded-md border border-[var(--border)] bg-[var(--surface-muted)] p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                <li key={author.id || authorEmail || author.co_author_name} className="flex flex-col justify-between rounded-md border border-[var(--border)] bg-[var(--surface-muted)] p-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <p className="text-sm font-bold text-[var(--foreground)]">{author.co_author_name || author.name}</p>
                       {(author.is_owner || author.is_corresponding) && (
                         <span className="rounded bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
@@ -49,9 +49,9 @@ export default function ArticleMetadataPanel({ article, user, hasRole }) {
                       )}
                     </div>
                     {authorEmail && (
-                      <span className="text-xs font-medium text-[var(--accent)] break-all">
+                      <p className="mt-1 text-xs font-medium text-[var(--accent)] break-all">
                         {authorEmail}
-                      </span>
+                      </p>
                     )}
                   </div>
                   <p className="mt-1 text-xs leading-relaxed text-[var(--muted)]">

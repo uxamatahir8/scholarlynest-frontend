@@ -391,7 +391,7 @@ function VersionTabContent({ version, article, isLatest, user, hasRole, unassign
         {additionalFiles.length > 0 && (
           <div className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
             <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Additional files</h4>
-            <ul className="grid gap-2">
+            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {additionalFiles.map((file) => (
                 <DownloadRow
                   key={file.id}
@@ -432,7 +432,7 @@ function VersionTabContent({ version, article, isLatest, user, hasRole, unassign
         {supplementaryFiles.length > 0 && (
           <div className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
             <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Supplementary files</h4>
-            <ul className="grid gap-2">
+            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {supplementaryFiles.map((file) => (
                 <DownloadRow
                   key={file.id}
@@ -524,7 +524,7 @@ function AcceptedFilesTab({ acceptedFileSet, compact = false }) {
               <Files className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
               <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Additional Manuscript Files</h4>
             </div>
-            <ul className="grid gap-2">
+            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {additionalItems.map((acceptedItem) => (
                 <DownloadRow
                   key={acceptedItem.id}
@@ -546,7 +546,7 @@ function AcceptedFilesTab({ acceptedFileSet, compact = false }) {
             {group.id === 'images' ? (
               <ImageLightboxGallery images={group.items.map(galleryImage)} title="Images" showHeader={false} />
             ) : (
-              <ul className="grid gap-2">
+              <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {group.items.map(({ acceptedItem }) => (
                   <DownloadRow
                     key={acceptedItem.id}
@@ -1086,11 +1086,12 @@ export default function ArticleWorkflowPage() {
       });
     }
 
-    const subEditorAssignments = article.sub_editor_assignments || [];
+    const subEditorAssignments = (article.sub_editor_assignments || []).filter(
+      (assignment) => assignment.status === 'completed' || Boolean(assignment.completed_at || assignment.recommendation)
+    );
     subEditorAssignments.forEach((assignment, index) => {
-      const isCompleted = assignment.status === 'completed';
       const subEditorName = assignment.sub_editor?.name || `Sub Editor ${index + 1}`;
-      const label = `Sub Editor — ${subEditorName}${isCompleted ? '' : ' (Pending)'}`;
+      const label = `Sub Editor — ${subEditorName}`;
       
       list.push({
         id: `subeditor-${assignment.id}`,
@@ -1102,14 +1103,15 @@ export default function ArticleWorkflowPage() {
       });
     });
 
-    const reviewerAssignments = article.reviewer_assignments || [];
+    const reviewerAssignments = (article.reviewer_assignments || []).filter(
+      (assignment) => assignment.status !== 'pending' && assignment.status !== 'declined' && (assignment.status === 'completed' || Boolean(assignment.completed_at || assignment.recommendation || assignment.questionnaire_instance))
+    );
     reviewerAssignments.forEach((assignment, index) => {
-      const isCompleted = assignment.status === 'completed';
       const reviewerBaseName = showReviewerIdentity
         ? (assignment.invitee_name || assignment.reviewer?.name || `Reviewer ${index + 1}`)
         : `Reviewer ${index + 1}`;
       
-      const label = `Reviewer — ${reviewerBaseName}${isCompleted ? '' : ' (Pending)'}`;
+      const label = `Reviewer — ${reviewerBaseName}`;
 
       list.push({
         id: `reviewer-${assignment.id}`,

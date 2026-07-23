@@ -218,7 +218,7 @@ export default function ArticleFilesPanel({ files = [], assets = [], versions = 
                       {group.id === 'images' ? (
                         <ImageLightboxGallery images={group.items.map(galleryImage)} title="Images" showHeader={false} />
                       ) : (
-                        <ul className="grid min-w-0 max-w-full gap-2">
+                        <ul className="grid min-w-0 max-w-full gap-2 sm:grid-cols-2 lg:grid-cols-4">
                           {group.items.map(({ kind, item }) => (
                             <DownloadRow key={`${kind}-${item.id}`} item={item} title={assetTitle(item)} meta={assetMeta(kind, item)} />
                           ))}
