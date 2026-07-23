@@ -21,6 +21,7 @@ import {
   ListChecks,
   Microscope,
   Network,
+  Bell,
   PanelBottom,
   PenLine,
   ScanText,
@@ -219,7 +220,9 @@ export const consoleNavigation = [
   {
     group: 'Account',
     items: [
+      { label: 'Notifications', href: '/admin/notifications', icon: Bell },
       { label: 'My Account', href: '/admin/settings', icon: CircleUserRound },
+      { label: 'Notification Preferences', href: '/admin/settings/notifications', icon: Bell },
       { label: 'Support', href: '/admin/support', icon: Headset },
     ],
   },
@@ -301,6 +304,8 @@ export function getConsolePageTitle(pathname, visibleItems = []) {
     '/admin/rbac': 'Roles & Permissions',
     '/admin/search-results': 'Search Results',
     '/admin/support/new': 'New Support Ticket',
+    '/admin/notifications': 'Notifications',
+    '/admin/settings/notifications': 'Notification Preferences',
     '/admin/users/create': 'Create User',
   };
   if (exactTitles[pathname]) return exactTitles[pathname];

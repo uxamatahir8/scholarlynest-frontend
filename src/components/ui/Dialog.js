@@ -50,18 +50,20 @@ export default function Dialog({ open, onClose, title, description, children, fo
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[var(--z-dialog)] flex items-center justify-center p-4">
-      <div onClick={dismissible && onClose ? onClose : undefined} className="absolute inset-0 bg-zinc-950/45 backdrop-blur-sm" />
-      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} aria-describedby={description ? descriptionId : undefined} tabIndex={-1} className={`relative w-full max-w-lg rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] shadow-[var(--shadow-lg)] outline-none ${className}`}>
-        <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-6 py-5">
-          <div className="text-left">
-            {title && <h2 id={titleId} className="font-serif text-lg font-bold tracking-tight text-[var(--foreground)]">{title}</h2>}
-            {description && <p id={descriptionId} className="mt-1 text-sm leading-relaxed text-[var(--muted)]">{description}</p>}
+    <div className="fixed inset-0 z-[var(--z-dialog)] overflow-y-auto">
+      <div className="flex min-h-full items-center justify-center p-4 text-center">
+        <div onClick={dismissible && onClose ? onClose : undefined} className="fixed inset-0 bg-zinc-950/45 backdrop-blur-sm" />
+        <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} aria-describedby={description ? descriptionId : undefined} tabIndex={-1} className={`relative w-full max-w-lg transform overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] text-left shadow-[var(--shadow-lg)] align-middle transition-all outline-none ${className}`}>
+          <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-6 py-5">
+            <div className="text-left">
+              {title && <h2 id={titleId} className="font-serif text-lg font-bold tracking-tight text-[var(--foreground)]">{title}</h2>}
+              {description && <p id={descriptionId} className="mt-1 text-sm leading-relaxed text-[var(--muted)]">{description}</p>}
+            </div>
+            {dismissible && <button type="button" onClick={onClose} className="rounded-lg p-2 text-[var(--muted)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]" aria-label="Close dialog"><X className="h-4 w-4" aria-hidden="true" /></button>}
           </div>
-          {dismissible && <button type="button" onClick={onClose} className="rounded-lg p-2 text-[var(--muted)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]" aria-label="Close dialog"><X className="h-4 w-4" aria-hidden="true" /></button>}
+          <div className="px-6 py-5 text-left">{children}</div>
+          {footer && <div className="flex items-center justify-end gap-2 border-t border-[var(--border)] bg-[var(--surface-muted)] px-6 py-4">{footer}</div>}
         </div>
-        <div className="px-6 py-5 text-left">{children}</div>
-        {footer && <div className="flex items-center justify-end gap-2 border-t border-[var(--border)] bg-[var(--surface-muted)] px-6 py-4">{footer}</div>}
       </div>
     </div>
   );

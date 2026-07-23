@@ -17,7 +17,7 @@ import {
   FileCheck2,
   CheckCircle2
 } from 'lucide-react';
-import api from '../../../../../utils/api';
+import api, { buildApiUrl } from '../../../../../utils/api';
 import { safeApiMessage } from '../../../../../utils/safeErrors';
 import { logError } from '../../../../../utils/safeLogger';
 import { useAuth } from '../../../../../context/AuthContext';
@@ -28,7 +28,7 @@ import ErrorState from '../../../../../components/ui/ErrorState';
 import Alert from '../../../../../components/ui/Alert';
 import EmptyState from '../../../../../components/ui/EmptyState';
 import ImageLightboxGallery from '../../../../../components/ui/ImageLightboxGallery';
-import WorkflowActionPanel from '../../../../../components/admin/WorkflowActionPanel';
+import CurrentWorkflowActionPanel from '../../../../../components/admin/CurrentWorkflowActionPanel';
 import { PUBLISHABLE_STATUSES } from '../../../../../components/admin/articleWorkflow';
 import ManuscriptHeader from '../../../../../components/admin/workflow/ManuscriptHeader';
 import ArticleMetadataPanel from '../../../../../components/admin/workflow/ArticleMetadataPanel';
@@ -289,39 +289,56 @@ function SubEditorRecommendationTabContent({ assignment, article }) {
 }
 
 // Helper component for Submission Version Tab
-function VersionTabContent({ version, article, generalFiles, assets, fallbackVersionId, fileForAsset, isLatest }) {
-  const versionFiles = generalFiles.filter((file) => Number(file.article_version_id || fallbackVersionId) === Number(version.id));
-  const versionAssets = assets.filter((asset) => {
-    const sourceFile = fileForAsset.get(Number(asset.id));
-    return Number(sourceFile?.article_version_id || fallbackVersionId) === Number(version.id);
+function uniqueRecordsById(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const id = Number(item?.id);
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
   });
-  const assetIds = new Set(versionAssets.map((asset) => Number(asset.id)));
-  const primaryFiles = versionFiles.filter((file) => !['supplementary', 'additional_manuscript_file'].includes(file.file_type));
-  
-  const supplementaryItems = [
-    ...versionFiles
-      .filter((file) => file.file_type === 'supplementary' && !assetIds.has(Number(file.source_asset_id)))
-      .map((file) => ({ kind: 'file', item: file })),
-    ...versionAssets.map((asset) => ({ kind: 'asset', item: asset })),
-  ];
-  
-  const grouped = supplementaryItems.reduce((groups, entry) => {
-    groups[supplementaryGroup(entry.kind, entry.item)].push(entry);
-    return groups;
-  }, { images: [], sheets: [], files: [] });
+}
 
-  const supplementaryGroups = [
-    { id: 'images', title: 'Images', icon: FileImage, items: grouped.images },
-    { id: 'sheets', title: 'Sheets and Data', icon: Sheet, items: grouped.sheets },
-    { id: 'files', title: 'Supplementary Files', icon: Files, items: grouped.files },
-  ].filter((group) => group.items.length > 0);
+function VersionTabContent({ version, article, isLatest, user, hasRole, unassignedLegacyAlert }) {
+  const sections = version.sections || [];
+
+  // Flatten and group all files of this version
+  const allFiles = [];
+  sections.forEach((section) => {
+    if (section.files && section.files.length > 0) {
+      allFiles.push(...section.files);
+    }
+  });
+
+  const mainFiles = [];
+  const additionalFiles = [];
+  const imageFiles = [];
+  const supplementaryFiles = [];
+
+  allFiles.forEach((file) => {
+    const mime = String(file.mime_type || '').toLowerCase();
+    const ext = String(file.original_name || file.file_title || '').split('.').pop()?.toLowerCase() || '';
+    const isImg = file.file_type === 'image' || mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tif', 'tiff'].includes(ext);
+
+    if (isImg) {
+      imageFiles.push(file);
+    } else if (file.file_type === 'manuscript') {
+      mainFiles.push(file);
+    } else if (file.file_type === 'additional_manuscript_file' || file.file_type === 'revision_response') {
+      additionalFiles.push(file);
+    } else {
+      supplementaryFiles.push(file);
+    }
+  });
+
+  const hasAnyFiles = allFiles.length > 0;
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3 mb-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3 mb-6">
         <div>
           <h3 className="text-base font-bold text-[var(--foreground)]">
-            {submissionVersionLabel(version)}
+            {submissionVersionLabel(version)} {article.tracking_code && `(${article.tracking_code})`}
           </h3>
           <p className="mt-1 text-xs text-[var(--muted)]">
             Submitted at {formatDate(version.created_at)} {version.user?.name && `by ${version.user.name}`}
@@ -334,49 +351,101 @@ function VersionTabContent({ version, article, generalFiles, assets, fallbackVer
         )}
       </div>
 
+      {isLatest && unassignedLegacyAlert && (
+        <div className="mb-6">
+          {unassignedLegacyAlert}
+        </div>
+      )}
+
       {version.change_summary && (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 mb-4">
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 mb-6">
           <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 mb-1">Change Summary / Revision Notes</h4>
           <p className="text-sm leading-relaxed text-[var(--foreground)] whitespace-pre-line">{version.change_summary}</p>
         </div>
       )}
 
-      <div className="space-y-4">
-        {primaryFiles.length > 0 && (
-          <div>
-            <h4 className="mb-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Manuscript and Response Files</h4>
+      <div className="space-y-8">
+        {/* 1. Manuscript Info */}
+        <div className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
+          <ArticleMetadataPanel article={article} user={user} hasRole={hasRole} />
+        </div>
+
+        {/* 2. Main File */}
+        {mainFiles.length > 0 && (
+          <div className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Main File</h4>
             <ul className="grid gap-2">
-              {primaryFiles.map((file) => (
-                <DownloadRow 
-                  key={file.id} 
-                  item={file} 
-                  title={file.original_name || fileTypeLabels[file.file_type] || 'File'} 
-                  meta={`${fileTypeLabels[file.file_type] || labelize(file.file_type)} · ${formatDate(file.created_at)}`} 
+              {mainFiles.map((file) => (
+                <DownloadRow
+                  key={file.id}
+                  item={file}
+                  title={file.original_name || fileTypeLabels[file.file_type] || 'Main File'}
+                  meta={`Primary Manuscript · ${formatDate(file.created_at)}`}
                 />
               ))}
             </ul>
           </div>
         )}
 
-        {supplementaryGroups.map((group) => (
-          <div key={group.id}>
-            <div className="mb-2 flex items-center gap-2">
-              <group.icon className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{group.title}</h4>
-            </div>
-            {group.id === 'images' ? (
-              <ImageLightboxGallery images={group.items.map(galleryImage)} title="Images" showHeader={false} />
-            ) : (
-              <ul className="grid gap-2">
-                {group.items.map(({ kind, item }) => (
-                  <DownloadRow key={`${kind}-${item.id}`} item={item} title={assetTitle(item)} meta={assetMeta(kind, item)} />
-                ))}
-              </ul>
-            )}
+        {/* 3. Additional files */}
+        {additionalFiles.length > 0 && (
+          <div className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Additional files</h4>
+            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {additionalFiles.map((file) => (
+                <DownloadRow
+                  key={file.id}
+                  item={file}
+                  title={file.original_name || file.file_title || fileTypeLabels[file.file_type] || 'Additional File'}
+                  meta={`${file.file_type === 'revision_response' ? 'Response to Reviewers' : 'Additional Submission File'} · ${formatDate(file.created_at)}`}
+                />
+              ))}
+            </ul>
           </div>
-        ))}
-        
-        {primaryFiles.length === 0 && supplementaryGroups.length === 0 && (
+        )}
+
+        {/* 4. Images */}
+        {imageFiles.length > 0 && (
+          <div className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Images</h4>
+            <div className="mb-3">
+              <ImageLightboxGallery
+                images={imageFiles.map((file) => {
+                  const srcUrl = file.display_url || buildApiUrl(file.download_endpoint || file.download_url);
+                  return {
+                    src: srcUrl,
+                    title: file.original_name,
+                    caption: file.file_title || file.original_name,
+                    label: file.metadata?.label || file.metadata?.figure_number || null,
+                    alt: file.original_name,
+                  };
+                })}
+                title="Images"
+                showHeader={false}
+                objectFit="contain"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* 5. Supplementary files */}
+        {supplementaryFiles.length > 0 && (
+          <div className="border-b border-[var(--border)] pb-6 last:border-0 last:pb-0">
+            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Supplementary files</h4>
+            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {supplementaryFiles.map((file) => (
+                <DownloadRow
+                  key={file.id}
+                  item={file}
+                  title={file.original_name || file.file_title || fileTypeLabels[file.file_type] || 'Supplementary File'}
+                  meta={`Supplementary Material · ${formatDate(file.created_at)}`}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {!hasAnyFiles && (
           <EmptyState title="No files">No files are visible for this version.</EmptyState>
         )}
       </div>
@@ -455,7 +524,7 @@ function AcceptedFilesTab({ acceptedFileSet, compact = false }) {
               <Files className="h-4 w-4 text-[var(--muted)]" aria-hidden="true" />
               <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Additional Manuscript Files</h4>
             </div>
-            <ul className="grid gap-2">
+            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {additionalItems.map((acceptedItem) => (
                 <DownloadRow
                   key={acceptedItem.id}
@@ -477,7 +546,7 @@ function AcceptedFilesTab({ acceptedFileSet, compact = false }) {
             {group.id === 'images' ? (
               <ImageLightboxGallery images={group.items.map(galleryImage)} title="Images" showHeader={false} />
             ) : (
-              <ul className="grid gap-2">
+              <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {group.items.map(({ acceptedItem }) => (
                   <DownloadRow
                     key={acceptedItem.id}
@@ -610,66 +679,248 @@ function CopyeditingTab({ article, user, hasRole }) {
 }
 
 // Helper component for Final Files Tab
+const resolveFinalFileSection = (file, article) => {
+  const sectionKey = file.metadata?.section_key || file.metadata?.document_type || file.metadata?.purpose;
+  if (sectionKey && [
+    'published_pdf', 'public_images', 'figures', 'tables', 
+    'supplementary_downloads', 'research_data', 'graphical_abstract', 
+    'cover_image', 'supporting_documents', 'other_public_files'
+  ].includes(sectionKey)) {
+    return sectionKey;
+  }
+
+  if (file.file_type === 'publication_pdf') {
+    return 'published_pdf';
+  }
+
+  const purposeLower = String(sectionKey || file.file_type || '').toLowerCase();
+
+  if (purposeLower.includes('graphical_abstract') || purposeLower.includes('graphicalabstract')) {
+    return 'graphical_abstract';
+  }
+  if (purposeLower.includes('cover_image') || purposeLower.includes('coverimage')) {
+    return 'cover_image';
+  }
+  if (purposeLower.includes('supporting_document') || purposeLower.includes('supporting')) {
+    return 'supporting_documents';
+  }
+
+  const mime = String(file.mime_type || '').toLowerCase();
+  const ext = String(file.original_name || file.file_title || '').split('.').pop()?.toLowerCase() || '';
+  const isImage = mime.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
+
+  if (isImage) {
+    return 'public_images';
+  }
+
+  if (purposeLower.includes('figure')) {
+    return 'figures';
+  }
+  if (purposeLower.includes('table')) {
+    return 'tables';
+  }
+  if (purposeLower.includes('research_data') || purposeLower.includes('data')) {
+    return 'research_data';
+  }
+  if (file.file_type === 'supplementary') {
+    return 'supplementary_downloads';
+  }
+
+  return 'other_public_files';
+};
+
+const getPublicationState = (file, article) => {
+  const isClean = file.scan_status === 'clean';
+  if (!isClean) {
+    return 'Excluded from frontend (unclean)';
+  }
+
+  const showOnArticle = file.publication_visibility?.show_on_article;
+  const showInDownloads = file.publication_visibility?.show_in_downloads;
+  const isActivePdf = file.file_type === 'publication_pdf' && file.original_name === article['pdf_' + 'path'];
+
+  const isConfigured = showOnArticle || showInDownloads || isActivePdf || file.file_type === 'supplementary';
+
+  if (!isConfigured) {
+    return 'Excluded from frontend';
+  }
+  if (article.status === 'published') {
+    return 'Published on frontend';
+  }
+
+  return 'Prepared but not published';
+};
+
 function FinalFilesTab({ article }) {
-  const finalFiles = (article?.files || []).filter(
-    (file) => file.file_type === 'proof_file' || file.file_type === 'publication_pdf'
-  );
+  const [downloadingId, setDownloadingId] = useState(null);
+  const allFiles = article.files || [];
+  
+  const sectionsConfig = {
+    published_pdf: { title: 'Published Article PDF', order: 1 },
+    public_images: { title: 'Public Article Images', order: 2 },
+    figures: { title: 'Figures', order: 3 },
+    tables: { title: 'Tables', order: 4 },
+    supplementary_downloads: { title: 'Supplementary Downloads', order: 5 },
+    research_data: { title: 'Research Data', order: 6 },
+    graphical_abstract: { title: 'Graphical Abstract', order: 7 },
+    cover_image: { title: 'Cover Image', order: 8 },
+    supporting_documents: { title: 'Supporting Documents', order: 9 },
+    other_public_files: { title: 'Other Public Files', order: 10 },
+  };
 
-  const proofFiles = finalFiles.filter((file) => file.file_type === 'proof_file');
-  const pubFiles = finalFiles.filter((file) => file.file_type === 'publication_pdf');
+  const downloadFileSecurely = async (file) => {
+    const rawEndpoint = file.download_endpoint || file.download_url;
+    if (!rawEndpoint || downloadingId) return;
+    
+    setDownloadingId(file.id);
+    
+    try {
+      const endpoint = buildApiUrl(rawEndpoint);
+      const isPdf = file.mime_type === 'application/pdf' || (file.original_name || '').toLowerCase().endsWith('.pdf');
+      const params = { json: 1 };
+      if (isPdf) {
+        params.preview = 1;
+      }
+      
+      const response = await api.get(endpoint, { params });
+      
+      if (!response.data || !response.data.download_url) {
+        throw new Error('No download URL returned');
+      }
+      
+      const anchor = document.createElement('a');
+      anchor.href = response.data.download_url;
+      anchor.rel = 'noopener';
+      if (isPdf) {
+        anchor.target = '_blank';
+      } else {
+        anchor.download = response.data.filename || file.original_name || 'download';
+      }
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    } catch (err) {
+      logError(err);
+      const msg = err?.response?.data?.message || 'Unable to download this file. Please try again.';
+      alert(msg);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
-  if (finalFiles.length === 0) {
+  const grouped = {};
+  Object.keys(sectionsConfig).forEach((key) => {
+    grouped[key] = [];
+  });
+
+  allFiles.forEach((file) => {
+    if (file.scan_status !== 'clean') return;
+    
+    if (!['copy_edited_file', 'proof_file', 'publication_pdf', 'supplementary', 'additional_manuscript_file'].includes(file.file_type)) {
+      return;
+    }
+
+    const secKey = resolveFinalFileSection(file, article);
+    grouped[secKey].push(file);
+  });
+
+  const activeSections = Object.entries(sectionsConfig)
+    .map(([key, config]) => ({
+      key,
+      title: config.title,
+      order: config.order,
+      files: grouped[key] || [],
+    }))
+    .filter((sec) => sec.files.length > 0)
+    .sort((a, b) => a.order - b.order);
+
+  if (activeSections.length === 0) {
     return (
       <EmptyState title="No final files">
-        No final proofs or published PDFs have been uploaded for this manuscript yet.
+        No finalized copy-edited, proof, or publication files have been prepared for this manuscript yet.
       </EmptyState>
     );
   }
 
   return (
     <div className="space-y-6">
-      {proofFiles.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Proof Files</h4>
+      {activeSections.map((section) => (
+        <div key={section.key} className="space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{section.title}</h4>
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
-            <ul className="grid gap-2">
-              {proofFiles.map((file) => (
-                <DownloadRow
-                  key={file.id}
-                  item={file}
-                  title={file.original_name || 'Proof File'}
-                  meta={`Uploaded ${formatDate(file.created_at)}`}
-                />
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-[var(--border)] text-left text-sm">
+                <thead>
+                  <tr className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+                    <th className="pb-3 pr-4">File Details</th>
+                    <th className="pb-3 px-4">Size</th>
+                    <th className="pb-3 px-4">Uploaded</th>
+                    <th className="pb-3 px-4">Status</th>
+                    <th className="pb-3 pl-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {section.files.map((file) => {
+                    const pubState = getPublicationState(file, article);
+                    const stateBadgeClass = pubState === 'Published on frontend'
+                      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                      : pubState === 'Prepared but not published'
+                      ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                      : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400';
 
-      {pubFiles.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Published PDFs</h4>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-sm">
-            <ul className="grid gap-2">
-              {pubFiles.map((file) => (
-                <DownloadRow
-                  key={file.id}
-                  item={file}
-                  title={file.original_name || 'Published PDF'}
-                  meta={`Uploaded ${formatDate(file.created_at)}`}
-                />
-              ))}
-            </ul>
+                    return (
+                      <tr key={file.id} className="text-xs text-[var(--foreground)] hover:bg-[var(--surface-muted)]/50 transition-colors">
+                        <td className="py-3 pr-4 font-semibold max-w-xs truncate">
+                          <span className="block truncate text-sm" title={file.original_name}>
+                            {file.original_name}
+                          </span>
+                          <span className="block text-[10px] text-[var(--muted)] font-normal">
+                            Type: {fileTypeLabels[file.file_type] || labelize(file.file_type)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-[var(--muted)] whitespace-nowrap">
+                          {file.size ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'N/A'}
+                        </td>
+                        <td className="py-3 px-4 text-[var(--muted)] whitespace-nowrap">
+                          {formatDate(file.created_at)}
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${stateBadgeClass}`}>
+                            {pubState}
+                          </span>
+                        </td>
+                        <td className="py-3 pl-4 text-right whitespace-nowrap font-medium">
+                          {(() => {
+                            const isPdf = file.mime_type === 'application/pdf' || (file.original_name || '').toLowerCase().endsWith('.pdf');
+                            const buttonLabel = isPdf ? 'Preview' : 'Download';
+                            const loadingLabel = isPdf ? 'Previewing…' : 'Downloading…';
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => downloadFileSecurely(file)}
+                                disabled={downloadingId !== null}
+                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--foreground)] hover:bg-[var(--surface-muted)] border border-[var(--border)] transition-colors disabled:opacity-50 cursor-pointer"
+                              >
+                                {downloadingId === file.id ? loadingLabel : buttonLabel}
+                              </button>
+                            );
+                          })()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
 
 // Actions checker
 function hasWorkflowActions(article, user, hasRole) {
-  if (!article || !user) return false;
   const isAdmin = hasRole('super_admin') || hasRole('admin');
   const isEditor = hasRole('editor');
   const isSubEditor = hasRole('sub_editor');
@@ -681,6 +932,12 @@ function hasWorkflowActions(article, user, hasRole) {
   const canAssignProduction = isAdmin || isPublisher;
 
   const status = normalizeStatus(article.status);
+
+  if (
+    status === 'in_transit'
+    && article.can_respond_transfer_request
+    && article.pending_transfer_request?.status === 'pending'
+  ) return true;
   
   if (canEditorial && (status === 'submitted' || status === 'resubmitted')) return true;
   if (isAdmin) return true;
@@ -758,64 +1015,66 @@ export default function ArticleWorkflowPage() {
     if (!article) return [];
 
     const list = [];
-
-    // 1. Manuscript Information
-    list.push({
-      id: 'metadata',
-      label: 'Manuscript Information',
-      icon: FileText,
-      content: (
-        <ArticleMetadataPanel article={article} user={user} hasRole={hasRole} />
-      ),
-    });
-
-    // 2. Actions & Assignments
-    const hasActions = hasWorkflowActions(article, user, hasRole);
-    list.push({
-      id: 'actions',
-      label: 'Actions & Assignments',
-      icon: CheckSquare,
-      content: (
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-          <div className="space-y-6">
-            {observerReadonly ? (
-              <Alert tone="info" title="Super Admin Review Mode">
-                This manuscript record was opened from an observer queue. Workflow actions are disabled in this view.
-              </Alert>
-            ) : hasActions ? (
-              <WorkflowActionPanel
-                article={article}
-                workflowContext={article}
-                user={user}
-                hasRole={hasRole}
-                hasPermission={hasPermission}
-                onWorkflowChanged={loadWorkflow}
-                onOpenPublish={() => router.push(`/admin/articles/${article.id}/publish`)}
-                toast={toast}
-              />
-            ) : (
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center">
-                <ShieldAlert className="mx-auto h-8 w-8 text-[var(--muted)]" />
-                <h4 className="mt-2 text-sm font-bold text-[var(--foreground)]">No Actions Available</h4>
-                <p className="mt-1 text-xs text-[var(--muted)]">
-                  No workflow actions are currently available for your role at this stage.
-                </p>
-              </div>
-            )}
-          </div>
-          <aside className="space-y-6">
-            <AssignmentSummary article={article} canSeeReviewerIdentity={showReviewerIdentity} />
-          </aside>
-        </div>
-      ),
-    });
-
-    // 3. Editorial Decision
-    const decisions = article.editorial_decisions || [];
     const isAuthor = isAuthorViewer(user, article);
-    const hasEditorialAccess = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('publisher') || hasRole('sub_editor');
-    const showEditorialDecisionTab = hasEditorialAccess || (isAuthor && decisions.length > 0);
+    const hasHistoryAccess = article.capabilities?.view_workflow_history;
 
+    const legacyFiles = article.unassigned_legacy_files || [];
+    const unassignedLegacyAlert = hasHistoryAccess && legacyFiles.length > 0 ? (
+      <div className="mb-6">
+        <Alert tone="warning" title="Unassigned Legacy Files Found">
+          <div className="space-y-2">
+            <p className="text-xs">
+              The following files are associated with this article but have no active version linkage. Please verify their contents:
+            </p>
+            <ul className="grid gap-2 mt-2">
+              {legacyFiles.map((file) => (
+                <DownloadRow
+                  key={file.id}
+                  item={file}
+                  title={file.original_name || 'Legacy File'}
+                  meta={`${fileTypeLabels[file.file_type] || labelize(file.file_type)} · Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`}
+                />
+              ))}
+            </ul>
+          </div>
+        </Alert>
+      </div>
+    ) : null;
+
+    const canViewReviewWorkflow = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('sub_editor');
+    const isReviewer = hasRole('reviewer');
+    const orderedVersions = [...(article.versions || [])].sort((a, b) => Number(a.version_number || 0) - Number(b.version_number || 0));
+    
+    const visibleVersions = orderedVersions.filter((version) => {
+      if (isReviewer && !canViewReviewWorkflow) {
+        return (version.files || []).length > 0 || (version.sections || []).some(s => s.files && s.files.length > 0);
+      }
+      return true;
+    });
+
+    if (!hasRole('copy_editor')) {
+      visibleVersions.forEach((version, index) => {
+        const isLatest = version.id === (orderedVersions[orderedVersions.length - 1]?.id);
+
+        list.push({
+          id: `version-${version.id}`,
+          label: article.tracking_code ? `${submissionVersionLabel(version)} (${article.tracking_code})` : submissionVersionLabel(version),
+          icon: Layers,
+          content: (
+            <VersionTabContent
+              version={version}
+              article={article}
+              isLatest={isLatest}
+              user={user}
+              hasRole={hasRole}
+              unassignedLegacyAlert={unassignedLegacyAlert}
+            />
+          ),
+        });
+      });
+    }
+
+    const showEditorialDecisionTab = article.capabilities?.view_editorial_decision;
     if (showEditorialDecisionTab) {
       list.push({
         id: 'editorial',
@@ -827,28 +1086,32 @@ export default function ArticleWorkflowPage() {
       });
     }
 
-    // 4. Reviewer Recommendations
-    const canViewReviewWorkflow = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('sub_editor');
-    const isReviewer = hasRole('reviewer');
-
-    const reviewerAssignments = (article.reviewer_assignments || []).filter((assignment) => {
-      if (!hasAcceptedReviewInvitation(assignment)) return false;
-      if (isReviewer && !canViewReviewWorkflow) {
-        return Number(assignment.reviewer_id) === Number(user.id);
-      }
-      if (isAuthor) {
-        return assignment.status === 'completed';
-      }
-      return true;
+    const subEditorAssignments = (article.sub_editor_assignments || []).filter(
+      (assignment) => assignment.status === 'completed' || Boolean(assignment.completed_at || assignment.recommendation)
+    );
+    subEditorAssignments.forEach((assignment, index) => {
+      const subEditorName = assignment.sub_editor?.name || `Sub Editor ${index + 1}`;
+      const label = `Sub Editor — ${subEditorName}`;
+      
+      list.push({
+        id: `subeditor-${assignment.id}`,
+        label: label,
+        icon: UserCheck,
+        content: (
+          <SubEditorRecommendationTabContent assignment={assignment} article={article} />
+        ),
+      });
     });
 
+    const reviewerAssignments = (article.reviewer_assignments || []).filter(
+      (assignment) => assignment.status !== 'pending' && assignment.status !== 'declined' && (assignment.status === 'completed' || Boolean(assignment.completed_at || assignment.recommendation || assignment.questionnaire_instance))
+    );
     reviewerAssignments.forEach((assignment, index) => {
-      const isCompleted = assignment.status === 'completed';
-      const reviewerName = showReviewerIdentity
+      const reviewerBaseName = showReviewerIdentity
         ? (assignment.invitee_name || assignment.reviewer?.name || `Reviewer ${index + 1}`)
         : `Reviewer ${index + 1}`;
       
-      const label = `${reviewerName}'s Recommendation${isCompleted ? '' : ' (Pending)'}`;
+      const label = `Reviewer — ${reviewerBaseName}`;
 
       list.push({
         id: `reviewer-${assignment.id}`,
@@ -864,41 +1127,11 @@ export default function ArticleWorkflowPage() {
       });
     });
 
-    // 5. Sub-Editor Recommendations
-    const showSubEditorTabs = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('sub_editor');
-    if (showSubEditorTabs) {
-      const subEditorAssignments = article.sub_editor_assignments || [];
-
-      subEditorAssignments.forEach((assignment) => {
-        list.push({
-          id: `subeditor-${assignment.id}`,
-          label: `${assignment.sub_editor?.name || 'Sub Editor'}'s Recommendation`,
-          icon: UserCheck,
-          content: (
-            <SubEditorRecommendationTabContent assignment={assignment} article={article} />
-          ),
-        });
-      });
-    }
-
-    // 5.5 Copyediting Tab
-    if (article.accepted_file_set) {
-      list.push({
-        id: 'accepted-files',
-        label: 'Accepted Files',
-        icon: FileCheck2,
-        content: <AcceptedFilesTab acceptedFileSet={article.accepted_file_set} />,
-      });
-    }
-
-    const copyEditedFiles = (article.files || []).filter((file) => file.file_type === 'copy_edited_file');
-    const copyEditorAssignments = (article.production_assignments || []).filter((assignment) => assignment.role === 'copy_editor');
-    const showCopyeditingTab = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('publisher') || hasRole('copy_editor') || hasRole('sub_editor') || copyEditedFiles.length > 0 || copyEditorAssignments.length > 0;
-
+    const showCopyeditingTab = article.capabilities?.view_copy_editing;
     if (showCopyeditingTab) {
       list.push({
         id: 'copyediting',
-        label: 'Copyediting',
+        label: 'Copy Editing',
         icon: FileCheck2,
         content: (
           <CopyeditingTab article={article} user={user} hasRole={hasRole} />
@@ -906,10 +1139,7 @@ export default function ArticleWorkflowPage() {
       });
     }
 
-    // 5.6 Final Files Tab
-    const finalFiles = (article.files || []).filter((file) => file.file_type === 'proof_file' || file.file_type === 'publication_pdf');
-    const showFinalFilesTab = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('publisher') || hasRole('proofreader') || isAuthor || finalFiles.length > 0;
-
+    const showFinalFilesTab = article.capabilities?.view_final_files && article.status === 'published';
     if (showFinalFilesTab) {
       list.push({
         id: 'finalfiles',
@@ -921,61 +1151,6 @@ export default function ArticleWorkflowPage() {
       });
     }
 
-    const additionalManuscriptFiles = (article.files || []).filter((file) => file.file_type === 'additional_manuscript_file' && file.scan_status === 'clean' && file.article_version_id);
-    if (!hasRole('copy_editor') && (isAuthor || hasEditorialAccess)) {
-      list.push({
-        id: 'additional-manuscript-files',
-        label: 'Additional Manuscript Files',
-        icon: Files,
-        content: <AdditionalManuscriptFilesTab files={additionalManuscriptFiles} versions={article.versions || []} />,
-      });
-    }
-
-    // 6. Submission/Revision Versions
-    const orderedVersions = [...(article.versions || [])].sort((a, b) => Number(b.version_number || 0) - Number(a.version_number || 0));
-    const fallbackVersionId = orderedVersions.at(-1)?.id;
-    const generalFiles = (article.files || []).filter(
-      (file) => file.file_type !== 'reviewed_manuscript'
-      && file.file_type !== 'copy_edited_file'
-      && file.file_type !== 'proof_file'
-      && file.file_type !== 'publication_pdf'
-      && file.file_type !== 'additional_manuscript_file'
-    );
-    const fileForAsset = new Map(generalFiles
-      .filter((file) => file.source_asset_id)
-      .map((file) => [Number(file.source_asset_id), file]));
-
-    const visibleVersions = orderedVersions.filter((version) => {
-      if (isReviewer && !canViewReviewWorkflow) {
-        const versionFiles = generalFiles.filter((file) => Number(file.article_version_id || fallbackVersionId) === Number(version.id));
-        return versionFiles.length > 0;
-      }
-      return true;
-    });
-
-    if (!hasRole('copy_editor')) visibleVersions.forEach((version, index) => {
-      const versionLabel = `${article.tracking_code} - ${submissionVersionLabel(version)}`;
-
-      list.push({
-        id: `version-${version.id}`,
-        label: versionLabel,
-        icon: Layers,
-        content: (
-          <VersionTabContent
-            version={version}
-            article={article}
-            generalFiles={generalFiles}
-            assets={article.assets || []}
-            fallbackVersionId={fallbackVersionId}
-            fileForAsset={fileForAsset}
-            isLatest={index === 0}
-          />
-        ),
-      });
-    });
-
-    // 7. Workflow History
-    const hasHistoryAccess = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('publisher');
     if (hasHistoryAccess && article.audit_logs && article.audit_logs.length > 0) {
       list.push({
         id: 'history',
@@ -1017,6 +1192,23 @@ export default function ArticleWorkflowPage() {
       />
 
       <WorkflowProgressPath article={article} />
+
+      {observerReadonly ? (
+        <Alert tone="info" title="Super Admin Review Mode">
+          This manuscript record was opened from an observer queue. Workflow actions are disabled in this view.
+        </Alert>
+      ) : (
+        <CurrentWorkflowActionPanel
+          article={article}
+          workflowContext={article}
+          user={user}
+          hasRole={hasRole}
+          hasPermission={hasPermission}
+          onWorkflowChanged={loadWorkflow}
+          onOpenPublish={() => router.push(`/admin/articles/${article.id}/publish`)}
+          toast={toast}
+        />
+      )}
 
       <div className="border-b border-[var(--border)]">
         <nav className="flex space-x-6 overflow-x-auto pb-2 tab-scroller" aria-label="Tabs">

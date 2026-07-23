@@ -4,6 +4,7 @@ import { getStatusLabel, normalizeStatus } from '../../../utils/status';
 export const workflowMilestones = [
   { id: 'draft', label: 'Draft', statuses: ['draft'] },
   { id: 'submitted', label: 'Submitted', statuses: ['submitted', 'pending'] },
+  { id: 'transfer_pending', label: 'Transfer pending author decision', statuses: ['in_transit'] },
   { id: 'transfer_screening', label: 'Screening', statuses: ['screening'] },
   { id: 'screening', label: 'Editorial screening', statuses: ['under_review'] },
   { id: 'sub_editor', label: 'Sub Editor review', statuses: ['assigned_to_sub_editor'] },

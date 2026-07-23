@@ -72,7 +72,8 @@ export default function Header() {
   const isActive = (href) => pathname === href || pathname?.startsWith(`${href}/`);
 
   return (
-    <header className="relative left-1/2 w-screen -translate-x-1/2 border-b border-zinc-200/80 bg-white/90 shadow-[0_1px_12px_rgba(0,0,0,0.035)] backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-950/90 dark:shadow-black/20">
+    <>
+      <header className={`relative left-1/2 w-screen -translate-x-1/2 border-b border-zinc-200/80 bg-white/90 shadow-[0_1px_12px_rgba(0,0,0,0.035)] backdrop-blur-xl dark:border-zinc-800/80 dark:bg-zinc-950/90 dark:shadow-black/20 ${mobileOpen ? 'z-[9999]' : 'z-50'}`}>
       <div className="flex h-20 w-full items-center justify-between gap-5 px-4 sm:px-8 lg:px-12">
         <Link href="/" aria-label="ScholarlyNest home" className="flex shrink-0 items-center rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-950">
           <Image src="/logo.png" alt="ScholarlyNest" width={690} height={362} className="h-12 w-auto object-contain sm:h-14" priority />
@@ -189,8 +190,9 @@ export default function Header() {
           </button>
         </div>
       </div>
+    </header>
 
-      <Dialog open={mobileOpen} onClose={() => setMobileOpen(false)} title="Menu" initialFocusRef={mobileInitialFocusRef} className="max-w-none sm:max-w-lg">
+    <Dialog open={mobileOpen} onClose={() => setMobileOpen(false)} title="Menu" initialFocusRef={mobileInitialFocusRef} className="max-w-none sm:max-w-lg">
         <div className="space-y-6">
           <button ref={mobileInitialFocusRef} type="button" onClick={() => setMobileOpen(false)} className="sr-only">Close menu</button>
 
@@ -234,7 +236,7 @@ export default function Header() {
                 <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
                 Dashboard
               </Link>
-              <button type="button" onClick={handleLogout} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 dark:hover:bg-red-950/20">
+              <button type="button" onClick={handleLogout} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md px-4 text-sm font-bold text-red-650 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 dark:hover:bg-red-955/20">
                 <LogOut className="h-4 w-4" aria-hidden="true" />
                 Log out
               </button>
@@ -247,6 +249,6 @@ export default function Header() {
           )}
         </div>
       </Dialog>
-    </header>
+    </>
   );
 }

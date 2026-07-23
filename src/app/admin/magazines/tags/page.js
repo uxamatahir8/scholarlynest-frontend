@@ -57,7 +57,7 @@ export default function AdminMagazineTags() {
     if (!canUseTagManager) return;
     try {
       setLoadingMagazines(true);
-      const response = await api.get('/magazines', { params: { all: true } });
+      const response = await api.get('/magazines', { params: { all: true, publication_type: 'all' } });
       setMagazines(response.data);
       if (response.data.length > 0) {
         setNewTagMagazineId(response.data[0].id.toString());

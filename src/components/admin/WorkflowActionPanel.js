@@ -88,6 +88,7 @@ export default function WorkflowActionPanel({
   onWorkflowChanged,
   onOpenPublish,
   toast,
+  hideIfNoAction = false,
 }) {
   const [busyAction, setBusyAction] = useState('');
   const [confirmAction, setConfirmAction] = useState(null);
@@ -341,7 +342,9 @@ export default function WorkflowActionPanel({
   const pendingTransferRequest = article?.pending_transfer_request;
   const publicationLabel = article?.publication_type === 'journal' || article?.magazine?.publication_type === 'journal' ? 'Journal' : 'Magazine';
   const canRequestTransfer = Boolean(article?.can_request_transfer) && canScreen;
-  const canRespondTransferRequest = Boolean(article?.can_respond_transfer_request) && status === 'in_transit' && pendingTransferRequest;
+  const canRespondTransferRequest = Boolean(article?.can_respond_transfer_request)
+    && status === 'in_transit'
+    && pendingTransferRequest?.status === 'pending';
   const canAssignSubEditor = canEditorial && ['under_review', 'resubmitted'].includes(status);
   const canShowReviewerAssignment = canAssignReviewer && ['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted'].includes(status);
   const canFinalDecision = canEditorial && REVIEWABLE_STATUSES.has(status);
@@ -370,6 +373,10 @@ export default function WorkflowActionPanel({
   const hasAnyAction = canScreen || canRespondTransferRequest || canAssignSubEditor || canShowReviewerAssignment || (isSubEditor && mySubEditorAssignment)
     || (isReviewer && myReviewerAssignment) || canFinalDecision || canAuthorFinalReview || canShowProductionAssignment || canCompleteProduction
     || completedProductionAssignment || canShowPublish || canPostPublication;
+
+  if (hideIfNoAction && !hasAnyAction) {
+    return null;
+  }
 
   return (
     <WorkflowSection
@@ -552,25 +559,25 @@ export default function WorkflowActionPanel({
                   {allReviewersToShow.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Suggested & Invited Reviewers</p>
-                      <div className="grid gap-2">
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         {allReviewersToShow.map((reviewer) => {
                           const assignment = reviewer.existingAssignment;
                           const showReminder = assignment && reviewer.state === 'invited';
                           const showResend = assignment && reviewer.state === 'declined';
                           return (
-                          <div key={reviewer.isManual ? 'manual-' + reviewer.id : 'suggested-' + (reviewer.id || reviewer.email)} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div key={reviewer.isManual ? 'manual-' + reviewer.id : 'suggested-' + (reviewer.id || reviewer.email)} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 flex flex-col justify-between">
+                            <div className="flex flex-col gap-2">
                               <div>
                                 <p className="text-sm font-bold text-[var(--foreground)]">{reviewer.name}</p>
-                                <p className="text-xs text-[var(--muted)]">{reviewer.email}{reviewer.affiliation ? ` · ${reviewer.affiliation}` : ''}</p>
+                                <p className="text-xs text-[var(--muted)] break-all">{reviewer.email}{reviewer.affiliation ? ` · ${reviewer.affiliation}` : ''}</p>
                               </div>
                               {reviewer.isManual ? (
-                                <div className="flex items-center gap-2">
-                                  <span className="inline-flex items-center rounded-lg bg-[var(--surface-muted)] border border-[var(--border)] px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                  <span className="inline-flex items-center rounded-lg bg-[var(--surface-muted)] border border-[var(--border)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
                                     Manual Invite
                                   </span>
                                   {reviewer.state && (
-                                    <span className="inline-flex items-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                    <span className="inline-flex items-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                                       {labelize(reviewer.state)}
                                     </span>
                                   )}
@@ -623,9 +630,9 @@ export default function WorkflowActionPanel({
                                   )}
                                 </div>
                               ) : (
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2 mt-1">
                                   {reviewer.state && (
-                                    <span className="inline-flex items-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                    <span className="inline-flex items-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                                       {labelize(reviewer.state)}
                                     </span>
                                   )}
@@ -686,7 +693,7 @@ export default function WorkflowActionPanel({
                   {(article.reviewer_preferences?.opposed || []).length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Opposing Reviewers</p>
-                      <div className="grid gap-2">
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         {article.reviewer_preferences.opposed.map((reviewer) => (
                           <div key={reviewer.id || reviewer.email} className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
                             <p className="text-sm font-bold text-[var(--foreground)]">{reviewer.name}</p>

@@ -4,6 +4,22 @@ import api from '../../utils/api';
 
 const RESUME_KEY = 'scholarlynest.mediaUpload.resume.v1';
 const inFlightUploads = new Map();
+const completedUploads = new Map();
+const fileClientIds = new WeakMap();
+
+function clientUploadIdFor(file, purpose, attachableId, explicitId) {
+  if (explicitId) return explicitId;
+  if (!fileClientIds.has(file)) fileClientIds.set(file, new Map());
+  const ids = fileClientIds.get(file);
+  const context = `${purpose}|${attachableId || ''}`;
+  if (!ids.has(context)) ids.set(context, crypto.randomUUID());
+  return ids.get(context);
+}
+
+function forgetClientUploadId(file, purpose, attachableId) {
+  const ids = fileClientIds.get(file);
+  ids?.delete(`${purpose}|${attachableId || ''}`);
+}
 
 export function fileFingerprint(file) {
   return [file.name, file.size, file.lastModified].join(':');
@@ -66,6 +82,9 @@ async function putWithProgress(url, blob, headers, onProgress, offset = 0, total
 }
 
 export function getUploadErrorMessage(error) {
+  if (error?.message && error.message.includes('This file type is not supported')) {
+    return error.message;
+  }
   const validationErrors = error?.response?.data?.errors;
   if (validationErrors && typeof validationErrors === 'object') {
     const first = Object.values(validationErrors).flat().find((message) => typeof message === 'string');
@@ -74,6 +93,7 @@ export function getUploadErrorMessage(error) {
 
   const apiMessage = error?.response?.data?.message;
   if (typeof apiMessage === 'string' && apiMessage.trim()) {
+    if (apiMessage.includes('This file type is not supported')) return apiMessage;
     if (/expired|cannot be completed|cannot be resumed/i.test(apiMessage)) return 'Upload URL expired. Please retry.';
     if (error?.response?.status === 403) return 'You do not have permission to upload this file.';
     return apiMessage;
@@ -93,17 +113,14 @@ export async function uploadDirectToS3({
   purpose,
   attachableId,
   extra = {},
+  clientUploadId,
   onProgress,
   onState,
 }) {
   const fingerprint = fileFingerprint(file);
-  const lockKey = [
-    purpose,
-    attachableId || '',
-    extra.assignment_type || '',
-    extra.assignment_id || '',
-    fingerprint,
-  ].join('|');
+  const stableClientUploadId = clientUploadIdFor(file, purpose, attachableId, clientUploadId);
+  const lockKey = stableClientUploadId;
+  if (completedUploads.has(lockKey)) return completedUploads.get(lockKey);
   if (inFlightUploads.has(lockKey)) {
     return inFlightUploads.get(lockKey);
   }
@@ -116,6 +133,7 @@ export async function uploadDirectToS3({
     onProgress,
     onState,
     fingerprint,
+    clientUploadId: stableClientUploadId,
   }).finally(() => {
     inFlightUploads.delete(lockKey);
   });
@@ -132,11 +150,13 @@ async function performDirectUpload({
   onProgress,
   onState,
   fingerprint,
+  clientUploadId,
 }) {
   onState?.('initiating');
 
   const initiated = await api.post('/media/uploads/initiate', {
     purpose,
+    client_upload_id: clientUploadId,
     attachable_id: attachableId,
     original_filename: file.name,
     size_bytes: file.size,
@@ -146,6 +166,7 @@ async function performDirectUpload({
   });
 
   const upload = initiated.data.upload;
+  if (initiated.data.reused) return upload;
   rememberUpload(upload.id, {
     uploadId: upload.id,
     fingerprint,
@@ -156,19 +177,20 @@ async function performDirectUpload({
     attachableId,
   });
 
-  if (upload.upload_mode === 'single') {
-    onState?.('uploading');
-    await putWithProgress(initiated.data.put.url, file, initiated.data.put.headers, onProgress, 0, file.size);
-    onState?.('awaiting_scan');
-    const completed = await api.post(`/media/uploads/${upload.id}/complete`, {});
-    return completed.data.upload;
-  }
+  try {
+    if (upload.upload_mode === 'single') {
+      onState?.('uploading');
+      await putWithProgress(initiated.data.put.url, file, initiated.data.put.headers, onProgress, 0, file.size);
+      onState?.('awaiting_scan');
+      const completed = await api.post(`/media/uploads/${upload.id}/complete`, {});
+      return completed.data.upload;
+    }
 
-  const partSize = initiated.data.part_size_bytes || upload.part_size_bytes;
-  const totalParts = Math.ceil(file.size / partSize);
-  const completedParts = [];
+    const partSize = initiated.data.part_size_bytes || upload.part_size_bytes;
+    const totalParts = Math.ceil(file.size / partSize);
+    const completedParts = [];
 
-  for (let partNumber = 1; partNumber <= totalParts; partNumber += 1) {
+    for (let partNumber = 1; partNumber <= totalParts; partNumber += 1) {
     onState?.('uploading');
     const start = (partNumber - 1) * partSize;
     const end = Math.min(start + partSize, file.size);
@@ -197,13 +219,17 @@ async function performDirectUpload({
       attachableId,
       completedParts,
     });
-  }
+    }
 
-  onState?.('awaiting_scan');
-  const completed = await api.post(`/media/uploads/${upload.id}/complete`, {
-    parts: completedParts,
-  });
-  return completed.data.upload;
+    onState?.('awaiting_scan');
+    const completed = await api.post(`/media/uploads/${upload.id}/complete`, {
+      parts: completedParts,
+    });
+    return completed.data.upload;
+  } catch (error) {
+    error.upload = upload;
+    throw error;
+  }
 }
 
 export async function pollUploadUntilSettled(uploadId, onStatus) {
@@ -232,8 +258,18 @@ export async function uploadAndAwaitClean(options) {
       error.upload = settled;
       throw error;
     }
+    const stableClientUploadId = clientUploadIdFor(options.file, options.purpose, options.attachableId, options.clientUploadId);
+    completedUploads.set(stableClientUploadId, settled);
     return settled;
   } catch (error) {
+    if (error?.upload?.id && !['clean', 'uploaded_pending_scan', 'scanning'].includes(error.upload.status)) {
+      try {
+        await api.delete(`/media/uploads/${error.upload.id}/abort`);
+      } catch {
+        // The server may already have expired or completed the session.
+      }
+      forgetClientUploadId(options.file, options.purpose, options.attachableId);
+    }
     error.userMessage = getUploadErrorMessage(error);
     throw error;
   }

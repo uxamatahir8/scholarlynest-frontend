@@ -8,6 +8,7 @@ import { ConfirmationModal } from '../../../components/ui/ConfirmationModal';
 import { useAuth } from '../../../context/AuthContext';
 import { useToast } from '../../../context/ToastContext';
 import api from '../../../utils/api';
+import { safeApiMessage, safeApiValidationErrors } from '../../../utils/safeErrors';
 import { logError } from '../../../utils/safeLogger';
 
 const scopes = [
@@ -24,6 +25,11 @@ const emptyForm = {
   show_in_navigation: true, sort_order: 0, seo_title: '', seo_description: '',
   selected_magazine_ids: [], selected_journal_ids: [],
 };
+
+const sharedPageFields = [
+  'title', 'slug', 'content', 'status', 'target_scope', 'show_in_navigation',
+  'sort_order', 'seo_title', 'seo_description', 'selected_magazine_ids', 'selected_journal_ids',
+];
 
 function PublicationSelector({ type, options, selected, onChange, error }) {
   const [query, setQuery] = useState('');
@@ -203,8 +209,8 @@ export default function SharedPagesAdmin() {
       fetchData();
     } catch (error) {
       logError(error);
-      setErrors(error.response?.data?.errors || {});
-      toast(error.response?.data?.message || 'Failed to save shared page.', 'error');
+      setErrors(safeApiValidationErrors(error, sharedPageFields));
+      toast(safeApiMessage(error, 'Failed to save shared page.', { strict: true }), 'error');
     } finally {
       setSaving(false);
     }

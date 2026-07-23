@@ -14,6 +14,20 @@ import { dashboardLinksFromNavigation } from '../../components/admin/dashboard/d
 
 const superAdminQueues = [
   {
+    key: 'in-transit',
+    title: 'In Transit Manuscripts',
+    description: 'Manuscripts in transit awaiting transfer decision.',
+    queueId: 'in-transit',
+    statuses: getArticleQueue('in-transit').statuses,
+    statusScope: 'in_transit',
+    icon: dashboardIcons.active,
+    emptyTitle: 'No in-transit manuscripts',
+    emptyDescription: 'Manuscripts in transit will appear here.',
+    actionHref: articleQueueHref('in-transit'),
+    actionLabel: 'Open In-Transit Queue',
+    itemActionLabel: 'Open Workflow',
+  },
+  {
     key: 'submitted',
     title: 'Articles Requiring Attention',
     description: 'Submitted manuscripts waiting for editorial screening.',
@@ -59,6 +73,20 @@ const superAdminQueues = [
 
 const adminQueues = [
   {
+    key: 'in-transit',
+    title: 'In Transit Manuscripts',
+    description: 'Manuscripts in transit awaiting transfer decision.',
+    queueId: 'in-transit',
+    statuses: getArticleQueue('in-transit').statuses,
+    statusScope: 'in_transit',
+    icon: dashboardIcons.active,
+    emptyTitle: 'No in-transit manuscripts',
+    emptyDescription: 'Manuscripts in transit will appear here.',
+    actionHref: articleQueueHref('in-transit'),
+    actionLabel: 'Open In-Transit Queue',
+    itemActionLabel: 'Open Workflow',
+  },
+  {
     key: 'submitted',
     title: 'Administrative Article Queue',
     description: 'Manuscripts visible to your role that need review or routing.',
@@ -89,6 +117,20 @@ const adminQueues = [
 ];
 
 const editorialQueues = [
+  {
+    key: 'in-transit',
+    title: 'In Transit Manuscripts',
+    description: 'Manuscripts in transit awaiting transfer decision.',
+    queueId: 'in-transit',
+    statuses: getArticleQueue('in-transit').statuses,
+    statusScope: 'in_transit',
+    icon: dashboardIcons.active,
+    emptyTitle: 'No in-transit manuscripts',
+    emptyDescription: 'Manuscripts in transit will appear here.',
+    actionHref: articleQueueHref('in-transit'),
+    actionLabel: 'Open In-Transit Queue',
+    itemActionLabel: 'Open Workflow',
+  },
   {
     key: 'submitted',
     title: 'Awaiting Editorial Screening',
@@ -134,6 +176,20 @@ const editorialQueues = [
 ];
 
 const authorQueues = [
+  {
+    key: 'in-transit',
+    title: 'In Transit Manuscripts',
+    description: 'Manuscripts currently in transit awaiting transfer decision.',
+    queueId: 'in-transit',
+    statuses: getArticleQueue('in-transit').statuses,
+    statusScope: 'in_transit',
+    icon: dashboardIcons.active,
+    emptyTitle: 'No in-transit manuscripts',
+    emptyDescription: 'Manuscripts in transit will appear here.',
+    actionHref: articleQueueHref('in-transit'),
+    actionLabel: 'Open In-Transit Queue',
+    itemActionLabel: 'Open Workflow',
+  },
   {
     key: 'drafts',
     title: 'Draft Manuscripts',

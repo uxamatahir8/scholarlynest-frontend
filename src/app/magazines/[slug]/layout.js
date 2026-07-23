@@ -99,16 +99,18 @@ export default function MagazinePublicLayout({ children }) {
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
       <PageTitle title={`${routePrefix === 'journals' ? 'Journal' : 'Magazine'} - ${magazine.title}`} />
       <section
-        className={`relative isolate overflow-hidden bg-zinc-100 dark:bg-zinc-950 ${bannerImage ? '' : 'min-h-[190px] sm:min-h-[260px] lg:min-h-[360px]'}`}
+        className={`relative isolate overflow-hidden bg-zinc-100 dark:bg-zinc-950 ${
+          bannerImage 
+            ? 'h-[160px] sm:h-[220px] md:h-[260px] lg:h-[300px]' 
+            : 'h-[190px] sm:h-[260px] lg:h-[360px]'
+        }`}
         aria-label={`${magazine.title} banner`}
       >
         {heroImage ? (
           <img
             src={heroImage}
             alt=""
-            className={bannerImage
-              ? 'mx-auto block h-auto w-auto max-w-full'
-              : 'absolute inset-0 h-full w-full object-cover object-center'}
+            className="absolute inset-0 h-full w-full object-cover object-center"
             aria-hidden="true"
           />
         ) : (

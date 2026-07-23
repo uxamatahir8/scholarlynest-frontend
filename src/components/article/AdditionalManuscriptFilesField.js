@@ -10,14 +10,16 @@ const newRow = () => ({ clientId: crypto.randomUUID(), fileTitle: '', file: null
 
 export { newRow as createAdditionalManuscriptFileRow };
 
-export default function AdditionalManuscriptFilesField({ rows, onChange, articleId = null, disabled = false }) {
+export default function AdditionalManuscriptFilesField({ rows, onChange, articleId = null, disabled = false, heading = 'Additional Manuscript Files' }) {
   const rowsRef = useRef(rows);
+  const uploadLocks = useRef(new Set());
   rowsRef.current = rows;
   const canAddRow = rows.length === 0 || rows.every((row) => row.fileTitle.trim() && row.status === 'uploaded');
 
   const patchRow = (clientId, patch) => onChange(rowsRef.current.map((row) => row.clientId === clientId ? { ...row, ...patch } : row));
 
   const uploadRow = async (row, selectedFile = row.file) => {
+    if (uploadLocks.current.has(row.clientId)) return;
     if (!row.fileTitle.trim()) {
       patchRow(row.clientId, { file: selectedFile, fileName: selectedFile?.name || row.fileName, status: 'failed', error: 'File Title is required before upload.' });
       return;
@@ -37,12 +39,14 @@ export default function AdditionalManuscriptFilesField({ rows, onChange, article
       }
     }
 
+    uploadLocks.current.add(row.clientId);
     patchRow(row.clientId, { file: selectedFile, fileName: selectedFile.name, uploadId: null, articleFileId: null, status: 'uploading', progress: 0, error: '' });
     try {
       const upload = await uploadAndAwaitClean({
         file: selectedFile,
         purpose: 'additional_manuscript_file',
         attachableId: articleId || undefined,
+        clientUploadId: row.clientId,
         extra: { file_title: row.fileTitle.trim() },
         onProgress: (progress) => patchRow(row.clientId, { progress }),
       });
@@ -60,6 +64,8 @@ export default function AdditionalManuscriptFilesField({ rows, onChange, article
         articleFileId: error?.upload?.record?.article_file_id || null,
         error: getUploadErrorMessage(error),
       });
+    } finally {
+      uploadLocks.current.delete(row.clientId);
     }
   };
 
@@ -77,7 +83,7 @@ export default function AdditionalManuscriptFilesField({ rows, onChange, article
 
   return (
     <section className="rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-5" aria-labelledby="additional-manuscript-files-heading">
-      <h3 id="additional-manuscript-files-heading" className="text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">Additional Manuscript Files</h3>
+      <h3 id="additional-manuscript-files-heading" className="text-sm font-bold uppercase tracking-wider text-[var(--foreground)]">{heading}</h3>
       <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">Add supporting files such as a cover letter, author declaration, ethics approval, graphical abstract, dataset description, or other manuscript-related documents.</p>
 
       <div className="mt-4 space-y-4">
