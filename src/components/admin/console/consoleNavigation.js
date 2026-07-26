@@ -7,6 +7,7 @@ import {
   CircleHelp,
   CircleUserRound,
   ClipboardPenLine,
+  CloudUpload,
   FilePlus2,
   FileText,
   Files,
@@ -121,6 +122,12 @@ export const consoleNavigation = [
   {
     group: 'Publishing',
     items: [
+      {
+        label: 'Direct Publications',
+        href: '/admin/direct-publications',
+        icon: CloudUpload,
+        isVisible: ({ user }) => hasAnyRole(user, ['super_admin', 'publisher']),
+      },
       {
         label: 'Magazines',
         href: '/admin/magazines',

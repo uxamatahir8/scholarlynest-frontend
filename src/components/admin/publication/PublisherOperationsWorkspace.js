@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BookOpen, CheckCircle2, FileCheck2, Newspaper, RefreshCw } from 'lucide-react';
+import { ArrowRight, BookOpen, CheckCircle2, CloudUpload, FileCheck2, Newspaper, RefreshCw } from 'lucide-react';
 import api from '../../../utils/api';
 import { safeApiMessage } from '../../../utils/safeErrors';
 import { logError } from '../../../utils/safeLogger';
@@ -133,7 +133,7 @@ export default function PublisherOperationsWorkspace({
               Review publication-ready manuscripts, issue placement needs, and recent publication records within the current magazine scope.
             </p>
           </div>
-          {!observerMode && <Button type="button" variant="outline" icon={RefreshCw} onClick={loadDashboard}>Refresh</Button>}
+          {!observerMode && <div className="flex flex-wrap gap-2"><Link href="/admin/direct-publications" className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800"><CloudUpload className="h-4 w-4"/> Direct Publications</Link><Button type="button" variant="outline" icon={RefreshCw} onClick={loadDashboard}>Refresh</Button></div>}
         </div>
         <dl className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[

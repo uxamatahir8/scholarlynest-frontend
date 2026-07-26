@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, CheckCircle2, FileCheck2, Newspaper } from 'lucide-react';
+import { BookOpen, CheckCircle2, CloudUpload, FileCheck2, Newspaper } from 'lucide-react';
 import api from '../../../utils/api';
 import { safeApiMessage } from '../../../utils/safeErrors';
 import { logError } from '../../../utils/safeLogger';
@@ -121,6 +121,7 @@ export default function PublisherDashboardWorkspace({
             {!observerMode && (
             <DashboardSection title="Issue Work" description="Open issue management or review recent issue records.">
               <DashboardQuickLinks links={[
+                { label: 'Direct Publications', href: '/admin/direct-publications', icon: CloudUpload, description: 'Create, validate, schedule, and publish privileged direct articles.' },
                 { label: 'Issue Manager', href: '/admin/issues', icon: Newspaper, description: 'Create, update, publish, and unpublish issues.' },
                 ...issueLinks,
               ]} />
