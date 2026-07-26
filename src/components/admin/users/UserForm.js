@@ -58,7 +58,7 @@ export default function UserForm({
           <Field label="Email Address" required error={errors.email}>
             <Input type="text" value={values.email} onChange={(event) => setValue('email', event.target.value)} placeholder="jane@example.edu" />
           </Field>
-          <Field label="University / Affiliation" error={errors.university_name} helperText="Optional unless backend validation requires it for this route.">
+          <Field label="University / Affiliation" error={errors.university_name}>
             <Input value={values.university_name} onChange={(event) => setValue('university_name', event.target.value)} placeholder="University or organization" />
           </Field>
           {mode === 'edit' && (
