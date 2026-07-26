@@ -3,18 +3,17 @@ import { getStatusLabel, normalizeStatus } from '../../../utils/status';
 
 export const workflowMilestones = [
   { id: 'draft', label: 'Draft', statuses: ['draft'] },
-  { id: 'submitted', label: 'Submitted', statuses: ['submitted', 'pending'] },
-  { id: 'transfer_pending', label: 'Transfer pending author decision', statuses: ['in_transit'] },
-  { id: 'transfer_screening', label: 'Screening', statuses: ['screening'] },
-  { id: 'screening', label: 'Editorial screening', statuses: ['under_review'] },
-  { id: 'sub_editor', label: 'Sub Editor review', statuses: ['assigned_to_sub_editor'] },
-  { id: 'review', label: 'Peer review', statuses: ['reviewer_assigned', 'review_in_progress'] },
-  { id: 'revision', label: 'Revision', statuses: ['revision_required', 'minor_revision_required', 'major_revision_required', 'resubmitted'] },
+  { id: 'submitted', label: 'Submitted', statuses: ['submitted', 'pending', 'awaiting_initial_screening'] },
+  { id: 'transfer_pending', label: 'Transfer pending author decision', statuses: ['in_transit', 'transfer_requested'] },
+  { id: 'screening', label: 'Editorial screening', statuses: ['screening', 'screening_completed', 'awaiting_sub_editor_assignment', 'awaiting_reviewer_invitation'] },
+  { id: 'sub_editor', label: 'Sub Editor review', statuses: ['assigned_to_sub_editor', 'awaiting_sub_editor_recommendation'] },
+  { id: 'review', label: 'Peer review', statuses: ['under_review', 'reviewer_assigned', 'review_in_progress', 'reviewer_invitations_pending', 'reviews_partially_completed', 'reviews_completed', 'awaiting_editorial_decision'] },
+  { id: 'revision', label: 'Revision', statuses: ['revision_required', 'minor_revision_required', 'major_revision_required', 'resubmitted', 'minor_revision_requested', 'major_revision_requested', 'awaiting_author_revision', 'revision_submitted'] },
   { id: 'accepted', label: 'Accepted', statuses: ['accepted', 'approved'] },
-  { id: 'copy_editing', label: 'Copyediting', statuses: ['copy_editing'] },
-  { id: 'proofreading', label: 'Proofreading', statuses: ['proofreading'] },
-  { id: 'ready', label: 'Ready for publication', statuses: ['ready_for_publication'] },
-  { id: 'published', label: 'Published', statuses: ['published'] },
+  { id: 'copy_editing', label: 'Copyediting', statuses: ['copy_editing', 'awaiting_copy_editor_assignment', 'copyediting_in_progress'] },
+  { id: 'proofreading', label: 'Proofreading', statuses: ['proofreading', 'awaiting_author_proofreading', 'proof_corrections_in_progress', 'proof_approved'] },
+  { id: 'ready', label: 'Ready for publication', statuses: ['ready_for_publication', 'awaiting_issue_assignment', 'assigned_to_issue', 'scheduled_for_publication'] },
+  { id: 'published', label: 'Published', statuses: ['published', 'unpublished'] },
 ];
 
 export const fileTypeLabels = {

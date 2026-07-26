@@ -42,6 +42,7 @@ import {
 } from '../../../../../components/admin/workflow/ArticleFilesPanel';
 import WorkflowTimeline from '../../../../../components/admin/workflow/WorkflowTimeline';
 import WorkflowProgressPath from '../../../../../components/admin/workflow/WorkflowProgressPath';
+import { ProofRoundsPanel, PublicationRecordsPanel, VersionsOverview } from '../../../../../components/admin/workflow/LifecycleRecordPanels';
 import { 
   canViewReviewerIdentity, 
   isAuthorViewer, 
@@ -989,6 +990,8 @@ export default function ArticleWorkflowPage() {
         ...response.data.article,
         files: response.data.files || response.data.article.files || [],
         versions: response.data.versions || response.data.article.versions || [],
+        workflow_manifest: response.data.workflow_manifest || null,
+        status_projection: response.data.status_projection || response.data.article.status_projection || null,
       } : null;
       setArticle(nextArticle);
     } catch (err) {
@@ -1015,6 +1018,7 @@ export default function ArticleWorkflowPage() {
     if (!article) return [];
 
     const list = [];
+    const manifestKinds = new Set((article.workflow_manifest?.tabs || []).map((tab) => tab.kind));
     const isAuthor = isAuthorViewer(user, article);
     const hasHistoryAccess = article.capabilities?.view_workflow_history;
 
@@ -1053,6 +1057,15 @@ export default function ArticleWorkflowPage() {
     });
 
     if (!hasRole('copy_editor')) {
+      list.push({
+        id: 'versions',
+        label: 'Versions',
+        icon: Layers,
+        content: <VersionsOverview article={article} onSelectVersion={(versionId) => setActiveTab(`version-${versionId}`)} />,
+      });
+    }
+
+    if (!hasRole('copy_editor')) {
       visibleVersions.forEach((version, index) => {
         const isLatest = version.id === (orderedVersions[orderedVersions.length - 1]?.id);
 
@@ -1074,7 +1087,7 @@ export default function ArticleWorkflowPage() {
       });
     }
 
-    const showEditorialDecisionTab = article.capabilities?.view_editorial_decision;
+    const showEditorialDecisionTab = manifestKinds.has('decision') || article.capabilities?.view_editorial_decision;
     if (showEditorialDecisionTab) {
       list.push({
         id: 'editorial',
@@ -1139,6 +1152,14 @@ export default function ArticleWorkflowPage() {
       });
     }
 
+    if (manifestKinds.has('proof')) {
+      list.push({ id: 'proofreading', label: 'Proofreading', icon: Sheet, content: <ProofRoundsPanel article={article} /> });
+    }
+
+    if (manifestKinds.has('publication')) {
+      list.push({ id: 'publication', label: 'Publication', icon: FileCheck2, content: <PublicationRecordsPanel article={article} /> });
+    }
+
     const showFinalFilesTab = article.capabilities?.view_final_files && article.status === 'published';
     if (showFinalFilesTab) {
       list.push({
@@ -1193,6 +1214,12 @@ export default function ArticleWorkflowPage() {
 
       <WorkflowProgressPath article={article} />
 
+      {article.status_projection && (
+        <Alert tone={article.status_projection.action_required ? 'warning' : 'info'} title={article.status_projection.canonical_label}>
+          {article.status_projection.label}
+        </Alert>
+      )}
+
       {observerReadonly ? (
         <Alert tone="info" title="Super Admin Review Mode">
           This manuscript record was opened from an observer queue. Workflow actions are disabled in this view.
@@ -1210,18 +1237,19 @@ export default function ArticleWorkflowPage() {
         />
       )}
 
-      <div className="border-b border-[var(--border)]">
-        <nav className="flex space-x-6 overflow-x-auto pb-2 tab-scroller" aria-label="Tabs">
+      <div className="grid gap-5 lg:grid-cols-[minmax(220px,25%)_minmax(0,75%)]">
+        <nav className="flex gap-2 overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 lg:sticky lg:top-24 lg:block lg:self-start lg:overflow-visible" aria-label="Workflow sections">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-semibold transition-all cursor-pointer ${
+                aria-current={activeTab === tab.id ? 'page' : undefined}
+                className={`flex w-full items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-3 text-left text-sm font-semibold transition-all cursor-pointer lg:mb-1 ${
                   activeTab === tab.id
-                    ? 'border-[var(--accent)] text-[var(--accent)]'
-                    : 'border-transparent text-[var(--muted)] hover:border-[var(--muted-border)] hover:text-[var(--foreground)]'
+                    ? 'border-[var(--accent)] bg-amber-500/10 text-[var(--accent)]'
+                    : 'border-transparent text-[var(--muted)] hover:border-[var(--border)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]'
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
@@ -1230,10 +1258,9 @@ export default function ArticleWorkflowPage() {
             );
           })}
         </nav>
-      </div>
-
-      <div className="mt-6">
-        {tabs.find((t) => t.id === activeTab)?.content}
+        <section className="min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6" aria-live="polite">
+          {tabs.find((t) => t.id === activeTab)?.content}
+        </section>
       </div>
 
     </main>

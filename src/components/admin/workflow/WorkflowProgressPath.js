@@ -6,13 +6,14 @@ import { currentMilestoneIndex, workflowMilestones } from './workflowDisplay';
 import { normalizeStatus } from '../../../utils/status';
 
 export default function WorkflowProgressPath({ article }) {
-  const normalized = normalizeStatus(article?.status);
-  const isRejected = normalized === 'rejected';
+  const projectedStatus = article?.status_projection?.canonical || article?.lifecycle_status || article?.status;
+  const normalized = normalizeStatus(projectedStatus);
+  const isRejected = ['rejected', 'desk_rejected'].includes(normalized);
   const statusLabel = normalized === 'in_transit'
     ? 'Transfer Pending Author Decision'
-    : article?.author_status || article?.status;
+    : article?.status_projection?.canonical_label || article?.author_status || article?.status;
   
-  const activeIndex = currentMilestoneIndex(article?.status || 'draft');
+  const activeIndex = currentMilestoneIndex(projectedStatus || 'draft');
 
   // Build the list of steps to show
   const steps = workflowMilestones.map((milestone) => ({
