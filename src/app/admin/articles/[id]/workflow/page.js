@@ -15,7 +15,8 @@ import {
   Files, 
   Sheet,
   FileCheck2,
-  CheckCircle2
+  CheckCircle2,
+  MessageSquare
 } from 'lucide-react';
 import api, { buildApiUrl } from '../../../../../utils/api';
 import { safeApiMessage } from '../../../../../utils/safeErrors';
@@ -53,6 +54,7 @@ import {
   hasAcceptedReviewInvitation,
 } from '../../../../../components/admin/workflow/workflowDisplay';
 import { normalizeStatus } from '../../../../../utils/status';
+import ArticleThreadWorkspace from '../../../../../components/admin/threads/ArticleThreadWorkspace';
 
 // Helper component for Editorial Decision Tab
 function EditorialDecisionTab({ article }) {
@@ -977,7 +979,7 @@ export default function ArticleWorkflowPage() {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('metadata');
+  const [activeTab, setActiveTab] = useState(searchParams.get('thread') ? 'communication' : 'metadata');
   const observerReadonly = searchParams.get('observer_readonly') === '1';
 
   const loadWorkflow = async () => {
@@ -1183,8 +1185,15 @@ export default function ArticleWorkflowPage() {
       });
     }
 
+    list.push({
+      id: 'communication',
+      label: 'Communication',
+      icon: MessageSquare,
+      content: <ArticleThreadWorkspace articleId={article.id} availableFiles={article.files || []} initialThreadId={searchParams.get('thread')} />,
+    });
+
     return list;
-  }, [article, user, hasRole, observerReadonly, showReviewerIdentity, loadWorkflow, toast]);
+  }, [article, user, hasRole, observerReadonly, showReviewerIdentity, loadWorkflow, toast, searchParams]);
 
   // Handle activeTab adjustment when tabs list changes
   useEffect(() => {

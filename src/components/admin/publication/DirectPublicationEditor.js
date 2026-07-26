@@ -12,8 +12,9 @@ import { uploadAndAwaitClean } from '../../../lib/mediaUploads/DirectUploadClien
 import RichEditor from '../../ui/RichEditor';
 import FlatpickrInput from '../../ui/FlatpickrInput';
 import { Input, Label, Select, Textarea } from '../../ui/Input';
+import ArticleThreadWorkspace from '../threads/ArticleThreadWorkspace';
 
-const STEPS = ['Publication Information', 'Authors & Declarations', 'Publication Sections', 'Publication Files', 'Publication Metadata', 'Finalize Publication'];
+const STEPS = ['Publication Information', 'Authors & Declarations', 'Publication Sections', 'Publication Files', 'Publication Metadata', 'Finalize Publication', 'Communication'];
 const newId = () => `section-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const requestKey = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 const headers = () => ({ 'Idempotency-Key': requestKey() });
@@ -213,5 +214,6 @@ export default function DirectPublicationEditor({ articleId = null }) {
     </div>
 
     <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border)] bg-[var(--surface)]/95 px-4 py-3 shadow-[0_-8px_30px_rgba(0,0,0,0.08)] backdrop-blur"><div className="mx-auto flex max-w-7xl items-center justify-between gap-3"><button type="button" disabled={step === 0 || busy} onClick={() => setStep((value) => value - 1)} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--border)] px-4 text-sm font-bold disabled:opacity-40"><ArrowLeft className="h-4 w-4"/>Back</button><p className="hidden text-xs font-semibold text-[var(--muted)] sm:block">Step {step + 1} of {STEPS.length}</p>{step < STEPS.length - 1 ? <button type="button" disabled={busy || Boolean(uploadingSection)} onClick={next} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[var(--primary)] px-5 text-sm font-bold text-[var(--primary-foreground)] disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin"/> : null}Next<ArrowRight className="h-4 w-4"/></button> : <Link href="/admin/direct-publications" className="inline-flex min-h-10 items-center rounded-lg border border-[var(--border)] px-5 text-sm font-bold">Return to Dashboard</Link>}</div></footer>
+    {step === 6 && <div className="mb-20"><ArticleThreadWorkspace articleId={articleId} availableFiles={files} initialThreadId={searchParams.get('thread')} directPublication /></div>}
   </main>;
 }

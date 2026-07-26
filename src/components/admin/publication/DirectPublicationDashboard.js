@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AlertTriangle, CalendarClock, CheckCircle2, FilePenLine, Plus, Search } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../utils/api';
+import ThreadUnreadSummary from '../threads/ThreadUnreadSummary';
 
 const statuses = [
   ['direct_publication_draft', 'Drafts'], ['direct_publication_ready', 'Ready'],
@@ -43,6 +44,7 @@ export default function DirectPublicationDashboard() {
         <p className="mt-1 max-w-3xl text-sm text-slate-600">Create publication-ready articles outside the editorial and peer-review lifecycle.</p></div>
       <Link href="/admin/direct-publications/new" className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-800"><Plus size={17}/> Create Direct Publication</Link>
     </div>
+    <ThreadUnreadSummary />
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">{statuses.map(([value, label], index) =>
       <button key={value} onClick={() => value !== 'blocked_by_validation' && setStatus(status === value ? '' : value)} className={`rounded-xl border p-4 text-left ${status === value ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 bg-white'}`}>
         <div className="flex items-center justify-between text-slate-500">{index === 0 ? <FilePenLine size={18}/> : index === 2 ? <CalendarClock size={18}/> : index === 3 ? <CheckCircle2 size={18}/> : <AlertTriangle size={18}/>}<span className="text-2xl font-bold text-slate-950">{counts[value] || 0}</span></div>
