@@ -71,10 +71,10 @@ const activeProductionAssignmentStatuses = new Set(['active', 'pending', 'in_pro
 function ActionBlock({ title, description, children }) {
   return (
     <section className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
-      <div className="mb-4">
-        <h3 className="text-sm font-bold text-[var(--foreground)]">{title}</h3>
+      {(title || description) && <div className="mb-4">
+        {title && <h3 className="text-sm font-bold text-[var(--foreground)]">{title}</h3>}
         {description && <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">{description}</p>}
-      </div>
+      </div>}
       <div className="space-y-4">{children}</div>
     </section>
   );
@@ -89,6 +89,7 @@ export default function WorkflowActionPanel({
   onOpenPublish,
   toast,
   hideIfNoAction = false,
+  actionScope = null,
 }) {
   const [busyAction, setBusyAction] = useState('');
   const [confirmAction, setConfirmAction] = useState(null);
@@ -98,7 +99,6 @@ export default function WorkflowActionPanel({
   const [transferForm, setTransferForm] = useState({ to_magazine_id: '', editor_comments: '' });
   const [transferRejectForm, setTransferRejectForm] = useState({ author_rejection_reason: '' });
   const [subEditorId, setSubEditorId] = useState('');
-  const [reviewerId, setReviewerId] = useState('');
   const [manualReviewer, setManualReviewer] = useState({ name: '', email: '', affiliation: '' });
   const [productionForm, setProductionForm] = useState({ user_id: '', role: 'copy_editor', due_date: '' });
   const [authorFinalReason, setAuthorFinalReason] = useState('');
@@ -338,23 +338,24 @@ export default function WorkflowActionPanel({
   };
 
   const status = article.status;
-  const canScreen = canEditorial && ['submitted', 'pending', 'screening'].includes(status);
+  const inScope = (...scopes) => !actionScope || scopes.includes(actionScope);
+  const canScreen = inScope('editorial-decision') && canEditorial && ['submitted', 'pending', 'screening'].includes(status);
   const pendingTransferRequest = article?.pending_transfer_request;
   const publicationLabel = article?.publication_type === 'journal' || article?.magazine?.publication_type === 'journal' ? 'Journal' : 'Magazine';
   const canRequestTransfer = Boolean(article?.can_request_transfer) && canScreen;
-  const canRespondTransferRequest = Boolean(article?.can_respond_transfer_request)
+  const canRespondTransferRequest = inScope('editorial-decision') && Boolean(article?.can_respond_transfer_request)
     && status === 'in_transit'
     && pendingTransferRequest?.status === 'pending';
-  const canAssignSubEditor = canEditorial && ['under_review', 'resubmitted'].includes(status);
-  const canShowReviewerAssignment = canAssignReviewer && ['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted'].includes(status);
-  const canFinalDecision = canEditorial && REVIEWABLE_STATUSES.has(status);
-  const canShowPublish = canPublish && PUBLISHABLE_STATUSES.has(status);
-  const canPostPublication = canPublish && status === 'published';
-  const canShowProductionAssignment = canAssignProduction
+  const canAssignSubEditor = inScope('editorial-decision') && canEditorial && ['under_review', 'resubmitted'].includes(status);
+  const canShowReviewerAssignment = inScope('reviewers') && canAssignReviewer && ['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted'].includes(status);
+  const canFinalDecision = inScope('final-editorial-decision') && canEditorial && REVIEWABLE_STATUSES.has(status);
+  const canShowPublish = !actionScope && canPublish && PUBLISHABLE_STATUSES.has(status);
+  const canPostPublication = !actionScope && canPublish && status === 'published';
+  const canShowProductionAssignment = inScope('copy-editing') && canAssignProduction
     && productionStatuses.has(status)
     && !hasCopyEditorAssignment;
-  const canAuthorFinalReview = Boolean(article?.can_author_final_review);
-  const canCompleteProduction = (isAdmin || isCopyEditor) && myProductionAssignment;
+  const canAuthorFinalReview = inScope('proofreading') && Boolean(article?.can_author_final_review);
+  const canCompleteProduction = inScope('copy-editing') && (isAdmin || isCopyEditor) && myProductionAssignment;
   const productionTaskLabel = myProductionAssignment?.role === 'copy_editor'
     ? 'Copyediting Task'
     : 'Production Task';
@@ -370,9 +371,12 @@ export default function WorkflowActionPanel({
     if (canRequestTransfer) loadTransferTargets();
   }, [canRequestTransfer, article?.id]);
 
-  const hasAnyAction = canScreen || canRespondTransferRequest || canAssignSubEditor || canShowReviewerAssignment || (isSubEditor && mySubEditorAssignment)
-    || (isReviewer && myReviewerAssignment) || canFinalDecision || canAuthorFinalReview || canShowProductionAssignment || canCompleteProduction
-    || completedProductionAssignment || canShowPublish || canPostPublication;
+  const showSubEditorAction = inScope('sub-editor-recommendation') && isSubEditor && mySubEditorAssignment;
+  const showReviewerAction = inScope('reviewers') && isReviewer && myReviewerAssignment;
+  const showCompletedProduction = inScope('copy-editing') && completedProductionAssignment;
+  const hasAnyAction = canScreen || canRespondTransferRequest || canAssignSubEditor || canShowReviewerAssignment || showSubEditorAction
+    || showReviewerAction || canFinalDecision || canAuthorFinalReview || canShowProductionAssignment || canCompleteProduction
+    || showCompletedProduction || canShowPublish || canPostPublication;
 
   if (hideIfNoAction && !hasAnyAction) {
     return null;
@@ -380,7 +384,14 @@ export default function WorkflowActionPanel({
 
   return (
     <WorkflowSection
-      title="Next Action"
+      title={{
+        'editorial-decision': 'Editorial Decision Actions',
+        'sub-editor-recommendation': 'Sub Editor Actions',
+        reviewers: 'Reviewer Actions',
+        'final-editorial-decision': 'Final Editorial Decision',
+        'copy-editing': 'Copy Editing Actions',
+        proofreading: 'Proofreading Actions',
+      }[actionScope] || 'Workflow Actions'}
       description=""
       icon={ClipboardCheck}
     >
@@ -398,9 +409,9 @@ export default function WorkflowActionPanel({
         {canScreen && (
           <ActionBlock title="Editorial Screening" description={`Decide whether this manuscript moves into review, is rejected during screening, or should be transferred to another ${publicationLabel}.`}>
             <div className="grid gap-3 md:grid-cols-3">
-              <Field label="Decision" required>
+              <Field label="Editorial Action" required>
                 <Select value={screenForm.decision} onChange={(event) => setScreenForm({ ...screenForm, decision: event.target.value })}>
-                  <option value="send_to_review">Send to Review</option>
+                  <option value="send_to_review">Send for Screening</option>
                   {canRequestTransfer && <option value="transfer">Transfer Article</option>}
                   <option value="reject">Reject at Screening</option>
                 </Select>
@@ -456,7 +467,7 @@ export default function WorkflowActionPanel({
               </>
             ) : (
               <>
-                <Field label={screenForm.decision === 'reject' ? 'Reason for Author' : 'Screening Notes'} required={screenForm.decision === 'reject'}>
+                <Field label="Comments for Author" required={screenForm.decision === 'reject'}>
                   <Textarea value={screenForm.comments} onChange={(event) => setScreenForm({ ...screenForm, comments: event.target.value })} rows={3} />
                 </Field>
                 {fileInput('plagiarism_report', 'Similarity Report')}
@@ -495,7 +506,7 @@ export default function WorkflowActionPanel({
         )}
 
         {(canAssignSubEditor || canShowReviewerAssignment) && (
-          <ActionBlock title="Assignments" description="Assign the next person responsible for editorial review work.">
+          <ActionBlock title={actionScope === 'reviewers' ? null : 'Assignments'} description={actionScope === 'reviewers' ? null : 'Assign the next person responsible for editorial review work.'}>
             <div className="grid gap-4 md:grid-cols-2">
               {canAssignSubEditor && (
                 <div className="space-y-2">
@@ -528,37 +539,9 @@ export default function WorkflowActionPanel({
               )}
               {canShowReviewerAssignment && (
                 <div className="space-y-4 md:col-span-2">
-                  <div className="space-y-2 max-w-md">
-                  <Field label="Existing Reviewer">
-                    <Select value={reviewerId} onChange={(event) => setReviewerId(event.target.value)}>
-                      <option value="">Select Reviewer</option>
-                      {(assignees.reviewer || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                    </Select>
-                  </Field>
-                  <Button
-                    type="button"
-                    icon={UserPlus}
-                    isLoading={busyAction === 'assign-reviewer'}
-                    disabled={!reviewerId}
-	                    onClick={() => {
-	                      if (!validateAction(workflowAssigneeSchema, { assignee_id: reviewerId })) return;
-	                      askConfirmation({
-	                      key: 'assign-reviewer',
-                      title: 'Assign Reviewer?',
-                      message: 'This will request review from the selected reviewer and move the manuscript into the review stage.',
-                      confirmText: 'Assign Reviewer',
-                      variant: 'primary',
-	                      run: () => runAction('assign-reviewer', () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { reviewer_id: Number(reviewerId) }), 'Reviewer assigned.'),
-	                    });
-	                    }}
-                  >
-                    Assign Reviewer
-                  </Button>
-                  </div>
-
-                  {allReviewersToShow.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Suggested & Invited Reviewers</p>
+                  <div className="space-y-2">
+                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Suggested Reviewers</p>
+                    {allReviewersToShow.length > 0 ? (
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         {allReviewersToShow.map((reviewer) => {
                           const assignment = reviewer.existingAssignment;
@@ -591,15 +574,15 @@ export default function WorkflowActionPanel({
                                       onClick={() => {
                                         askConfirmation({
                                           key: `remind-${assignment.id}`,
-                                          title: 'Send reminder?',
-                                          message: 'This will send a reminder email to the reviewer about this review invitation.',
-                                          confirmText: 'Send Reminder',
+                                          title: 'Resend reviewer invitation?',
+                                          message: 'This will resend the existing secure invitation without creating a duplicate assignment.',
+                                          confirmText: 'Resend Invite',
                                           variant: 'primary',
                                           run: () => runAction(`remind-${assignment.id}`, () => api.post(`/admin/reviewer-assignments/${assignment.id}/remind`), 'Reminder email sent.'),
                                         });
                                       }}
                                     >
-                                      Send Reminder
+                                      Resend Invite
                                     </Button>
                                   )}
                                   {showResend && (
@@ -619,13 +602,13 @@ export default function WorkflowActionPanel({
                                           key: `resend-${assignment.id}`,
                                           title: 'Resend reviewer invitation?',
                                           message: 'This will send a fresh secure invitation to the reviewer who previously declined.',
-                                          confirmText: 'Resend Invite',
+                                          confirmText: 'Reinvite',
                                           variant: 'primary',
                                           run: () => runAction(`resend-${assignment.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, invitation), 'Reviewer invitation resent.'),
                                         });
                                       }}
                                     >
-                                      Resend Invite
+                                      Reinvite
                                     </Button>
                                   )}
                                 </div>
@@ -646,15 +629,15 @@ export default function WorkflowActionPanel({
                                       onClick={() => {
                                         askConfirmation({
                                           key: `remind-${assignment.id}`,
-                                          title: 'Send reminder?',
-                                          message: 'This will send a reminder email to the reviewer about this review invitation.',
-                                          confirmText: 'Send Reminder',
+                                          title: 'Resend reviewer invitation?',
+                                          message: 'This will resend the existing secure invitation without creating a duplicate assignment.',
+                                          confirmText: 'Resend Invite',
                                           variant: 'primary',
                                           run: () => runAction(`remind-${assignment.id}`, () => api.post(`/admin/reviewer-assignments/${assignment.id}/remind`), 'Reminder email sent.'),
                                         });
                                       }}
                                     >
-                                      Send Reminder
+                                      Resend Invite
                                     </Button>
                                   )}
                                   {(!reviewer.existingAssignment || showResend) && (
@@ -671,13 +654,13 @@ export default function WorkflowActionPanel({
                                           message: showResend
                                             ? 'This will send a fresh secure invitation to the reviewer who previously declined.'
                                             : 'This will send a secure review invitation to the suggested reviewer.',
-                                          confirmText: showResend ? 'Resend Invite' : 'Send Invitation',
+                                          confirmText: showResend ? 'Reinvite' : 'Send Invitation',
                                           variant: 'primary',
                                           run: () => runAction(`${showResend ? 'resend' : 'suggested'}-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, { suggested_preference_id: reviewer.id }), showResend ? 'Reviewer invitation resent.' : 'Reviewer invitation sent.'),
                                         });
                                       }}
                                     >
-                                      {showResend ? 'Resend Invite' : 'Invite'}
+                                      {showResend ? 'Reinvite' : 'Invite'}
                                     </Button>
                                   )}
                                 </div>
@@ -687,12 +670,12 @@ export default function WorkflowActionPanel({
                         );
                         })}
                       </div>
-                    </div>
-                  )}
+                    ) : <p className="text-sm text-[var(--muted)]">No suggested reviewers are available for this version.</p>}
+                  </div>
 
-                  {(article.reviewer_preferences?.opposed || []).length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Opposing Reviewers</p>
+                  <div className="space-y-2">
+                      <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Opposed Reviewers</p>
+                    {(article.reviewer_preferences?.opposed || []).length > 0 ? (
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         {article.reviewer_preferences.opposed.map((reviewer) => (
                           <div key={reviewer.id || reviewer.email} className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
@@ -702,11 +685,11 @@ export default function WorkflowActionPanel({
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    ) : <p className="text-sm text-[var(--muted)]">No opposed reviewers were submitted for this version.</p>}
+                  </div>
 
                   <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-                    <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Manual Reviewer Invitation</p>
+                    <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Manual Invitation</p>
                     <div className="grid gap-3 md:grid-cols-3">
                       <Field label="Name"><Input value={manualReviewer.name} onChange={(event) => setManualReviewer({ ...manualReviewer, name: event.target.value })} /></Field>
 	                    <Field label="Email"><Input type="text" value={manualReviewer.email} onChange={(event) => setManualReviewer({ ...manualReviewer, email: event.target.value })} /></Field>
@@ -739,7 +722,7 @@ export default function WorkflowActionPanel({
           </ActionBlock>
         )}
 
-        {isSubEditor && mySubEditorAssignment && mySubEditorAssignment.status !== 'completed' && (
+        {showSubEditorAction && mySubEditorAssignment.status !== 'completed' && (
           <ActionBlock title="Sub Editor Recommendation" description="Submit your recommendation back to the Editor.">
             <Field label="Recommendation" required>
               <Select value={subEditorForm.recommendation} onChange={(event) => setSubEditorForm({ ...subEditorForm, recommendation: event.target.value })}>
@@ -780,7 +763,7 @@ export default function WorkflowActionPanel({
           </ActionBlock>
         )}
 
-        {isReviewer && myReviewerAssignment && myReviewerAssignment.status !== 'completed' && (
+        {showReviewerAction && myReviewerAssignment.status !== 'completed' && (
           <ActionBlock title="Reviewer Work" description="Accept your invitation, then submit your review and recommendation.">
             {myReviewerAssignment.status === 'pending' ? (
               <>
@@ -1162,7 +1145,7 @@ export default function WorkflowActionPanel({
           </ActionBlock>
         )}
 
-        {!canCompleteProduction && completedProductionAssignment && (
+        {!canCompleteProduction && showCompletedProduction && (
           <Alert tone="success" title="Production task complete">
             This {completedProductionAssignment.role?.replaceAll('_', ' ')} assignment is completed and read-only.
           </Alert>
