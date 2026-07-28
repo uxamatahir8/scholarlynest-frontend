@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { initialWorkspaceTab, scopeArticleToVersion, visibleWorkspaceTabs } from '../src/components/admin/workflow/workspaceManifest.mjs';
+import { firstVisibleSidebarKey, initialWorkspaceTab, REVIEWER_WORKSPACE_SECTIONS, scopeArticleToVersion, visibleWorkspaceTabs, withVersionReviewerData } from '../src/components/admin/workflow/workspaceManifest.mjs';
 
 test('workspace renders backend tab order and hides inaccessible metadata', () => {
   const tabs = visibleWorkspaceTabs({ tabs: [
@@ -23,10 +23,43 @@ test('selected article version never merges workflow records from another versio
     sub_editor_assignments: [{ id: 5, article_version_id: 11 }],
     reviewer_assignments: [{ id: 6, article_version_id: 10 }, { id: 7, article_version_id: 11 }],
     production_assignments: [],
-  }, { id: 10, metadata_snapshot: { title: 'Immutable title' } });
+  }, { id: 10, metadata_snapshot: { title: 'Immutable title' }, submitted_at: '2026-01-01T00:00:00Z' }, {
+    key: 'version-10',
+    status: { code: 'submitted', label: 'Submitted' },
+    submitted_at: '2026-01-01T00:00:00Z',
+    is_accepted: false,
+  });
   assert.equal(scoped.title, 'Immutable title');
+  assert.equal(scoped.status, 'submitted');
+  assert.equal(scoped.author_status, 'Submitted');
+  assert.equal(scoped.is_accepted_version, false);
   assert.deepEqual(scoped.files.map((item) => item.id), [1]);
   assert.deepEqual(scoped.editorial_decisions.map((item) => item.id), [3]);
   assert.deepEqual(scoped.sub_editor_assignments, []);
   assert.deepEqual(scoped.reviewer_assignments.map((item) => item.id), [6]);
+});
+
+test('only the accepted revision receives accepted version state', () => {
+  const article = { status: 'accepted', files: [], editorial_decisions: [], sub_editor_assignments: [], reviewer_assignments: [], production_assignments: [] };
+  const initial = scopeArticleToVersion(article, { id: 1, status_snapshot: 'submitted' }, { status: { code: 'submitted', label: 'Submitted' }, is_accepted: false });
+  const revision = scopeArticleToVersion(article, { id: 2, status_snapshot: 'under_review' }, { status: { code: 'accepted', label: 'Accepted' }, is_accepted: true });
+  assert.equal(initial.status, 'submitted');
+  assert.equal(initial.is_accepted_version, false);
+  assert.equal(revision.status, 'accepted');
+  assert.equal(revision.is_accepted_version, true);
+});
+
+test('switching either direction selects the first visible sidebar item', () => {
+  const initial = { key: 'version-1', sidebar: [{ key: 'hidden', visible: false }, { key: 'manuscript-information', visible: true }, { key: 'reviewers' }] };
+  const revision = { key: 'version-2', sidebar: [{ key: 'manuscript-information', visible: true }, { key: 'reviewers' }] };
+  assert.equal(firstVisibleSidebarKey(revision), 'manuscript-information');
+  assert.equal(firstVisibleSidebarKey(initial), 'manuscript-information');
+});
+
+test('reviewer workspace always has three sections and clears prior version data', () => {
+  assert.deepEqual(REVIEWER_WORKSPACE_SECTIONS, ['Suggested Reviewers', 'Opposed Reviewers', 'Manual Invitation']);
+  const prior = withVersionReviewerData({}, { reviewer_assignments: [{ id: 9 }], reviewer_preferences: { suggested: [{ id: 8 }], opposed: [] } });
+  const next = withVersionReviewerData(prior, null);
+  assert.deepEqual(next.reviewer_assignments, []);
+  assert.deepEqual(next.reviewer_preferences, { suggested: [], opposed: [] });
 });

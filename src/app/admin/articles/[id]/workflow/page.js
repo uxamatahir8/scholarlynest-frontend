@@ -12,6 +12,7 @@ import LoadingState from '../../../../../components/ui/LoadingState';
 import PageTitle from '../../../../../components/PageTitle';
 import ErrorState from '../../../../../components/ui/ErrorState';
 import EmptyState from '../../../../../components/ui/EmptyState';
+import StatusBadge from '../../../../../components/ui/StatusBadge';
 import ImageLightboxGallery from '../../../../../components/ui/ImageLightboxGallery';
 import ScopedWorkflowActionPanel from '../../../../../components/admin/ScopedWorkflowActionPanel';
 import ManuscriptHeader from '../../../../../components/admin/workflow/ManuscriptHeader';
@@ -32,7 +33,8 @@ import {
   submissionVersionLabel,
 } from '../../../../../components/admin/workflow/workflowDisplay';
 import ArticleThreadWorkspace from '../../../../../components/admin/threads/ArticleThreadWorkspace';
-import { initialWorkspaceTab, scopeArticleToVersion, visibleWorkspaceTabs } from '../../../../../components/admin/workflow/workspaceManifest.mjs';
+import { firstVisibleSidebarKey, initialWorkspaceTab, scopeArticleToVersion, visibleWorkspaceTabs } from '../../../../../components/admin/workflow/workspaceManifest.mjs';
+import ReviewersPanel from '../../../../../components/admin/workflow/ReviewersPanel';
 
 // Helper component for Editorial Decision Tab
 function EditorialDecisionTab({ article }) {
@@ -322,14 +324,13 @@ function VersionTabContent({ version, article, isLatest, user, hasRole, unassign
             {submissionVersionLabel(version)} {article.tracking_code && `(${article.tracking_code})`}
           </h3>
           <p className="mt-1 text-xs text-[var(--muted)]">
-            Submitted at {formatDate(version.created_at)} {version.user?.name && `by ${version.user.name}`}
+            Submitted at {formatDate(version.submitted_at || version.created_at)} {version.user?.name && `by ${version.user.name}`}
           </p>
         </div>
-        {isLatest && (
-          <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">
-            Latest Submission
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={article.status} />
+          {isLatest && <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">Latest Submission</span>}
+        </div>
       </div>
 
       {isLatest && unassignedLegacyAlert && (
@@ -901,10 +902,10 @@ function FinalFilesTab({ article }) {
 }
 
 function VersionWorkspace({ tab, article, user, hasRole, hasPermission, observerReadonly, onChanged, toast }) {
-  const [activeSection, setActiveSection] = useState(tab.sidebar?.[0]?.key || 'manuscript-information');
+  const [activeSection, setActiveSection] = useState(() => firstVisibleSidebarKey(tab));
   const version = (article.versions || []).find((item) => Number(item.id) === Number(tab.version_id));
   if (!version) return <EmptyState title="Version unavailable">This version is not accessible to your role.</EmptyState>;
-  const scopedArticle = scopeArticleToVersion(article, version);
+  const scopedArticle = scopeArticleToVersion(article, version, tab);
   const selectedReviewId = activeSection.startsWith('review-') ? Number(activeSection.replace('review-', '')) : null;
   const selectedReview = scopedArticle.reviewer_assignments.find((item) => Number(item.id) === selectedReviewId);
   const actionProps = {
@@ -917,6 +918,10 @@ function VersionWorkspace({ tab, article, user, hasRole, hasPermission, observer
     toast,
     hideIfNoAction: true,
   };
+
+  useEffect(() => {
+    setActiveSection(firstVisibleSidebarKey(tab));
+  }, [tab.key]);
 
   const content = (() => {
     if (activeSection === 'manuscript-information') {
@@ -932,7 +937,7 @@ function VersionWorkspace({ tab, article, user, hasRole, hasPermission, observer
       </div>;
     }
     if (activeSection === 'reviewers') {
-      return <div className="space-y-5">{!observerReadonly && <ScopedWorkflowActionPanel {...actionProps} actionScope="reviewers" />}{observerReadonly && <EmptyState title="Reviewer management is read-only">Open the standard workspace to perform reviewer actions.</EmptyState>}</div>;
+      return <ReviewersPanel article={scopedArticle} version={version} versionTab={tab} user={user} hasRole={hasRole} hasPermission={hasPermission} observerReadonly={observerReadonly} onWorkflowChanged={onChanged} toast={toast} />;
     }
     if (selectedReview) return <ReviewerRecommendationTabContent assignment={selectedReview} article={scopedArticle} />;
     return <EmptyState title="Section unavailable">This version section is not available.</EmptyState>;
@@ -1041,7 +1046,7 @@ export default function ArticleWorkflowPage() {
           const tab = tabs.find((item) => item.key === activeTab);
           if (!tab) return null;
           const commonActions = { article, workflowContext: article, user, hasRole, hasPermission, onWorkflowChanged: loadWorkflow, toast, hideIfNoAction: true };
-          if (tab.type === 'article_version') return <VersionWorkspace tab={tab} article={article} user={user} hasRole={hasRole} hasPermission={hasPermission} observerReadonly={observerReadonly} onChanged={loadWorkflow} toast={toast} />;
+          if (tab.type === 'article_version') return <VersionWorkspace key={tab.key} tab={tab} article={article} user={user} hasRole={hasRole} hasPermission={hasPermission} observerReadonly={observerReadonly} onChanged={loadWorkflow} toast={toast} />;
           if (tab.type === 'final_editorial_decision') return <div className="space-y-5">{!observerReadonly && <ScopedWorkflowActionPanel {...commonActions} actionScope="final-editorial-decision" />}<EditorialDecisionTab article={article} /></div>;
           if (tab.type === 'copy_editing') return <div className="space-y-5">{!article.accepted_file_set ? <EmptyState title="Copy editing unavailable">Copy editing becomes available after editorial acceptance.</EmptyState> : <><ScopedWorkflowActionPanel {...commonActions} actionScope="copy-editing" /><AcceptedFilesTab acceptedFileSet={article.accepted_file_set} compact /><CopyeditingTab article={article} user={user} hasRole={hasRole} /></>}</div>;
           if (tab.type === 'proofreading') return <div className="space-y-5"><ScopedWorkflowActionPanel {...commonActions} actionScope="proofreading" /><ProofRoundsPanel article={article} /></div>;
