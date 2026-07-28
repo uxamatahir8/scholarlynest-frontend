@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Check, CheckCircle2, FileUp, Loader2, Plus, Trash2, Upload } from 'lucide-react';
 import api from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
@@ -13,7 +13,7 @@ import RichEditor from '../../ui/RichEditor';
 import FlatpickrInput from '../../ui/FlatpickrInput';
 import { Input, Label, Select, Textarea } from '../../ui/Input';
 import ArticleThreadWorkspace from '../threads/ArticleThreadWorkspace';
-import { directPublicationIssueLabel } from './directPublicationUtils.mjs';
+import { directPublicationIssueLabel, restoredDirectPublicationStep } from './directPublicationUtils.mjs';
 
 const STEPS = ['Publication Information', 'Authors & Declarations', 'Publication Sections', 'Publication Files', 'Publication Metadata', 'Finalize Publication', 'Communication'];
 const newId = () => `section-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -52,6 +52,7 @@ function FileGroup({ title, files, primaryId, onPrimary, settings, onSetting, pu
 
 export default function DirectPublicationEditor({ articleId = null }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { hasRole, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -59,7 +60,8 @@ export default function DirectPublicationEditor({ articleId = null }) {
   const [article, setArticle] = useState(null);
   const [options, setOptions] = useState({ magazines: [], issues: [], article_types: [], categories: [], subject_areas: [], languages: [] });
   const [form, setForm] = useState(blankForm);
-  const [step, setStep] = useState(Math.min(Number(searchParams.get('step') || 0), STEPS.length - 1));
+  const requestedStep = useRef(searchParams.get('step')).current;
+  const [step, setStep] = useState(() => restoredDirectPublicationStep({ requestedStep, savedStep: 0, status: null, stepCount: STEPS.length }));
   const [readiness, setReadiness] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -69,6 +71,7 @@ export default function DirectPublicationEditor({ articleId = null }) {
   const [confirmed, setConfirmed] = useState(false);
   const [scheduleAt, setScheduleAt] = useState('');
   const storageKey = `direct-publication-wizard:${articleId || 'new'}`;
+  const stepStorageKey = `${storageKey}:step`;
   const status = article?.status || 'direct_publication_draft';
 
   const hydrate = useCallback((data, blockers) => {
@@ -97,17 +100,28 @@ export default function DirectPublicationEditor({ articleId = null }) {
         hydrate(detailResponse.data.data, detailResponse.data.readiness);
         const saved = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null;
         if (saved) setForm((current) => ({ ...current, ...JSON.parse(saved) }));
+        const savedStep = typeof window !== 'undefined' ? window.localStorage.getItem(stepStorageKey) : null;
+        setStep(restoredDirectPublicationStep({ requestedStep, savedStep, status: detailResponse.data.data?.status, stepCount: STEPS.length }));
       }
       else {
         const saved = typeof window !== 'undefined' ? window.localStorage.getItem(storageKey) : null;
         if (saved) setForm({ ...blankForm(), ...JSON.parse(saved) });
+        const savedStep = typeof window !== 'undefined' ? window.localStorage.getItem(stepStorageKey) : null;
+        setStep(restoredDirectPublicationStep({ requestedStep, savedStep, status: null, stepCount: STEPS.length }));
       }
     } catch (error) { setErrors([safeApiMessage(error, 'The direct-publication workspace could not be loaded.')]); }
     finally { setLoading(false); }
-  }, [allowed, articleId, hydrate, storageKey]);
+  }, [allowed, articleId, hydrate, requestedStep, stepStorageKey, storageKey]);
 
   useEffect(() => { if (!authLoading) load(); }, [authLoading, load]);
   useEffect(() => { if (loading || typeof window === 'undefined') return; const timer = window.setTimeout(() => window.localStorage.setItem(storageKey, JSON.stringify({ ...form, sections: form.sections.map(({ preview_url, ...section }) => section) })), 350); return () => window.clearTimeout(timer); }, [form, loading, storageKey]);
+  useEffect(() => { if (loading || typeof window === 'undefined' || status !== 'direct_publication_draft') return; window.localStorage.setItem(stepStorageKey, String(step)); }, [loading, status, step, stepStorageKey]);
+  useEffect(() => {
+    if (loading || searchParams.get('step') === String(step)) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('step', String(step));
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [loading, pathname, router, searchParams, step]);
   useEffect(() => {
     const missing = form.sections.find((section) => section.media_upload_session_id && !section.preview_url && status !== 'published');
     if (!missing) return;
@@ -139,7 +153,7 @@ export default function DirectPublicationEditor({ articleId = null }) {
   const save = async () => {
     if (!articleId) {
       const created = await run(() => api.post('/admin/direct-publications', { ...payload(), authors: [] }, { headers: headers() }), 'Direct-publication draft created.', false);
-      if (created) { window.localStorage.removeItem(storageKey); router.replace(`/admin/direct-publications/${created.id}?step=1`); }
+      if (created) { window.localStorage.removeItem(storageKey); window.localStorage.removeItem(stepStorageKey); router.replace(`/admin/direct-publications/${created.id}?step=1`); }
       return Boolean(created);
     }
     const endpoint = status === 'published' ? `/admin/direct-publications/${articleId}/correct-metadata` : `/admin/direct-publications/${articleId}`;
