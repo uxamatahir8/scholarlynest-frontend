@@ -35,6 +35,7 @@ import {
 import ArticleThreadWorkspace from '../../../../../components/admin/threads/ArticleThreadWorkspace';
 import { firstVisibleSidebarKey, initialWorkspaceTab, scopeArticleToVersion, visibleWorkspaceTabs } from '../../../../../components/admin/workflow/workspaceManifest.mjs';
 import ReviewersPanel from '../../../../../components/admin/workflow/ReviewersPanel';
+import AcceptedManuscriptInformationPanel from '../../../../../components/admin/workflow/AcceptedManuscriptInformationPanel';
 
 // Helper component for Editorial Decision Tab
 function EditorialDecisionTab({ article }) {
@@ -1046,6 +1047,7 @@ export default function ArticleWorkflowPage() {
           const tab = tabs.find((item) => item.key === activeTab);
           if (!tab) return null;
           const commonActions = { article, workflowContext: article, user, hasRole, hasPermission, onWorkflowChanged: loadWorkflow, toast, hideIfNoAction: true };
+          if (tab.type === 'accepted_manuscript') return <AcceptedManuscriptInformationPanel articleId={article.id} />;
           if (tab.type === 'article_version') return <VersionWorkspace key={tab.key} tab={tab} article={article} user={user} hasRole={hasRole} hasPermission={hasPermission} observerReadonly={observerReadonly} onChanged={loadWorkflow} toast={toast} />;
           if (tab.type === 'final_editorial_decision') return <div className="space-y-5">{!observerReadonly && <ScopedWorkflowActionPanel {...commonActions} actionScope="final-editorial-decision" />}<EditorialDecisionTab article={article} /></div>;
           if (tab.type === 'copy_editing') return <div className="space-y-5">{!article.accepted_file_set ? <EmptyState title="Copy editing unavailable">Copy editing becomes available after editorial acceptance.</EmptyState> : <><ScopedWorkflowActionPanel {...commonActions} actionScope="copy-editing" /><AcceptedFilesTab acceptedFileSet={article.accepted_file_set} compact /><CopyeditingTab article={article} user={user} hasRole={hasRole} /></>}</div>;

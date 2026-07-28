@@ -44,3 +44,18 @@ export function withVersionReviewerData(article, data) {
     selected_review_round: data?.review_round || 1,
   };
 }
+
+export function acceptedManuscriptView(data) {
+  return {
+    article: data?.article || {},
+    publication: data?.publication || null,
+    acceptedVersion: data?.accepted_version || null,
+    metadata: data?.metadata || {},
+    authors: data?.authors || [],
+    declarations: data?.declarations || {},
+    manuscriptFiles: data?.files?.manuscript || [],
+    additionalFiles: data?.files?.additional || [],
+    supplementaryFiles: data?.files?.supplementary || [],
+    acceptedFileSet: data?.files?.accepted_file_set || null,
+  };
+}

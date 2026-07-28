@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { firstVisibleSidebarKey, initialWorkspaceTab, REVIEWER_WORKSPACE_SECTIONS, scopeArticleToVersion, visibleWorkspaceTabs, withVersionReviewerData } from '../src/components/admin/workflow/workspaceManifest.mjs';
+import { acceptedManuscriptView, firstVisibleSidebarKey, initialWorkspaceTab, REVIEWER_WORKSPACE_SECTIONS, scopeArticleToVersion, visibleWorkspaceTabs, withVersionReviewerData } from '../src/components/admin/workflow/workspaceManifest.mjs';
 
 test('workspace renders backend tab order and hides inaccessible metadata', () => {
   const tabs = visibleWorkspaceTabs({ tabs: [
@@ -62,4 +62,38 @@ test('reviewer workspace always has three sections and clears prior version data
   const next = withVersionReviewerData(prior, null);
   assert.deepEqual(next.reviewer_assignments, []);
   assert.deepEqual(next.reviewer_preferences, { suggested: [], opposed: [] });
+});
+
+test('copy editor workspace starts with dedicated accepted manuscript information and has no revision tabs', () => {
+  const tabs = visibleWorkspaceTabs({ tabs: [
+    { key: 'copyeditor-manuscript', type: 'accepted_manuscript', label: 'Manuscript Information' },
+    { key: 'copy-editing', type: 'copy_editing', label: 'Copy Editing' },
+    { key: 'workflow-history', type: 'workflow_history', label: 'Workflow History' },
+    { key: 'communication', type: 'communication', label: 'Communication' },
+  ] });
+
+  assert.equal(initialWorkspaceTab(tabs), 'copyeditor-manuscript');
+  assert.deepEqual(tabs.map((tab) => tab.label), ['Manuscript Information', 'Copy Editing', 'Workflow History', 'Communication']);
+  assert.equal(tabs.some((tab) => tab.type === 'article_version'), false);
+});
+
+test('accepted manuscript view exposes accepted metadata and production files', () => {
+  const view = acceptedManuscriptView({
+    article: { title: 'Accepted title', abstract: 'Accepted abstract' },
+    accepted_version: { id: 12, identifier: 'SN-2026-001-R2' },
+    metadata: { article_type: 'Research Article' },
+    authors: [{ name: 'Author One' }],
+    files: {
+      manuscript: [{ id: 1, file: { original_name: 'accepted.docx' } }],
+      supplementary: [{ id: 2, file: { original_name: 'dataset.csv' } }],
+      accepted_file_set: { id: 4 },
+    },
+  });
+
+  assert.equal(view.article.title, 'Accepted title');
+  assert.equal(view.article.abstract, 'Accepted abstract');
+  assert.equal(view.acceptedVersion.id, 12);
+  assert.equal(view.manuscriptFiles[0].file.original_name, 'accepted.docx');
+  assert.equal(view.supplementaryFiles[0].file.original_name, 'dataset.csv');
+  assert.equal(view.acceptedFileSet.id, 4);
 });
