@@ -37,6 +37,7 @@ export function assignmentQueueItem(assignment, actionLabel = 'Open Task') {
     status: displayStatus,
     context: article.magazine?.title || 'Assigned manuscript',
     dueDate: assignment.due_date,
+    assigneeName: assignment.assignee?.name,
     href: article.id ? `/admin/articles/${article.id}/workflow` : undefined,
     trackingCode: article.latest_tracking_code || article.tracking_code,
     actionLabel: primaryActionLabel,

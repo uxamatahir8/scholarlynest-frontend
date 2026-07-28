@@ -70,8 +70,12 @@ export default function AssignmentDashboardWorkspace({
     [assignments],
   );
 
-  const activeItems = activeAssignments.map((assignment) => assignmentQueueItem(assignment, 'Open Workflow'));
-  const completedItems = completedAssignments.map((assignment) => assignmentQueueItem(assignment, 'Review Record'));
+  const withObservedAssignee = (item) => ({
+    ...item,
+    assigneeName: item.assigneeName || observerUser?.name,
+  });
+  const activeItems = activeAssignments.map((assignment) => withObservedAssignee(assignmentQueueItem(assignment, 'Open Workflow')));
+  const completedItems = completedAssignments.map((assignment) => withObservedAssignee(assignmentQueueItem(assignment, 'Review Record')));
 
   return (
     <DashboardWorkspace

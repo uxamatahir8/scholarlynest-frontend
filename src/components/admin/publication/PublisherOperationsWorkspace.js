@@ -12,10 +12,11 @@ import ErrorState from '../../ui/ErrorState';
 import LoadingState from '../../ui/LoadingState';
 import PublicationStatusBadge from './PublicationStatusBadge';
 import { authorsLine, issueDate, issueLabel } from './publicationUtils';
+import DeskRecordMetadata from '../desk-observer/DeskRecordMetadata';
 
 const EMPTY_PARAMS = {};
 
-function ArticleQueueRow({ article, label }) {
+function ArticleQueueRow({ article, label, assigneeName }) {
   return (
     <article className="grid gap-3 border-b border-[var(--border)] px-5 py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
       <div className="min-w-0">
@@ -27,6 +28,7 @@ function ArticleQueueRow({ article, label }) {
         <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
           {article.magazine?.title || 'Magazine not listed'}{article.issue ? ` · ${issueLabel(article.issue)}` : ' · Issue not assigned'}
         </p>
+        {assigneeName && <DeskRecordMetadata trackingCode={article.tracking_code} assigneeName={assigneeName} />}
       </div>
       <div className="flex flex-wrap gap-2 md:justify-end">
         <Link
@@ -165,7 +167,7 @@ export default function PublisherOperationsWorkspace({
             ) : (
               <div>
                 {dashboard.ready_articles.map((article) => (
-                  <ArticleQueueRow key={article.id} article={article} label={article.magazine_issue_id ? 'Review Issue' : 'Assign to Issue'} />
+                  <ArticleQueueRow key={article.id} article={article} label={article.magazine_issue_id ? 'Review Issue' : 'Assign to Issue'} assigneeName={observerUser?.name} />
                 ))}
               </div>
             )}
@@ -183,7 +185,7 @@ export default function PublisherOperationsWorkspace({
             ) : (
               <div>
                 {dashboard.published_articles.slice(0, 8).map((article) => (
-                  <ArticleQueueRow key={article.id} article={article} label="Open Issue" />
+                  <ArticleQueueRow key={article.id} article={article} label="Open Issue" assigneeName={observerUser?.name} />
                 ))}
               </div>
             )}

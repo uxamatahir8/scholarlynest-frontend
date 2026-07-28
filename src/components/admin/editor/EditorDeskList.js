@@ -15,6 +15,7 @@ import LoadingState from '../../ui/LoadingState';
 import EmptyState from '../../ui/EmptyState';
 import Pagination from '../../ui/Pagination';
 import Alert from '../../ui/Alert';
+import DeskRecordMetadata from '../desk-observer/DeskRecordMetadata';
 
 const STATUS_OPTIONS = [
   ['all', 'All Editorial Work'],
@@ -146,6 +147,12 @@ export default function EditorDeskList({ observerMode = false, observerUser = nu
                       <span>Submitted {formatDate(article.latest_submission_at || article.created_at)}</span>
                       {article.user?.name && <span>Author: {article.user.name}</span>}
                     </div>
+                    {observerMode && (
+                      <DeskRecordMetadata
+                        trackingCode={article.latest_tracking_code || article.tracking_code}
+                        assigneeName={observerUser?.name}
+                      />
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Link href={workflowHref} className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white dark:bg-zinc-100 dark:text-zinc-950"><FileText className="h-4 w-4" />{actionLabel(article.status)}</Link>

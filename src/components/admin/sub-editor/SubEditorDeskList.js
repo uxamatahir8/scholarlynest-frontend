@@ -16,6 +16,7 @@ import ErrorState from '../../ui/ErrorState';
 import EmptyState from '../../ui/EmptyState';
 import Pagination from '../../ui/Pagination';
 import Alert from '../../ui/Alert';
+import DeskRecordMetadata from '../desk-observer/DeskRecordMetadata';
 import { Button } from '../../ui/Button';
 
 const VALID_STATUS_FILTERS = new Set(['active', 'completed', 'pending']);
@@ -234,9 +235,13 @@ export default function SubEditorDeskList({
                         <span className="font-medium text-[var(--foreground)]">{magazine.title}</span>
                       )}
                       <span>Assigned {formatDate(assignment.created_at)}</span>
-                      {assignment.due_date && <span>Due {formatDate(assignment.due_date)}</span>}
                       {assignment.completed_at && <span>Completed {formatDate(assignment.completed_at)}</span>}
                     </div>
+                    <DeskRecordMetadata
+                      trackingCode={article.tracking_code}
+                      assigneeName={assignment.assignee?.name || observerUser?.name}
+                      dueDate={assignment.due_date}
+                    />
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 pt-2 lg:pt-0">
