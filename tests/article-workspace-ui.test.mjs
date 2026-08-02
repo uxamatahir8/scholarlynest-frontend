@@ -183,6 +183,15 @@ test('reviewer portal renders assignment-scoped invitation and review actions', 
   assert.match(source, />Start Review</);
 });
 
+test('reviewer home dashboard routes pending invitations to the response controls', () => {
+  const utils = readFileSync(new URL('../src/components/admin/dashboard/dashboardUtils.js', import.meta.url), 'utf8');
+  const dashboard = readFileSync(new URL('../src/components/admin/dashboard/AssignmentDashboardWorkspace.js', import.meta.url), 'utf8');
+
+  assert.match(utils, /assignment\.primary_action === 'accept_decline'/);
+  assert.match(utils, /href = '\/admin\/reviewer\?status=pending'/);
+  assert.match(dashboard, /priority=\{isReviewerDashboard\}/);
+});
+
 test('pending-review decision conflict uses an accessible policy modal and stable idempotency key', () => {
   const source = readFileSync(new URL('../src/components/admin/WorkflowActionPanel.js', import.meta.url), 'utf8');
   assert.match(source, /PENDING_REVIEWS_REQUIRE_CONFIRMATION/);

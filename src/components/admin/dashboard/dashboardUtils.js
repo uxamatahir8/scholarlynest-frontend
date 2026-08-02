@@ -20,7 +20,7 @@ export function assignmentQueueItem(assignment, actionLabel = 'Open Task') {
   else if (assignment.primary_action === 'manage_reviewers') primaryActionLabel = 'Manage Reviewers';
   else if (assignment.primary_action === 'review_reviewer_progress') primaryActionLabel = 'Review Reviewer Progress';
   else if (assignment.primary_action === 'submit_recommendation') primaryActionLabel = 'Submit Recommendation';
-  else if (assignment.primary_action === 'accept_decline') primaryActionLabel = 'Accept / Decline Review';
+  else if (assignment.primary_action === 'accept_decline') primaryActionLabel = 'Accept / Decline Invitation';
   else if (assignment.primary_action === 'start_review') primaryActionLabel = 'Start Review';
   else if (assignment.primary_action === 'continue_review') primaryActionLabel = 'Continue Review';
   else if (assignment.primary_action === 'view_submitted_review') primaryActionLabel = 'View Submitted Review';
@@ -31,6 +31,13 @@ export function assignmentQueueItem(assignment, actionLabel = 'Open Task') {
     displayStatus = 'awaiting_review';
   }
 
+  let href = article.id ? `/admin/articles/${article.id}/workflow` : undefined;
+  if (assignment.primary_action === 'accept_decline') {
+    href = '/admin/reviewer?status=pending';
+  } else if (['start_review', 'continue_review', 'view_submitted_review'].includes(assignment.primary_action)) {
+    href = '/admin/reviewer';
+  }
+
   return {
     id: assignment.id,
     title: article.title,
@@ -38,7 +45,7 @@ export function assignmentQueueItem(assignment, actionLabel = 'Open Task') {
     context: article.magazine?.title || 'Assigned manuscript',
     dueDate: assignment.due_date,
     assigneeName: assignment.assignee?.name,
-    href: article.id ? `/admin/articles/${article.id}/workflow` : undefined,
+    href,
     trackingCode: article.latest_tracking_code || article.tracking_code,
     actionLabel: primaryActionLabel,
   };
