@@ -902,8 +902,11 @@ function FinalFilesTab({ article }) {
   );
 }
 
-function VersionWorkspace({ tab, article, user, hasRole, hasPermission, observerReadonly, onChanged, toast }) {
-  const [activeSection, setActiveSection] = useState(() => firstVisibleSidebarKey(tab));
+function VersionWorkspace({ tab, article, user, hasRole, hasPermission, observerReadonly, onChanged, toast, requestedAssignmentId = null }) {
+  const requestedSection = requestedAssignmentId && (tab.sidebar || []).some((item) => Number(item.review_id) === Number(requestedAssignmentId))
+    ? `review-${requestedAssignmentId}`
+    : null;
+  const [activeSection, setActiveSection] = useState(() => requestedSection || firstVisibleSidebarKey(tab));
   const selectedVersion = workspaceVersionForTab(article.versions, tab);
   if (!selectedVersion) return <EmptyState title="Version unavailable">This version is not accessible to your role.</EmptyState>;
   const scopedArticle = scopeArticleToVersion(article, selectedVersion, tab);
@@ -940,7 +943,9 @@ function VersionWorkspace({ tab, article, user, hasRole, hasPermission, observer
     if (activeSection === 'reviewers') {
       return <ReviewersPanel article={scopedArticle} version={selectedVersion} versionTab={tab} user={user} hasRole={hasRole} hasPermission={hasPermission} observerReadonly={observerReadonly} onWorkflowChanged={onChanged} toast={toast} />;
     }
-    if (selectedReview) return <ReviewerRecommendationTabContent assignment={selectedReview} article={scopedArticle} />;
+    if (selectedReview) return selectedReview.status === 'completed'
+      ? <ReviewerRecommendationTabContent assignment={selectedReview} article={scopedArticle} />
+      : <ScopedWorkflowActionPanel {...actionProps} actionScope="reviewer-review" />;
     return <EmptyState title="Section unavailable">This version section is not available.</EmptyState>;
   })();
 
@@ -1002,7 +1007,11 @@ export default function ArticleWorkflowPage() {
   // Handle activeTab adjustment when tabs list changes
   useEffect(() => {
     if (tabs.length > 0 && !tabs.some((tab) => tab.key === activeTab)) {
-      setActiveTab(initialWorkspaceTab(tabs, Boolean(searchParams.get('thread'))));
+      const requestedVersionId = Number(searchParams.get('version'));
+      const requestedVersionTab = requestedVersionId
+        ? tabs.find((tab) => Number(tab.version_id) === requestedVersionId)
+        : null;
+      setActiveTab(requestedVersionTab?.key || initialWorkspaceTab(tabs, Boolean(searchParams.get('thread'))));
     }
   }, [tabs, activeTab]);
 
@@ -1048,7 +1057,7 @@ export default function ArticleWorkflowPage() {
           if (!tab) return null;
           const commonActions = { article, workflowContext: article, user, hasRole, hasPermission, onWorkflowChanged: loadWorkflow, toast, hideIfNoAction: true };
           if (tab.type === 'accepted_manuscript') return <AcceptedManuscriptInformationPanel articleId={article.id} />;
-          if (tab.type === 'article_version') return <VersionWorkspace key={tab.key} tab={tab} article={article} user={user} hasRole={hasRole} hasPermission={hasPermission} observerReadonly={observerReadonly} onChanged={loadWorkflow} toast={toast} />;
+          if (tab.type === 'article_version') return <VersionWorkspace key={tab.key} tab={tab} article={article} user={user} hasRole={hasRole} hasPermission={hasPermission} observerReadonly={observerReadonly} onChanged={loadWorkflow} toast={toast} requestedAssignmentId={searchParams.get('assignment')} />;
           if (tab.type === 'final_editorial_decision') return <div className="space-y-5">{!observerReadonly && <ScopedWorkflowActionPanel {...commonActions} actionScope="final-editorial-decision" />}<EditorialDecisionTab article={article} /></div>;
           if (tab.type === 'copy_editing') return <div className="space-y-5">{!article.accepted_file_set ? <EmptyState title="Copy editing unavailable">Copy editing becomes available after editorial acceptance.</EmptyState> : <><ScopedWorkflowActionPanel {...commonActions} actionScope="copy-editing" /><AcceptedFilesTab acceptedFileSet={article.accepted_file_set} compact /><CopyeditingTab article={article} user={user} hasRole={hasRole} /></>}</div>;
           if (tab.type === 'proofreading') return <div className="space-y-5"><ScopedWorkflowActionPanel {...commonActions} actionScope="proofreading" /><ProofRoundsPanel article={article} /></div>;

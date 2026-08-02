@@ -166,6 +166,41 @@ test('disabled manual invitation retains the backend reason and opposed reviewer
   assert.equal(article.reviewer_preferences.opposed[0].email, 'blocked@example.test');
 });
 
+test('reviewer portal renders assignment-scoped invitation and review actions', () => {
+  const source = readFileSync(new URL('../src/components/admin/reviewer/ReviewerDeskList.js', import.meta.url), 'utf8');
+  assert.match(source, /Pending Invitations/);
+  assert.match(source, /Pending and Active Reviews/);
+  assert.match(source, /Completed Reviews/);
+  assert.match(source, /Closed, Declined, or Expired History/);
+  assert.match(source, />Accept Invitation</);
+  assert.match(source, />Decline Invitation</);
+  assert.match(source, /Decline Invitation[\s\S]*Reason \(optional\)/);
+  assert.match(source, /assignment\.version_label/);
+  assert.match(source, /assignment=\$\{assignment\.id\}/);
+  assert.match(source, /assignment\.capabilities\?\.start_review/);
+  assert.match(source, /assignment\.capabilities\?\.continue_review/);
+});
+
+test('pending-review decision conflict uses an accessible policy modal and stable idempotency key', () => {
+  const source = readFileSync(new URL('../src/components/admin/WorkflowActionPanel.js', import.meta.url), 'utf8');
+  assert.match(source, /PENDING_REVIEWS_REQUIRE_CONFIRMATION/);
+  assert.match(source, /title="Pending reviewer submissions"/);
+  assert.match(source, /Proceed and Keep Pending Reviews Open/);
+  assert.match(source, /Proceed and Close Pending Reviews/);
+  assert.match(source, /Reason for proceeding without pending reviews/);
+  assert.match(source, /Idempotency-Key': decisionIdempotencyKey/);
+  assert.match(source, /await onWorkflowChanged\(\)/);
+});
+
+test('reviewer workspace deep links to the exact assignment version and shows the late-review notice', () => {
+  const page = readFileSync(new URL('../src/app/admin/articles/[id]/workflow/page.js', import.meta.url), 'utf8');
+  const panel = readFileSync(new URL('../src/components/admin/WorkflowActionPanel.js', import.meta.url), 'utf8');
+  assert.match(page, /searchParams\.get\('version'\)/);
+  assert.match(page, /requestedAssignmentId=\{searchParams\.get\('assignment'\)\}/);
+  assert.match(page, /actionScope="reviewer-review"/);
+  assert.match(panel, /You may still submit this review for the editorial record/);
+});
+
 test('copy editor workspace starts with dedicated accepted manuscript information and has no revision tabs', () => {
   const tabs = visibleWorkspaceTabs({ tabs: [
     { key: 'copyeditor-manuscript', type: 'accepted_manuscript', label: 'Manuscript Information' },

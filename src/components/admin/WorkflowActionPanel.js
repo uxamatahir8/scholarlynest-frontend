@@ -5,6 +5,7 @@ import { ArrowRightLeft, Bell, Check, CheckCircle2, ClipboardCheck, FileCheck2, 
 import api from '../../utils/api';
 import { safeApiMessage } from '../../utils/safeErrors';
 import { logError } from '../../utils/safeLogger';
+import { formatDate } from '../../utils/date';
 import Alert from '../ui/Alert';
 import { Button } from '../ui/Button';
 import { ConfirmationModal } from '../ui/ConfirmationModal';
@@ -109,6 +110,10 @@ export default function WorkflowActionPanel({
   const [questionnaireResponses, setQuestionnaireResponses] = useState({});
   const [questionnaireComments, setQuestionnaireComments] = useState({});
   const [decisionForm, setDecisionForm] = useState({ decision: 'accepted', decision_source: 'mixed_editorial_decision', comments_for_author: '', internal_notes: '' });
+  const [pendingDecisionConflict, setPendingDecisionConflict] = useState(null);
+  const [pendingReviewPolicy, setPendingReviewPolicy] = useState('keep_open');
+  const [pendingReviewOverrideReason, setPendingReviewOverrideReason] = useState('');
+  const [decisionIdempotencyKey, setDecisionIdempotencyKey] = useState(() => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`);
   const [postForm, setPostForm] = useState({ action_type: 'correction', reason: '', notice_text: '' });
   const [files, setFiles] = useState({
     plagiarism_report: null,
@@ -256,6 +261,39 @@ export default function WorkflowActionPanel({
     }
   };
 
+  const submitEditorialDecision = async (policy = null, overrideReason = null) => {
+    setBusyAction('final-decision');
+    try {
+      const versionId = Number(article.current_version_id || article.versions?.[0]?.id);
+      await api.post(`/admin/lifecycle/articles/${article.id}/editorial-decisions`, {
+        article_version_id: versionId,
+        decision: decisionForm.decision,
+        decision_source: decisionForm.decision_source,
+        author_comments: decisionForm.comments_for_author || null,
+        internal_notes: decisionForm.internal_notes || null,
+        pending_review_policy: policy,
+        pending_review_override_reason: overrideReason,
+      }, { headers: { 'Idempotency-Key': decisionIdempotencyKey } });
+      toast('Final decision recorded.', 'success');
+      setPendingDecisionConflict(null);
+      setPendingReviewOverrideReason('');
+      setDecisionIdempotencyKey(globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`);
+      await onWorkflowChanged();
+    } catch (err) {
+      const data = err?.response?.data;
+      if (err?.response?.status === 409 && data?.code === 'PENDING_REVIEWS_REQUIRE_CONFIRMATION') {
+        setConfirmAction(null);
+        setPendingDecisionConflict(data);
+      } else {
+        logError(err);
+        toast(safeApiMessage(err, 'Final editorial decision failed.'), 'error');
+      }
+    } finally {
+      setBusyAction('');
+      setConfirmAction(null);
+    }
+  };
+
   const askConfirmation = (action) => setConfirmAction(action);
 
   const buildFormData = (payload, fileMap = {}) => {
@@ -381,7 +419,7 @@ export default function WorkflowActionPanel({
   }, [canRequestTransfer, article?.id]);
 
   const showSubEditorAction = inScope('sub-editor-recommendation') && isSubEditor && mySubEditorAssignment;
-  const showReviewerAction = inScope('reviewers') && isReviewer && myReviewerAssignment;
+  const showReviewerAction = inScope('reviewers', 'reviewer-review') && isReviewer && myReviewerAssignment;
   const showCompletedProduction = inScope('copy-editing') && completedProductionAssignment;
   const hasAnyAction = canScreen || canRespondTransferRequest || canAssignSubEditor || showReviewerWorkspace || showSubEditorAction
     || showReviewerAction || canFinalDecision || canAuthorFinalReview || canShowProductionAssignment || canCompleteProduction
@@ -397,6 +435,7 @@ export default function WorkflowActionPanel({
         'editorial-decision': 'Editorial Decision Actions',
         'sub-editor-recommendation': 'Sub Editor Actions',
         reviewers: 'Reviewer Actions',
+        'reviewer-review': 'My Review',
         'final-editorial-decision': 'Final Editorial Decision',
         'copy-editing': 'Copy Editing Actions',
         proofreading: 'Proofreading Actions',
@@ -807,6 +846,11 @@ export default function WorkflowActionPanel({
               </>
             ) : (
               <>
+                {(article.editorial_decisions || []).length > 0 && (
+                  <Alert tone="info" title="Editorial decision recorded">
+                    An editorial decision has already been recorded for this version. You may still submit this review for the editorial record.
+                  </Alert>
+                )}
                 {!hasQuestionnaireFinalDecision && (
                   <Field label="Recommendation" required>
                     <Select value={reviewForm.recommendation} onChange={(event) => setReviewForm({ ...reviewForm, recommendation: event.target.value })}>
@@ -964,7 +1008,7 @@ export default function WorkflowActionPanel({
                     : 'This will request a revision from the author and move the manuscript into the revision stage.',
                 confirmText: 'Record Decision',
                 variant: decisionForm.decision === 'rejected' ? 'danger' : 'primary',
-	                run: () => runAction('final-decision', () => api.post(`/admin/articles/${article.id}/final-decision`, decisionForm), 'Final decision recorded.'),
+	                run: () => submitEditorialDecision(),
 	              });
 	              }}
             >
@@ -1221,6 +1265,41 @@ export default function WorkflowActionPanel({
         onCancel={() => setConfirmAction(null)}
         onConfirm={() => confirmAction?.run()}
       />
+      <ConfirmationModal
+        isOpen={Boolean(pendingDecisionConflict)}
+        title="Pending reviewer submissions"
+        message="Some accepted reviewers have not yet submitted their reviews. Choose how these pending assignments should be handled before the editorial decision is finalized."
+        confirmText={pendingReviewPolicy === 'keep_open' ? 'Proceed and Keep Open' : 'Proceed and Close Pending'}
+        variant={pendingReviewPolicy === 'close_pending' ? 'danger' : 'primary'}
+        isLoading={busyAction === 'final-decision'}
+        onCancel={() => { setPendingDecisionConflict(null); setPendingReviewOverrideReason(''); }}
+        onConfirm={() => pendingReviewOverrideReason.trim()
+          ? submitEditorialDecision(pendingReviewPolicy, pendingReviewOverrideReason)
+          : toast('A reason for proceeding without pending reviews is required.', 'error')}
+      >
+        <div className="space-y-4">
+          <p className="text-sm font-semibold text-[var(--foreground)]">{pendingDecisionConflict?.pending_review_count || 0} pending reviewer assignment(s)</p>
+          <ul className="space-y-2 text-sm text-[var(--muted)]">
+            {(pendingDecisionConflict?.pending_reviews || []).map((review) => (
+              <li key={review.assignment_id} className="rounded-md border border-[var(--border)] p-2">
+                {review.reviewer_display_name} · {labelize(review.status)} · {review.version_label}
+                {review.due_at ? ` · Due ${formatDate(review.due_at)}` : ''}
+                {review.last_reminded_at ? ` · Last reminded ${formatDate(review.last_reminded_at)}` : ''}
+              </li>
+            ))}
+          </ul>
+          <Field label="Pending review policy" required>
+            <Select value={pendingReviewPolicy} onChange={(event) => setPendingReviewPolicy(event.target.value)}>
+              <option value="keep_open">Proceed and Keep Pending Reviews Open</option>
+              <option value="close_pending">Proceed and Close Pending Reviews</option>
+            </Select>
+          </Field>
+          <Field label="Reason for proceeding without pending reviews" required>
+            <Textarea value={pendingReviewOverrideReason} onChange={(event) => setPendingReviewOverrideReason(event.target.value)} rows={3} placeholder="Sufficient reviews were received to make the editorial decision." />
+          </Field>
+          {!pendingReviewOverrideReason.trim() && <p className="text-xs font-medium text-rose-600">A reason is required before proceeding.</p>}
+        </div>
+      </ConfirmationModal>
     </WorkflowSection>
   );
 }
