@@ -945,6 +945,17 @@ export default function WorkflowActionPanel({
                 {fileInput('reviewed_manuscript', 'Reviewed Manuscript')}
                 <Button
                   type="button"
+                  variant="secondary"
+                  icon={FileCheck2}
+                  isLoading={busyAction === 'save-review-draft'}
+                  onClick={() => runAction('save-review-draft', () => api.put(`/admin/lifecycle/reviewer-assignments/${myReviewerAssignment.id}/draft`, reviewSubmissionPayload(), {
+                    headers: { 'Idempotency-Key': globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}` },
+                  }), 'Review draft saved.')}
+                >
+                  Save Draft
+                </Button>
+                <Button
+                  type="button"
                   icon={Send}
                   isLoading={busyAction === 'submit-review'}
 	                  onClick={() => {

@@ -179,6 +179,8 @@ test('reviewer portal renders assignment-scoped invitation and review actions', 
   assert.match(source, /assignment=\$\{assignment\.id\}/);
   assert.match(source, /assignment\.capabilities\?\.start_review/);
   assert.match(source, /assignment\.capabilities\?\.continue_review/);
+  assert.match(source, /reviewer-assignments\/\$\{assignment\.id\}\/start/);
+  assert.match(source, />Start Review</);
 });
 
 test('pending-review decision conflict uses an accessible policy modal and stable idempotency key', () => {
@@ -199,6 +201,8 @@ test('reviewer workspace deep links to the exact assignment version and shows th
   assert.match(page, /requestedAssignmentId=\{searchParams\.get\('assignment'\)\}/);
   assert.match(page, /actionScope="reviewer-review"/);
   assert.match(panel, /You may still submit this review for the editorial record/);
+  assert.match(panel, /save-review-draft/);
+  assert.match(panel, />\s*Save Draft\s*</);
 });
 
 test('copy editor workspace starts with dedicated accepted manuscript information and has no revision tabs', () => {

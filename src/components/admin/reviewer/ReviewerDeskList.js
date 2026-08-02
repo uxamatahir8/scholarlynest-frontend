@@ -150,6 +150,21 @@ export default function ReviewerDeskList({
     }
   };
 
+  const startReview = async (assignment, workflowHref) => {
+    setBusyAssignmentId(assignment.id);
+    setError('');
+    try {
+      await api.post(`/admin/lifecycle/reviewer-assignments/${assignment.id}/start`, {}, {
+        headers: { 'Idempotency-Key': `review-start-${assignment.id}` },
+      });
+      router.push(workflowHref);
+    } catch (err) {
+      logError('Failed to start reviewer assignment', err);
+      setError(safeApiMessage(err, 'Unable to start this review.'));
+      setBusyAssignmentId(null);
+    }
+  };
+
   const start = meta.total === 0 ? 0 : (meta.current_page - 1) * meta.per_page + 1;
   const end = Math.min(meta.current_page * meta.per_page, meta.total);
 
@@ -299,7 +314,14 @@ export default function ReviewerDeskList({
                       disabled={busyAssignmentId !== null}
                       onClick={() => { setDeclineAssignment(assignment); setDeclineReason(''); }}
                     >Decline Invitation</Button>}
-                    {(assignment.capabilities?.start_review || assignment.capabilities?.continue_review || assignment.capabilities?.view_completed) && <Link
+                    {assignment.capabilities?.start_review && !observerMode && <Button
+                      type="button"
+                      size="sm"
+                      isLoading={busyAssignmentId === assignment.id}
+                      disabled={busyAssignmentId !== null}
+                      onClick={() => startReview(assignment, workflowHref)}
+                    >Start Review</Button>}
+                    {(assignment.capabilities?.continue_review || assignment.capabilities?.view_completed) && <Link
                       href={workflowHref}
                       className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                     >
