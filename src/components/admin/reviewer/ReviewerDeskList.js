@@ -293,7 +293,7 @@ export default function ReviewerDeskList({
                       <p className="text-xs font-medium text-amber-700 dark:text-amber-400">An editorial decision has already been recorded for this version. You may still submit this review for the editorial record.</p>
                     )}
                     <DeskRecordMetadata
-                      trackingCode={article.tracking_code}
+                      trackingCode={[article.tracking_code, assignment.version_label].filter(Boolean).join(' – ')}
                       assigneeName={assignment.assignee?.name || observerUser?.name}
                       dueDate={assignment.due_date}
                     />

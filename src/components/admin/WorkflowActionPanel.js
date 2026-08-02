@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRightLeft, Bell, Check, CheckCircle2, ClipboardCheck, FileCheck2, Loader2, Send, Upload, UserPlus, XCircle } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRightLeft, Bell, Check, CheckCircle2, ClipboardCheck, FileCheck2, Loader2, MessageSquareText, Send, Upload, UserPlus, XCircle } from 'lucide-react';
 import api from '../../utils/api';
 import { safeApiMessage } from '../../utils/safeErrors';
 import { logError } from '../../utils/safeLogger';
@@ -720,6 +721,15 @@ export default function WorkflowActionPanel({
                                   {['accepted', 'in_progress'].includes(reviewer.state) && <span className="text-xs font-bold text-amber-700">Review In Progress</span>}
                                   {canManageReviewers && cardAction === 'reminder' && <Button type="button" size="sm" variant="secondary" icon={Bell} isLoading={busyAction === `remind-${assignment.id}`} onClick={() => askConfirmation({ key: `remind-${assignment.id}`, title: 'Send reviewer reminder?', message: 'This sends a reminder for the current revision without changing historical assignments.', confirmText: 'Send Reminder', variant: 'primary', run: () => runAction(`remind-${assignment.id}`, () => api.post(`/admin/reviewer-assignments/${assignment.id}/remind`), 'Reviewer reminder sent.') })}>Send Reminder</Button>}
                                 </div>
+                              )}
+                              {assignment?.status === 'completed' && (
+                                <Link
+                                  href={`/admin/articles/${article.id}/workflow?version=${assignment.article_version_id}&assignment=${assignment.id}`}
+                                  className="mt-2 inline-flex min-h-9 w-fit items-center justify-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] px-3 py-2 text-sm font-semibold text-[var(--foreground)] transition-colors hover:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                                >
+                                  <MessageSquareText className="h-4 w-4" aria-hidden="true" />
+                                  Open Comments
+                                </Link>
                               )}
                             </div>
                           </div>

@@ -35,8 +35,15 @@ export function assignmentQueueItem(assignment, actionLabel = 'Open Task') {
   if (assignment.primary_action === 'accept_decline') {
     href = '/admin/reviewer?status=pending';
   } else if (['start_review', 'continue_review', 'view_submitted_review'].includes(assignment.primary_action)) {
-    href = '/admin/reviewer';
+    href = article.id && assignment.article_version_id
+      ? `/admin/articles/${article.id}/workflow?version=${assignment.article_version_id}&assignment=${assignment.id}`
+      : '/admin/reviewer';
   }
+
+  const baseTrackingCode = article.latest_tracking_code || article.tracking_code;
+  const trackingCode = baseTrackingCode && assignment.version_label
+    ? `${baseTrackingCode} – ${assignment.version_label}`
+    : baseTrackingCode;
 
   return {
     id: assignment.id,
@@ -46,7 +53,7 @@ export function assignmentQueueItem(assignment, actionLabel = 'Open Task') {
     dueDate: assignment.due_date,
     assigneeName: assignment.assignee?.name,
     href,
-    trackingCode: article.latest_tracking_code || article.tracking_code,
+    trackingCode,
     actionLabel: primaryActionLabel,
   };
 }

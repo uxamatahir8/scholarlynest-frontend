@@ -477,7 +477,7 @@ export default function ArticleDetail() {
                         height="990"
                         loading="eager"
                         decoding="async"
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.015]"
+                        className="h-full w-full object-contain"
                       />
                     </div>
                     <figcaption className="p-4">
@@ -505,7 +505,7 @@ export default function ArticleDetail() {
                     <img 
                       src={article.magazine.cover_image_url || getFullImageUrl(article.magazine.cover_image)}
                       alt={article.magazine.title} 
-                      className="w-full h-full object-cover"
+                      className="h-full w-full object-contain"
                     />
                   </div>
                 )}

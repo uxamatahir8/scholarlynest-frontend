@@ -924,8 +924,8 @@ function VersionWorkspace({ tab, article, user, hasRole, hasPermission, observer
   };
 
   useEffect(() => {
-    setActiveSection(firstVisibleSidebarKey(tab));
-  }, [tab.key]);
+    setActiveSection(requestedSection || firstVisibleSidebarKey(tab));
+  }, [tab.key, requestedSection]);
 
   const content = (() => {
     if (activeSection === 'manuscript-information') {

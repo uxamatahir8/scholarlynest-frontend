@@ -192,6 +192,25 @@ test('reviewer home dashboard routes pending invitations to the response control
   assert.match(dashboard, /priority=\{isReviewerDashboard\}/);
 });
 
+test('completed reviewer cards open the exact version review comments', () => {
+  const actions = readFileSync(new URL('../src/components/admin/WorkflowActionPanel.js', import.meta.url), 'utf8');
+  const workspace = readFileSync(new URL('../src/app/admin/articles/[id]/workflow/page.js', import.meta.url), 'utf8');
+
+  assert.match(actions, /assignment\?\.status === 'completed'/);
+  assert.match(actions, /workflow\?version=\$\{assignment\.article_version_id\}&assignment=\$\{assignment\.id\}/);
+  assert.match(actions, />\s*Open Comments\s*</);
+  assert.match(workspace, /setActiveSection\(requestedSection \|\| firstVisibleSidebarKey\(tab\)\)/);
+});
+
+test('reviewer dashboard identifies and opens the exact assigned revision', () => {
+  const dashboardUtils = readFileSync(new URL('../src/components/admin/dashboard/dashboardUtils.js', import.meta.url), 'utf8');
+  const reviewerDesk = readFileSync(new URL('../src/components/admin/reviewer/ReviewerDeskList.js', import.meta.url), 'utf8');
+
+  assert.match(dashboardUtils, /`\$\{baseTrackingCode\} – \$\{assignment\.version_label\}`/);
+  assert.match(dashboardUtils, /workflow\?version=\$\{assignment\.article_version_id\}&assignment=\$\{assignment\.id\}/);
+  assert.match(reviewerDesk, /trackingCode=\{\[article\.tracking_code, assignment\.version_label\]/);
+});
+
 test('pending-review decision conflict uses an accessible policy modal and stable idempotency key', () => {
   const source = readFileSync(new URL('../src/components/admin/WorkflowActionPanel.js', import.meta.url), 'utf8');
   assert.match(source, /PENDING_REVIEWS_REQUIRE_CONFIRMATION/);

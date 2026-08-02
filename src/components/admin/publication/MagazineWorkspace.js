@@ -195,9 +195,9 @@ export default function MagazineWorkspace({ publicationType = 'magazine' }) {
           <div className="divide-y divide-[var(--border)]">
             {magazines.map((magazine) => (
               <article key={magazine.id} className="grid gap-4 p-5 md:grid-cols-[96px_minmax(0,1fr)_auto] md:items-center">
-                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]">
+                <div className="flex aspect-[1/1.414] w-24 items-center justify-center overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]">
                   {magazine.main_image_url || magazine.cover_image_url ? (
-                    <img src={magazine.main_image_url || magazine.cover_image_url} alt="" className="h-full w-full object-cover" />
+                    <img src={magazine.main_image_url || magazine.cover_image_url} alt="" className="h-full w-full object-contain" />
                   ) : (
                     <ImageIcon className="h-7 w-7 text-[var(--muted)]" aria-hidden="true" />
                   )}

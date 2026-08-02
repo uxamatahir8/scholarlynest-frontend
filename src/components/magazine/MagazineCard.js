@@ -20,9 +20,9 @@ export default function MagazineCard({ title, slug, cover_image, cover_image_url
 
   return (
     <article className="group grid min-w-0 gap-5 border-t border-[var(--border)] pt-5 sm:grid-cols-[150px_1fr] lg:block">
-      <Link href={`/${prefix}/${slug}/about-and-overview`} className="relative block aspect-[4/3] w-full max-w-[220px] overflow-hidden rounded-md bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-zinc-900 sm:max-w-none" aria-label={`View ${title}`}>
+      <Link href={`/${prefix}/${slug}/about-and-overview`} className="relative block aspect-[1/1.414] w-full max-w-[220px] overflow-hidden rounded-md bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-zinc-900 sm:max-w-none" aria-label={`View ${title}`}>
         {(cover_image_url || cover_image) ? (
-          <img src={cover_image_url || getFullImageUrl(cover_image)} alt={`${title} cover`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" loading="lazy" />
+          <img src={cover_image_url || getFullImageUrl(cover_image)} alt={`${title} cover`} className="h-full w-full object-contain" loading="lazy" />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-zinc-100 dark:bg-zinc-900">
             <BookOpen className="h-9 w-9 text-zinc-350 dark:text-zinc-650" aria-hidden="true" />

@@ -719,7 +719,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
                             <img 
                               src={art.featured_image_url || art.magazine?.cover_image_url || getFullImageUrl(art.featured_image || art.magazine?.cover_image)}
                               alt="" 
-                              className="w-full h-full object-cover" 
+                              className={`h-full w-full ${(art.featured_image_url || art.featured_image) ? 'object-cover' : 'object-contain'}`}
                             />
                           ) : (
                             <FileText className="w-5 h-5 text-zinc-400" />
