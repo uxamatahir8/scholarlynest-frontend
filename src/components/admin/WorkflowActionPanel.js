@@ -35,7 +35,7 @@ import {
   workflowScreeningSchema,
   workflowSuggestedReviewerSchema,
 } from '../../lib/validation';
-import { REVIEWER_WORKSPACE_SECTIONS } from './workflow/workspaceManifest.mjs';
+import { REVIEWER_WORKSPACE_SECTIONS, reviewerCardAction, reviewerInvitationScope, versionNeedsEditorialScreening } from './workflow/workspaceManifest.mjs';
 
 const recommendationOptions = [
   { value: 'accept', label: 'Accept' },
@@ -341,7 +341,10 @@ export default function WorkflowActionPanel({
 
   const status = article.status;
   const inScope = (...scopes) => !actionScope || scopes.includes(actionScope);
-  const canScreen = inScope('editorial-decision') && canEditorial && ['submitted', 'pending', 'screening'].includes(status);
+  const canScreen = inScope('editorial-decision')
+    && canEditorial
+    && ['submitted', 'pending', 'screening'].includes(status)
+    && versionNeedsEditorialScreening(article);
   const pendingTransferRequest = article?.pending_transfer_request;
   const publicationLabel = article?.publication_type === 'journal' || article?.magazine?.publication_type === 'journal' ? 'Journal' : 'Magazine';
   const canRequestTransfer = Boolean(article?.can_request_transfer) && canScreen;
@@ -352,6 +355,7 @@ export default function WorkflowActionPanel({
   const showReviewerWorkspace = actionScope === 'reviewers';
   const reviewerLifecycleAllowsManagement = ['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress', 'resubmitted'].includes(status);
   const canManageReviewers = showReviewerWorkspace && (reviewerCanManage ?? (canAssignReviewer && reviewerLifecycleAllowsManagement));
+  const reviewerCapabilities = article?.reviewer_capabilities || {};
   const canShowReviewerAssignment = showReviewerWorkspace;
   const canFinalDecision = inScope('final-editorial-decision') && canEditorial && REVIEWABLE_STATUSES.has(status);
   const canShowPublish = !actionScope && canPublish && PUBLISHABLE_STATUSES.has(status);
@@ -550,14 +554,15 @@ export default function WorkflowActionPanel({
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         {allReviewersToShow.map((reviewer) => {
                           const assignment = reviewer.existingAssignment;
-                          const showReminder = assignment && reviewer.state === 'invited';
-                          const showResend = assignment && reviewer.state === 'declined';
+                          const cardAction = reviewerCardAction(reviewer, reviewerCapabilities);
+                          const previousReview = reviewer.previous_review;
                           return (
                           <div key={reviewer.isManual ? 'manual-' + reviewer.id : 'suggested-' + (reviewer.id || reviewer.email)} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 flex flex-col justify-between">
                             <div className="flex flex-col gap-2">
                               <div>
                                 <p className="text-sm font-bold text-[var(--foreground)]">{reviewer.name}</p>
                                 <p className="text-xs text-[var(--muted)] break-all">{reviewer.email}{reviewer.affiliation ? ` · ${reviewer.affiliation}` : ''}</p>
+                                {previousReview && <p className="mt-1 text-xs font-semibold text-[var(--muted)]">Completed {previousReview.label}</p>}
                               </div>
                               {reviewer.isManual ? (
                                 <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -569,7 +574,7 @@ export default function WorkflowActionPanel({
                                       {reviewer.state === 'completed' ? 'Review Completed' : labelize(reviewer.state)}
                                     </span>
                                   )}
-                                  {canManageReviewers && showReminder && (
+                                  {canManageReviewers && cardAction === 'resend' && (
                                     <Button
                                       type="button"
                                       size="sm"
@@ -579,7 +584,7 @@ export default function WorkflowActionPanel({
                                       onClick={() => {
                                         askConfirmation({
                                           key: `remind-${assignment.id}`,
-                                          title: 'Resend reviewer invitation?',
+                                          title: 'Reinvite reviewer?',
                                           message: 'This will resend the existing secure invitation without creating a duplicate assignment.',
                                           confirmText: 'Resend Invite',
                                           variant: 'primary',
@@ -590,7 +595,7 @@ export default function WorkflowActionPanel({
                                       Resend Invite
                                     </Button>
                                   )}
-                                  {canManageReviewers && showResend && (
+                                  {canManageReviewers && cardAction === 'reinvite' && (
                                     <Button
                                       type="button"
                                       size="sm"
@@ -609,13 +614,15 @@ export default function WorkflowActionPanel({
                                           message: 'This will send a fresh secure invitation to the reviewer who previously declined.',
                                           confirmText: 'Reinvite',
                                           variant: 'primary',
-                                          run: () => runAction(`resend-${assignment.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, invitation), 'Reviewer invitation resent.'),
+                                          run: () => runAction(`resend-${assignment.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, reviewerInvitationScope(article, invitation)), 'Reviewer invitation resent.'),
                                         });
                                       }}
                                     >
                                       Reinvite
                                     </Button>
                                   )}
+                                  {['accepted', 'in_progress'].includes(reviewer.state) && <span className="text-xs font-bold text-amber-700">Review In Progress</span>}
+                                  {canManageReviewers && cardAction === 'reminder' && <Button type="button" size="sm" variant="secondary" icon={Bell} isLoading={busyAction === `remind-${assignment.id}`} onClick={() => askConfirmation({ key: `remind-${assignment.id}`, title: 'Send reviewer reminder?', message: 'This sends a reminder for the current revision without changing historical assignments.', confirmText: 'Send Reminder', variant: 'primary', run: () => runAction(`remind-${assignment.id}`, () => api.post(`/admin/reviewer-assignments/${assignment.id}/remind`), 'Reviewer reminder sent.') })}>Send Reminder</Button>}
                                 </div>
                               ) : (
                                 <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -624,7 +631,7 @@ export default function WorkflowActionPanel({
                                       {reviewer.state === 'completed' ? 'Review Completed' : labelize(reviewer.state)}
                                     </span>
                                   )}
-                                  {canManageReviewers && showReminder && (
+                                  {canManageReviewers && cardAction === 'resend' && (
                                     <Button
                                       type="button"
                                       size="sm"
@@ -645,32 +652,34 @@ export default function WorkflowActionPanel({
                                       Resend Invite
                                     </Button>
                                   )}
-                                  {canManageReviewers && (!reviewer.existingAssignment || showResend) && (
+                                  {canManageReviewers && ['invite', 'invite_revision', 'reinvite'].includes(cardAction) && (
                                     <Button
                                       type="button"
                                       size="sm"
                                       icon={UserPlus}
-                                      isLoading={busyAction === `${showResend ? 'resend' : 'suggested'}-${reviewer.id}`}
+                                      isLoading={busyAction === `${cardAction}-${reviewer.id}`}
                                       onClick={() => {
                                         const revisionInvitation = { name: reviewer.name, email: reviewer.email, affiliation: reviewer.affiliation || '' };
                                         if (reviewer.previously_completed_review) {
                                           if (!validateAction(workflowManualReviewerSchema, revisionInvitation)) return;
                                         } else if (!validateAction(workflowSuggestedReviewerSchema, { suggested_preference_id: reviewer.id })) return;
                                         askConfirmation({
-                                          key: `${showResend ? 'resend' : 'suggested'}-${reviewer.id}`,
-                                          title: showResend ? 'Resend reviewer invitation?' : reviewer.previously_completed_review ? 'Invite reviewer for this revision?' : 'Invite suggested reviewer?',
-                                          message: showResend
+                                          key: `${cardAction}-${reviewer.id}`,
+                                          title: cardAction === 'reinvite' ? 'Reinvite reviewer?' : reviewer.previously_completed_review ? 'Invite reviewer for this revision?' : 'Invite suggested reviewer?',
+                                          message: cardAction === 'reinvite'
                                             ? 'This will send a fresh secure invitation to the reviewer who previously declined.'
                                             : 'This will send a secure review invitation to the suggested reviewer.',
-                                          confirmText: showResend ? 'Reinvite' : 'Send Invitation',
+                                          confirmText: cardAction === 'reinvite' ? 'Reinvite' : 'Send Invitation',
                                           variant: 'primary',
-                                          run: () => runAction(`${showResend ? 'resend' : 'suggested'}-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, reviewer.previously_completed_review ? revisionInvitation : { suggested_preference_id: reviewer.id }), showResend ? 'Reviewer invitation resent.' : 'Reviewer invitation sent.'),
+                                          run: () => runAction(`${cardAction}-${reviewer.id}`, () => api.post(`/admin/articles/${article.id}/assign-reviewer`, reviewerInvitationScope(article, reviewer.previously_completed_review || cardAction === 'reinvite' ? revisionInvitation : { suggested_preference_id: reviewer.id })), cardAction === 'reinvite' ? 'Reviewer reinvited.' : 'Reviewer invitation sent.'),
                                         });
                                       }}
                                     >
-                                      {showResend ? 'Reinvite' : reviewer.previously_completed_review ? 'Invite for Revision Review' : 'Invite'}
+                                      {cardAction === 'reinvite' ? 'Reinvite' : reviewer.previously_completed_review ? 'Invite for Revision Review' : 'Invite'}
                                     </Button>
                                   )}
+                                  {['accepted', 'in_progress'].includes(reviewer.state) && <span className="text-xs font-bold text-amber-700">Review In Progress</span>}
+                                  {canManageReviewers && cardAction === 'reminder' && <Button type="button" size="sm" variant="secondary" icon={Bell} isLoading={busyAction === `remind-${assignment.id}`} onClick={() => askConfirmation({ key: `remind-${assignment.id}`, title: 'Send reviewer reminder?', message: 'This sends a reminder for the current revision without changing historical assignments.', confirmText: 'Send Reminder', variant: 'primary', run: () => runAction(`remind-${assignment.id}`, () => api.post(`/admin/reviewer-assignments/${assignment.id}/remind`), 'Reviewer reminder sent.') })}>Send Reminder</Button>}
                                 </div>
                               )}
                             </div>
@@ -698,7 +707,7 @@ export default function WorkflowActionPanel({
 
                   <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
                     <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{REVIEWER_WORKSPACE_SECTIONS[2]}</p>
-                    {canManageReviewers ? <><div className="grid gap-3 md:grid-cols-3">
+                    {canManageReviewers && reviewerCapabilities.manual_invitation ? <><div className="grid gap-3 md:grid-cols-3">
                       <Field label="Name"><Input value={manualReviewer.name} onChange={(event) => setManualReviewer({ ...manualReviewer, name: event.target.value })} /></Field>
 	                    <Field label="Email"><Input type="text" value={manualReviewer.email} onChange={(event) => setManualReviewer({ ...manualReviewer, email: event.target.value })} /></Field>
                       <Field label="Affiliation"><Input value={manualReviewer.affiliation} onChange={(event) => setManualReviewer({ ...manualReviewer, affiliation: event.target.value })} /></Field>
@@ -717,13 +726,13 @@ export default function WorkflowActionPanel({
                         message: 'This will send a secure review invitation if backend conflict checks pass.',
                         confirmText: 'Send Invitation',
                         variant: 'primary',
-	                        run: () => runAction('manual-reviewer', () => api.post(`/admin/articles/${article.id}/assign-reviewer`, manualReviewer), 'Reviewer invitation sent.'),
+                        run: () => runAction('manual-reviewer', () => api.post(`/admin/articles/${article.id}/assign-reviewer`, reviewerInvitationScope(article, manualReviewer)), 'Reviewer invitation sent.'),
 	                      });
 	                      }}
                     >
                       {reviewerAssignmentForEmail(manualReviewer.email)?.invitation_state ? labelize(reviewerAssignmentForEmail(manualReviewer.email).invitation_state) : 'Send Manual Invitation'}
                     </Button>
-                    </> : <p className="text-sm text-[var(--muted)]">Manual invitation is unavailable for this version or your current permissions.</p>}
+                    </> : <p className="text-sm text-[var(--muted)]">{article?.reviewer_disabled_reason?.message || 'Manual invitation is unavailable because this review round is not open.'}</p>}
                   </div>
                 </div>
               )}

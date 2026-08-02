@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { acceptedManuscriptView, firstVisibleSidebarKey, initialWorkspaceTab, REVIEWER_WORKSPACE_SECTIONS, scopeArticleToVersion, visibleWorkspaceTabs, withVersionReviewerData } from '../src/components/admin/workflow/workspaceManifest.mjs';
+import { readFileSync } from 'node:fs';
+import { acceptedManuscriptView, firstVisibleSidebarKey, initialWorkspaceTab, REVIEWER_WORKSPACE_SECTIONS, reviewerCardAction, reviewerInvitationScope, scopeArticleToVersion, versionNeedsEditorialScreening, visibleWorkspaceTabs, withVersionReviewerData, workspaceVersionForTab } from '../src/components/admin/workflow/workspaceManifest.mjs';
 
 test('workspace renders backend tab order and hides inaccessible metadata', () => {
   const tabs = visibleWorkspaceTabs({ tabs: [
     { key: 'version-1', label: 'Initial Submission (ART-2026-001)', type: 'article_version' },
-    { key: 'version-2', label: 'ART-2026-001 – R2 (Accepted)', type: 'article_version' },
+    { key: 'version-2', version_id: 2, revision_number: 1, label: 'ART-2026-001 – R1 (Accepted)', heading: 'R1 (ART-2026-001)', type: 'article_version' },
     { key: 'hidden', label: 'Hidden', visible: false },
     { key: 'final-editorial-decision', label: 'Final Editorial Decision' },
     { key: 'communication', label: 'Communication' },
@@ -13,6 +14,21 @@ test('workspace renders backend tab order and hides inaccessible metadata', () =
   assert.deepEqual(tabs.map((tab) => tab.key), ['version-1', 'version-2', 'final-editorial-decision', 'communication']);
   assert.equal(initialWorkspaceTab(tabs), 'version-1');
   assert.equal(initialWorkspaceTab(tabs, true), 'communication');
+});
+
+test('initial, R1, and R2 remain distinct authoritative version tabs', () => {
+  const tabs = visibleWorkspaceTabs({ tabs: [
+    { key: 'version-40', version_id: 40, revision_number: 0, label: 'Initial Submission (SN-2026-000004)', heading: 'Initial Submission (SN-2026-000004)', type: 'article_version' },
+    { key: 'version-42', version_id: 42, revision_number: 1, label: 'SN-2026-000004 – R1', heading: 'R1 (SN-2026-000004)', type: 'article_version' },
+    { key: 'version-47', version_id: 47, revision_number: 2, label: 'SN-2026-000004 – R2 (Accepted)', heading: 'R2 (SN-2026-000004)', type: 'article_version', is_accepted: true },
+  ] });
+
+  assert.deepEqual(tabs.map(({ key, version_id, label, heading }) => ({ key, version_id, label, heading })), [
+    { key: 'version-40', version_id: 40, label: 'Initial Submission (SN-2026-000004)', heading: 'Initial Submission (SN-2026-000004)' },
+    { key: 'version-42', version_id: 42, label: 'SN-2026-000004 – R1', heading: 'R1 (SN-2026-000004)' },
+    { key: 'version-47', version_id: 47, label: 'SN-2026-000004 – R2 (Accepted)', heading: 'R2 (SN-2026-000004)' },
+  ]);
+  assert.equal(tabs.filter((tab) => tab.label.endsWith('(Accepted)')).length, 1);
 });
 
 test('selected article version never merges workflow records from another version', () => {
@@ -39,6 +55,35 @@ test('selected article version never merges workflow records from another versio
   assert.deepEqual(scoped.reviewer_assignments.map((item) => item.id), [6]);
 });
 
+test('R1 and R2 tabs resolve content by their exact persisted version IDs', () => {
+  const versions = [
+    { id: 91, revision_number: 2, change_summary: 'R2 data' },
+    { id: 44, revision_number: 1, change_summary: 'R1 data' },
+  ];
+  const r1 = workspaceVersionForTab(versions, { key: 'version-44', version_id: 44, heading: 'R1 (SN-2026-000004)' });
+  const r2 = workspaceVersionForTab(versions, { key: 'version-91', version_id: 91, heading: 'R2 (SN-2026-000004)' });
+
+  assert.equal(r1.id, 44);
+  assert.equal(r1.change_summary, 'R1 data');
+  assert.equal(r1.workspace_heading, 'R1 (SN-2026-000004)');
+  assert.equal(r2.id, 91);
+  assert.equal(r2.change_summary, 'R2 data');
+  assert.equal(r2.workspace_heading, 'R2 (SN-2026-000004)');
+});
+
+test('frontend revision display utility does not derive a revision from version position', () => {
+  const source = readFileSync(new URL('../src/components/admin/workflow/workflowDisplay.js', import.meta.url), 'utf8');
+  assert.equal(source.includes('versionNumber - 1'), false);
+  assert.equal(source.includes('index + 1'), false);
+  assert.equal(source.includes('index + 2'), false);
+});
+
+test('reviewers panel receives the exact manifest-selected version', () => {
+  const source = readFileSync(new URL('../src/app/admin/articles/[id]/workflow/page.js', import.meta.url), 'utf8');
+  assert.match(source, /<ReviewersPanel article=\{scopedArticle\} version=\{selectedVersion\} versionTab=\{tab\}/);
+  assert.doesNotMatch(source, /<ReviewersPanel article=\{scopedArticle\} version=\{version\}/);
+});
+
 test('only the accepted revision receives accepted version state', () => {
   const article = { status: 'accepted', files: [], editorial_decisions: [], sub_editor_assignments: [], reviewer_assignments: [], production_assignments: [] };
   const initial = scopeArticleToVersion(article, { id: 1, status_snapshot: 'submitted' }, { status: { code: 'submitted', label: 'Submitted' }, is_accepted: false });
@@ -47,6 +92,26 @@ test('only the accepted revision receives accepted version state', () => {
   assert.equal(initial.is_accepted_version, false);
   assert.equal(revision.status, 'accepted');
   assert.equal(revision.is_accepted_version, true);
+});
+
+test('editorial screening is offered once for the pending initial submission only', () => {
+  const base = { current_version_id: 1, files: [], editorial_decisions: [], sub_editor_assignments: [], reviewer_assignments: [], production_assignments: [] };
+  const pendingInitial = scopeArticleToVersion(base, { id: 1, revision_number: 0, parent_version_id: null, screening_status: 'pending' }, {
+    is_current: true,
+    status: { code: 'submitted', label: 'Submitted', screening: 'pending' },
+  });
+  const screenedInitial = scopeArticleToVersion(base, { id: 1, revision_number: 0, parent_version_id: null, screening_status: 'passed' }, {
+    is_current: true,
+    status: { code: 'submitted', label: 'Submitted', screening: 'passed' },
+  });
+  const revision = scopeArticleToVersion({ ...base, current_version_id: 2 }, { id: 2, revision_number: 1, parent_version_id: 1, screening_status: 'pending' }, {
+    is_current: true,
+    status: { code: 'submitted', label: 'Submitted', screening: 'pending' },
+  });
+
+  assert.equal(versionNeedsEditorialScreening(pendingInitial), true);
+  assert.equal(versionNeedsEditorialScreening(screenedInitial), false);
+  assert.equal(versionNeedsEditorialScreening(revision), false);
 });
 
 test('switching either direction selects the first visible sidebar item', () => {
@@ -62,6 +127,43 @@ test('reviewer workspace always has three sections and clears prior version data
   const next = withVersionReviewerData(prior, null);
   assert.deepEqual(next.reviewer_assignments, []);
   assert.deepEqual(next.reviewer_preferences, { suggested: [], opposed: [] });
+});
+
+test('reviewer card actions use only the selected revision assignment state', () => {
+  const capabilities = { resend: true, reinvite: true, reminder: true };
+  assert.equal(reviewerCardAction({ previously_completed_review: false }, capabilities), 'invite');
+  assert.equal(reviewerCardAction({ previously_completed_review: true }, capabilities), 'invite_revision');
+  assert.equal(reviewerCardAction({ existingAssignment: { invitation_state: 'invited' } }, capabilities), 'resend');
+  assert.equal(reviewerCardAction({ existingAssignment: { invitation_state: 'declined' } }, capabilities), 'reinvite');
+  assert.equal(reviewerCardAction({ existingAssignment: { invitation_state: 'expired' } }, capabilities), 'reinvite');
+  assert.equal(reviewerCardAction({ existingAssignment: { invitation_state: 'accepted' } }, capabilities), 'reminder');
+  assert.equal(reviewerCardAction({ existingAssignment: { invitation_state: 'in_progress' } }, capabilities), 'reminder');
+  assert.equal(reviewerCardAction({ existingAssignment: { invitation_state: 'completed' } }, capabilities), 'completed');
+});
+
+test('reviewer invitations include the selected version and open review round', () => {
+  const payload = reviewerInvitationScope({
+    versions: [{ id: 81 }],
+    reviewer_round: { review_round_id: 17, round_number: 1 },
+  }, { email: 'reviewer@example.test' });
+
+  assert.equal(payload.article_version_id, 81);
+  assert.equal(payload.review_round_id, 17);
+  assert.equal(payload.round_number, 1);
+  assert.equal(payload.email, 'reviewer@example.test');
+  assert.ok(payload.idempotency_key);
+});
+
+test('disabled manual invitation retains the backend reason and opposed reviewers stay separate', () => {
+  const article = withVersionReviewerData({}, {
+    reviewer_preferences: { suggested: [], opposed: [{ id: 9, email: 'blocked@example.test' }] },
+    reviewers: { status: 'closed', disabled_reason: { code: 'REVIEW_ROUND_NOT_OPEN', message: 'Open a review round before inviting reviewers.' } },
+    disabled_reason: { code: 'REVIEW_ROUND_NOT_OPEN', message: 'Open a review round before inviting reviewers.' },
+    capabilities: { manage: false, manual_invitation: false },
+  });
+  assert.equal(article.reviewer_disabled_reason.code, 'REVIEW_ROUND_NOT_OPEN');
+  assert.deepEqual(article.reviewer_preferences.suggested, []);
+  assert.equal(article.reviewer_preferences.opposed[0].email, 'blocked@example.test');
 });
 
 test('copy editor workspace starts with dedicated accepted manuscript information and has no revision tabs', () => {

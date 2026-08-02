@@ -45,13 +45,11 @@ export function labelize(value) {
 
 export function submissionVersionLabel(version) {
   const versionNumber = Number(version?.version_number);
-  if (versionNumber === 1) return 'Initial Submission';
-
   const revisionNumber = Number(version?.revision_number);
+  if (revisionNumber === 0 || (version?.revision_number == null && versionNumber === 1)) return 'Initial Submission';
   if (Number.isFinite(revisionNumber) && revisionNumber > 0) return `R${revisionNumber}`;
-  if (Number.isFinite(versionNumber) && versionNumber > 1) return `R${versionNumber - 1}`;
 
-  return 'Initial Submission';
+  return version?.label || (Number.isFinite(versionNumber) ? `Version ${versionNumber}` : 'Version');
 }
 
 export function hasAcceptedReviewInvitation(assignment) {

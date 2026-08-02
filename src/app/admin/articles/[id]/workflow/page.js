@@ -33,7 +33,7 @@ import {
   submissionVersionLabel,
 } from '../../../../../components/admin/workflow/workflowDisplay';
 import ArticleThreadWorkspace from '../../../../../components/admin/threads/ArticleThreadWorkspace';
-import { firstVisibleSidebarKey, initialWorkspaceTab, scopeArticleToVersion, visibleWorkspaceTabs } from '../../../../../components/admin/workflow/workspaceManifest.mjs';
+import { firstVisibleSidebarKey, initialWorkspaceTab, scopeArticleToVersion, visibleWorkspaceTabs, workspaceVersionForTab } from '../../../../../components/admin/workflow/workspaceManifest.mjs';
 import ReviewersPanel from '../../../../../components/admin/workflow/ReviewersPanel';
 import AcceptedManuscriptInformationPanel from '../../../../../components/admin/workflow/AcceptedManuscriptInformationPanel';
 
@@ -322,7 +322,7 @@ function VersionTabContent({ version, article, isLatest, user, hasRole, unassign
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3 mb-6">
         <div>
           <h3 className="text-base font-bold text-[var(--foreground)]">
-            {submissionVersionLabel(version)} {article.tracking_code && `(${article.tracking_code})`}
+            {version.workspace_heading}
           </h3>
           <p className="mt-1 text-xs text-[var(--muted)]">
             Submitted at {formatDate(version.submitted_at || version.created_at)} {version.user?.name && `by ${version.user.name}`}
@@ -904,9 +904,9 @@ function FinalFilesTab({ article }) {
 
 function VersionWorkspace({ tab, article, user, hasRole, hasPermission, observerReadonly, onChanged, toast }) {
   const [activeSection, setActiveSection] = useState(() => firstVisibleSidebarKey(tab));
-  const version = (article.versions || []).find((item) => Number(item.id) === Number(tab.version_id));
-  if (!version) return <EmptyState title="Version unavailable">This version is not accessible to your role.</EmptyState>;
-  const scopedArticle = scopeArticleToVersion(article, version, tab);
+  const selectedVersion = workspaceVersionForTab(article.versions, tab);
+  if (!selectedVersion) return <EmptyState title="Version unavailable">This version is not accessible to your role.</EmptyState>;
+  const scopedArticle = scopeArticleToVersion(article, selectedVersion, tab);
   const selectedReviewId = activeSection.startsWith('review-') ? Number(activeSection.replace('review-', '')) : null;
   const selectedReview = scopedArticle.reviewer_assignments.find((item) => Number(item.id) === selectedReviewId);
   const actionProps = {
@@ -926,7 +926,7 @@ function VersionWorkspace({ tab, article, user, hasRole, hasPermission, observer
 
   const content = (() => {
     if (activeSection === 'manuscript-information') {
-      return <VersionTabContent version={version} article={scopedArticle} isLatest={Number(article.current_version_id) === Number(version.id)} user={user} hasRole={hasRole} />;
+      return <VersionTabContent version={selectedVersion} article={scopedArticle} isLatest={Number(article.current_version_id) === Number(selectedVersion.id)} user={user} hasRole={hasRole} />;
     }
     if (activeSection === 'editorial-decision') {
       return <div className="space-y-5">{!observerReadonly && <ScopedWorkflowActionPanel {...actionProps} actionScope="editorial-decision" />}<EditorialDecisionTab article={scopedArticle} /></div>;
@@ -938,7 +938,7 @@ function VersionWorkspace({ tab, article, user, hasRole, hasPermission, observer
       </div>;
     }
     if (activeSection === 'reviewers') {
-      return <ReviewersPanel article={scopedArticle} version={version} versionTab={tab} user={user} hasRole={hasRole} hasPermission={hasPermission} observerReadonly={observerReadonly} onWorkflowChanged={onChanged} toast={toast} />;
+      return <ReviewersPanel article={scopedArticle} version={selectedVersion} versionTab={tab} user={user} hasRole={hasRole} hasPermission={hasPermission} observerReadonly={observerReadonly} onWorkflowChanged={onChanged} toast={toast} />;
     }
     if (selectedReview) return <ReviewerRecommendationTabContent assignment={selectedReview} article={scopedArticle} />;
     return <EmptyState title="Section unavailable">This version section is not available.</EmptyState>;
