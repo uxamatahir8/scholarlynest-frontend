@@ -2,8 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRightLeft, Bell, Check, CheckCircle2, ClipboardCheck, FileCheck2, Loader2, MessageSquareText, Send, Upload, UserPlus, XCircle } from 'lucide-react';
-import api from '../../utils/api';
+import { ArrowRightLeft, Bell, Check, CheckCircle2, ClipboardCheck, Download, Eye, FileCheck2, Loader2, MessageSquareText, Send, Upload, UserPlus, XCircle } from 'lucide-react';
+import api, { buildApiUrl } from '../../utils/api';
 import { safeApiMessage } from '../../utils/safeErrors';
 import { logError } from '../../utils/safeLogger';
 import { formatDate } from '../../utils/date';
@@ -69,7 +69,20 @@ const postPublicationActions = [
 ];
 
 const productionStatuses = new Set(['accepted', 'copy_editing', 'ready_for_publication']);
-const activeProductionAssignmentStatuses = new Set(['active', 'pending', 'in_progress', 'assigned']);
+const activeProductionAssignmentStatuses = new Set(['active', 'pending', 'in_progress', 'assigned', 'correction_required']);
+
+function readableFileSize(bytes) {
+  const value = Number(bytes || 0);
+  if (!value) return 'Size not recorded';
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function readableFileType(file) {
+  const extension = String(file?.original_name || file?.original_filename || '').split('.').pop();
+  return extension && extension !== file?.original_name ? extension.toUpperCase() : (file?.mime_type || 'File');
+}
 
 function ActionBlock({ title, description, children }) {
   return (
@@ -121,6 +134,7 @@ export default function WorkflowActionPanel({
     annotated_manuscript: null,
     reviewed_manuscript: null,
     production_file: null,
+    author_proof_correction: null,
   });
 
   const isAdmin = hasRole('super_admin') || hasRole('admin');
@@ -163,6 +177,19 @@ export default function WorkflowActionPanel({
   const hasCopyEditorAssignment = useMemo(() => (
     (workflowContext?.production_assignments || []).some((item) => item.role === 'copy_editor')
   ), [workflowContext]);
+
+  const activeProofRound = useMemo(() => (
+    [...(article?.proof_rounds || [])]
+      .filter((round) => round.active && ['awaiting_author', 'resent'].includes(round.status))
+      .sort((a, b) => Number(b.round_number || 0) - Number(a.round_number || 0))[0] || null
+  ), [article?.proof_rounds]);
+
+  const proofReviewFile = activeProofRound?.file_for_author_review || null;
+  const activeCorrectionProof = useMemo(() => (
+    [...(article?.proof_rounds || [])]
+      .filter((round) => round.active && ['corrections_requested', 'correction_in_progress'].includes(round.status))
+      .sort((a, b) => Number(b.round_number || 0) - Number(a.round_number || 0))[0] || null
+  ), [article?.proof_rounds]);
 
   const reviewerAssignmentsByEmail = useMemo(() => {
     const assignmentsByEmail = new Map();
@@ -297,6 +324,22 @@ export default function WorkflowActionPanel({
 
   const askConfirmation = (action) => setConfirmAction(action);
 
+  const openProofFile = async (file, preview = false) => {
+    if (!file?.download_url) return;
+    const response = await api.get(buildApiUrl(file.download_url), {
+      params: { json: 1, ...(preview ? { preview: 1 } : {}) },
+    });
+    if (!response.data?.download_url) throw new Error('The proof file is unavailable.');
+    const anchor = document.createElement('a');
+    anchor.href = response.data.download_url;
+    anchor.rel = 'noopener';
+    if (preview) anchor.target = '_blank';
+    else anchor.download = response.data.filename || file.original_name || 'proof-file';
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
   const buildFormData = (payload, fileMap = {}) => {
     const formData = new FormData();
     Object.entries(payload).forEach(([key, value]) => {
@@ -405,14 +448,16 @@ export default function WorkflowActionPanel({
   const canAuthorFinalReview = inScope('proofreading') && Boolean(article?.can_author_final_review);
   const canCompleteProduction = inScope('copy-editing') && (isAdmin || isCopyEditor) && myProductionAssignment;
   const productionTaskLabel = myProductionAssignment?.role === 'copy_editor'
-    ? 'Copyediting Task'
+    ? (myProductionAssignment.status === 'correction_required' ? 'Proof Correction Task' : 'Copyediting Task')
     : 'Production Task';
-  const productionFileLabel = 'Copyedited Manuscript';
+  const productionFileLabel = myProductionAssignment?.status === 'correction_required' ? 'Corrected Copyedited File' : 'Copyedited Manuscript';
   const productionCompleteLabel = myProductionAssignment?.role === 'copy_editor'
-    ? 'Mark Copyediting Complete'
+    ? (myProductionAssignment.status === 'correction_required' ? 'Send Corrected Proof' : 'Send Proof to Author')
     : 'Complete Task';
   const productionCompleteMessage = myProductionAssignment?.role === 'copy_editor'
-    ? 'This will send the copyedited manuscript to the author for a 14-day publication approval window.'
+    ? (myProductionAssignment.status === 'correction_required'
+      ? 'This corrected file will become the next proof iteration sent to the author for explicit approval.'
+      : 'This exact copyedited file will be sent to the author for explicit proof approval.')
     : 'This will mark your production task as complete and move the manuscript toward publication readiness.';
 
   useEffect(() => {
@@ -1098,50 +1143,103 @@ export default function WorkflowActionPanel({
         )}
 
         {canAuthorFinalReview && (
-          <ActionBlock title="Author Publication Review" description="Approve the copyedited article or return it to copyediting.">
-            <Alert tone="info" title="Copyediting complete">
-              Review the copyedited article before publication. If no response is received by {article.author_final_review_due_at ? new Date(article.author_final_review_due_at).toLocaleDateString() : 'the 14-day deadline'}, approval will be recorded automatically.
-            </Alert>
-            <Field label="Reason for returning to copyediting">
+          <ActionBlock title="Author Proof Review" description="Review the exact production file attached to this proof round. Publication remains blocked until an author explicitly approves it.">
+            {proofReviewFile ? (
+              <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4" aria-labelledby="author-proof-file-heading">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p id="author-proof-file-heading" className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">File for Author Review</p>
+                    <p className="mt-2 truncate text-sm font-bold text-[var(--foreground)]">{proofReviewFile.original_name || proofReviewFile.original_filename || 'Copyedited manuscript'}</p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      {readableFileType(proofReviewFile)} · {readableFileSize(proofReviewFile.size_bytes || proofReviewFile.size)} · Proof round {activeProofRound.round_number}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      Uploaded by {proofReviewFile.uploader?.name || 'assigned Copy Editor'} · {formatDate(proofReviewFile.created_at)}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {proofReviewFile.can_preview && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        icon={Eye}
+                        onClick={() => runAction('preview-author-proof', () => openProofFile(proofReviewFile, true), 'Proof preview opened.')}
+                        isLoading={busyAction === 'preview-author-proof'}
+                      >
+                        Preview
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      icon={Download}
+                      onClick={() => runAction('download-author-proof', () => openProofFile(proofReviewFile, false), 'Proof download started.')}
+                      isLoading={busyAction === 'download-author-proof'}
+                    >
+                      Download
+                    </Button>
+                  </div>
+                </div>
+              </section>
+            ) : (
+              <Alert tone="danger" title="Proof file unavailable">
+                Approval is disabled because the active proof round has no authoritative copyedited file.
+              </Alert>
+            )}
+            <Field label="Correction reason (required when requesting corrections)">
               <Textarea
                 value={authorFinalReason}
                 onChange={(event) => setAuthorFinalReason(event.target.value)}
                 rows={3}
-                placeholder="Required only when publication is denied"
+                placeholder="Describe every change the Copy Editor must make"
               />
             </Field>
+            {fileInput('author_proof_correction', 'Annotated or corrected file (optional)')}
             <div className="flex flex-wrap gap-3">
               <Button
                 type="button"
                 icon={FileCheck2}
                 isLoading={busyAction === 'author-final-approve'}
+                disabled={!proofReviewFile}
                 onClick={() => askConfirmation({
                   key: 'author-final-approve',
-                  title: 'Approve publication?',
-                  message: 'This will mark the article ready for publication.',
-                  confirmText: 'Approve Publication',
+                  title: 'Approve this proof?',
+                  message: `This explicitly approves proof round ${activeProofRound?.round_number || ''} and allows publication preparation to continue.`,
+                  confirmText: 'Approve Proof',
                   variant: 'primary',
                   run: () => runAction('author-final-approve', () => api.post(`/admin/articles/${article.id}/author-final-review`, { decision: 'accepted' }), 'Publication approved.'),
                 })}
               >
-                Approve Publication
+                Approve Proof
               </Button>
               <Button
                 type="button"
                 icon={XCircle}
                 variant="danger"
                 isLoading={busyAction === 'author-final-deny'}
-                disabled={!authorFinalReason.trim()}
+                disabled={!proofReviewFile || !authorFinalReason.trim()}
                 onClick={() => askConfirmation({
                   key: 'author-final-deny',
-                  title: 'Return to copyediting?',
-                  message: 'Publication will be denied for now and the copy editor will receive your requested changes.',
-                  confirmText: 'Deny Publication',
+                  title: 'Request proof corrections?',
+                  message: 'The active proof round will remain open and the assigned Copy Editor will receive a new correction task.',
+                  confirmText: 'Request Corrections',
                   variant: 'danger',
-                  run: () => runAction('author-final-deny', () => api.post(`/admin/articles/${article.id}/author-final-review`, { decision: 'denied', reason: authorFinalReason.trim() }), 'Article returned to copyediting.'),
+                  run: () => runAction('author-final-deny', async () => {
+                    const payload = { decision: 'denied', reason: authorFinalReason.trim() };
+                    if (files.author_proof_correction) {
+                      const upload = await uploadAndAwaitClean({
+                        file: files.author_proof_correction,
+                        purpose: 'article_annotated_manuscript',
+                        attachableId: article.id,
+                        extra: { assignment_type: 'proof_round', assignment_id: activeProofRound.id },
+                      });
+                      payload.correction_file_upload_id = upload.id;
+                    }
+                    return api.post(`/admin/articles/${article.id}/author-final-review`, payload);
+                  }, 'Corrections sent to the assigned Copy Editor.'),
                 })}
               >
-                Deny Publication
+                Request Corrections
               </Button>
             </div>
           </ActionBlock>
@@ -1198,13 +1296,24 @@ export default function WorkflowActionPanel({
         )}
 
         {canCompleteProduction && (
-          <ActionBlock title={`My ${productionTaskLabel}`} description={myProductionAssignment.role === 'copy_editor' ? 'Review the permitted manuscript files, upload a copyedited file if needed, then mark copyediting complete.' : 'Complete your assigned production work when the manuscript file is ready.'}>
+          <ActionBlock title={myProductionAssignment.status === 'correction_required' ? 'Author Proof Corrections Required' : `My ${productionTaskLabel}`} description={myProductionAssignment.role === 'copy_editor' ? (myProductionAssignment.status === 'correction_required' ? 'Review the author correction reason and optional annotated file, then upload a corrected copyedited file for the next proof round.' : 'Review the permitted manuscript files and upload the exact copyedited file that the author will approve.') : 'Complete your assigned production work when the manuscript file is ready.'}>
             <p className="text-sm text-[var(--muted)]">Current task: {myProductionAssignment.role?.replaceAll('_', ' ')}.</p>
+            {myProductionAssignment.status === 'correction_required' && activeCorrectionProof && (
+              <Alert tone="warning" title={`Corrections requested for proof round ${activeCorrectionProof.round_number}`}>
+                <p className="whitespace-pre-wrap">{activeCorrectionProof.author_comments}</p>
+                {activeCorrectionProof.author_file && (
+                  <button type="button" className="mt-3 inline-flex items-center gap-2 font-bold underline" onClick={() => openProofFile(activeCorrectionProof.author_file, false)}>
+                    <Download className="h-4 w-4" /> Download author annotation
+                  </button>
+                )}
+              </Alert>
+            )}
             {fileInput('production_file', productionFileLabel)}
             <Button
               type="button"
               icon={Check}
               isLoading={busyAction === 'complete-production'}
+	              disabled={!files.production_file}
 	              onClick={() => {
 	                if (!validateAction(productionCompletionSchema, { assignment_id: myProductionAssignment.id })) return;
 	                askConfirmation({

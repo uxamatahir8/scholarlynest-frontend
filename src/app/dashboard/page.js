@@ -21,7 +21,6 @@ export default function Dashboard() {
 
   const isAdminOrEditor = hasPermission ? (
     hasPermission('articles.approve') || 
-    hasPermission('articles.auto-approve') || 
     hasRole('super_admin') || 
     hasRole('admin') || 
     hasRole('editor')

@@ -260,7 +260,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
   const isMagazineEditor = hasRole('magazine_editor');
   const isJournalEditor = hasRole('journal_editor');
 
-  const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || hasPermission('articles.auto-approve') || isEditor) : false;
+  const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || isEditor) : false;
   const isAuthorWorkspace = !isAdminOrEditor;
 
   const [articles, setArticles] = useState([]);

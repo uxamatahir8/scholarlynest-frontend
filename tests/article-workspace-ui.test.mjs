@@ -266,3 +266,20 @@ test('accepted manuscript view exposes accepted metadata and production files', 
   assert.equal(view.supplementaryFiles[0].file.original_name, 'dataset.csv');
   assert.equal(view.acceptedFileSet.id, 4);
 });
+
+test('author proofreading exposes the authoritative proof file and explicit correction loop', () => {
+  const actions = readFileSync(new URL('../src/components/admin/WorkflowActionPanel.js', import.meta.url), 'utf8');
+  const rounds = readFileSync(new URL('../src/components/admin/workflow/LifecycleRecordPanels.js', import.meta.url), 'utf8');
+
+  assert.match(actions, /File for Author Review/);
+  assert.match(actions, /proofReviewFile\.can_preview/);
+  assert.match(actions, />\s*Preview\s*</);
+  assert.match(actions, />\s*Download\s*</);
+  assert.match(actions, /Annotated or corrected file \(optional\)/);
+  assert.match(actions, /purpose: 'article_annotated_manuscript'/);
+  assert.match(actions, /Request Corrections/);
+  assert.match(actions, /correction_required/);
+  assert.match(actions, /Send Corrected Proof/);
+  assert.match(rounds, /Awaiting explicit response/);
+  assert.doesNotMatch(actions, /automatically approved|14-day|14 days/i);
+});

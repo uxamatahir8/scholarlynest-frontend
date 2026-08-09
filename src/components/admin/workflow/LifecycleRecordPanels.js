@@ -4,6 +4,7 @@ import React from 'react';
 import { CheckCircle2, FileCheck2, Layers3 } from 'lucide-react';
 import EmptyState from '../../ui/EmptyState';
 import StatusBadge from '../../ui/StatusBadge';
+import { DownloadRow } from './ArticleFilesPanel';
 import { formatDate, submissionVersionLabel } from './workflowDisplay';
 
 export function VersionsOverview({ article, onSelectVersion }) {
@@ -50,8 +51,10 @@ export function ProofRoundsPanel({ article }) {
         {rounds.map((round) => (
           <li key={round.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-bold">{round.label || `Proof ${round.round_number}`}</p><StatusBadge status={round.status} /></div>
-            <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2"><div><dt className="text-xs font-bold uppercase text-[var(--muted)]">Requested</dt><dd>{formatDate(round.requested_at)}</dd></div><div><dt className="text-xs font-bold uppercase text-[var(--muted)]">Due</dt><dd>{formatDate(round.due_at)}</dd></div></dl>
+            <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2"><div><dt className="text-xs font-bold uppercase text-[var(--muted)]">Requested</dt><dd>{formatDate(round.requested_at)}</dd></div><div><dt className="text-xs font-bold uppercase text-[var(--muted)]">Author response</dt><dd>{round.responded_at ? formatDate(round.responded_at) : 'Awaiting explicit response'}</dd></div></dl>
+            {round.file_for_author_review && <div className="mt-3"><DownloadRow item={round.file_for_author_review} title={round.file_for_author_review.original_name || 'File for Author Review'} meta={`Proof round ${round.round_number}`} /></div>}
             {round.author_comments && <div className="mt-3 rounded-lg bg-[var(--surface-muted)] p-3"><p className="text-xs font-bold uppercase text-[var(--muted)]">Author comments</p><p className="mt-1 whitespace-pre-wrap text-sm">{round.author_comments}</p></div>}
+            {round.author_file && <div className="mt-3"><DownloadRow item={round.author_file} title={round.author_file.original_name || 'Author annotation'} meta="Author correction attachment" /></div>}
           </li>
         ))}
       </ol>
