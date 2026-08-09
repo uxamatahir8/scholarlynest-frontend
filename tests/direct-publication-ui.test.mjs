@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { boundedDirectPublicationStep, canStartDirectPublicationUpload, directPublicationIssueLabel, getOrCreateDraftOperation, restoredDirectPublicationStep } from '../src/components/admin/publication/directPublicationUtils.mjs';
+import { boundedDirectPublicationStep, canStartDirectPublicationUpload, directPublicationIssueLabel, getOrCreateDraftOperation, isMultiFileDirectPublicationPurpose, restoredDirectPublicationStep, selectedDirectPublicationFiles } from '../src/components/admin/publication/directPublicationUtils.mjs';
 
 test('direct publication issue options identify published and draft issues', () => {
   assert.equal(directPublicationIssueLabel({ volume_number: 1, issue_number: 1, status: 'published' }), 'Volume 1, Issue 1 (published)');
@@ -22,6 +22,16 @@ test('uploads become available from valid draft data and published mode only per
   assert.equal(canStartDirectPublicationUpload({ magazineId: '', title: 'Study', status: 'direct_publication_draft', purpose: 'direct_publication_figure' }), false);
   assert.equal(canStartDirectPublicationUpload({ magazineId: 1, title: 'Study', status: 'published', purpose: 'direct_publication_figure' }), false);
   assert.equal(canStartDirectPublicationUpload({ magazineId: 1, title: 'Study', status: 'published', purpose: 'direct_publication_manuscript' }), true);
+});
+
+test('figure and supplementary pickers retain every selected file while singleton types retain one', () => {
+  const files = [{ name: 'one.png' }, { name: 'two.jpg' }, { name: 'three.tiff' }];
+  assert.equal(isMultiFileDirectPublicationPurpose('direct_publication_figure'), true);
+  assert.equal(isMultiFileDirectPublicationPurpose('direct_publication_supplementary'), true);
+  assert.equal(isMultiFileDirectPublicationPurpose('direct_publication_cover'), false);
+  assert.deepEqual(selectedDirectPublicationFiles(files, 'direct_publication_figure'), files);
+  assert.deepEqual(selectedDirectPublicationFiles(files, 'direct_publication_supplementary'), files);
+  assert.deepEqual(selectedDirectPublicationFiles(files, 'direct_publication_manuscript'), [files[0]]);
 });
 
 test('direct publication drafts reopen on their last saved wizard step', () => {

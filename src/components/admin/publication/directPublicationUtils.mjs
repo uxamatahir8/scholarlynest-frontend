@@ -34,3 +34,12 @@ export function canStartDirectPublicationUpload({ magazineId, title, status, pur
   if (!magazineId || !String(title || '').trim()) return false;
   return status !== 'published' || purpose === 'direct_publication_manuscript';
 }
+
+export function isMultiFileDirectPublicationPurpose(purpose) {
+  return ['direct_publication_figure', 'direct_publication_supplementary'].includes(purpose);
+}
+
+export function selectedDirectPublicationFiles(fileList, purpose) {
+  const files = Array.from(fileList || []);
+  return isMultiFileDirectPublicationPurpose(purpose) ? files : files.slice(0, 1);
+}
