@@ -20,3 +20,17 @@ export function restoredDirectPublicationStep({ requestedStep, savedStep, status
   }
   return 0;
 }
+
+export function getOrCreateDraftOperation(storage, storageKey, payload, keyFactory) {
+  let existing = null;
+  try { existing = JSON.parse(storage.getItem(storageKey) || 'null'); } catch { existing = null; }
+  if (existing?.key && existing?.payload) return existing;
+  const operation = { key: keyFactory(), payload };
+  storage.setItem(storageKey, JSON.stringify(operation));
+  return operation;
+}
+
+export function canStartDirectPublicationUpload({ magazineId, title, status, purpose }) {
+  if (!magazineId || !String(title || '').trim()) return false;
+  return status !== 'published' || purpose === 'direct_publication_manuscript';
+}

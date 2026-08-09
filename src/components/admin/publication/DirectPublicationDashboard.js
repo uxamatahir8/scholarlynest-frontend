@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CalendarClock, CheckCircle2, FilePenLine, Plus, Search } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CheckCircle2, FilePenLine, Plus, Search, Trash2 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../utils/api';
 import ThreadUnreadSummary from '../threads/ThreadUnreadSummary';
@@ -34,6 +34,11 @@ export default function DirectPublicationDashboard() {
   }, [allowed, search, status]);
 
   useEffect(() => { const timer = window.setTimeout(load, 250); return () => window.clearTimeout(timer); }, [load]);
+  const deleteDraft = async (article) => {
+    if (!window.confirm(`Delete the draft “${article.title}”? Uploaded draft references and private communication will be removed; shared storage objects will not be deleted.`)) return;
+    try { await api.delete(`/admin/direct-publications/${article.id}`); await load(); }
+    catch (err) { setError(err.response?.data?.message || 'The draft could not be deleted.'); }
+  };
   if (authLoading) return <div className="p-8 text-slate-500">Checking access…</div>;
   if (!allowed) return <div className="m-6 rounded-xl border border-rose-200 bg-rose-50 p-5 text-rose-800">Direct publications are restricted to Super Admins and assigned Publishers.</div>;
 
@@ -54,11 +59,11 @@ export default function DirectPublicationDashboard() {
       <div className="border-b border-slate-200 p-4"><label className="relative block max-w-md"><Search className="absolute left-3 top-2.5 text-slate-400" size={17}/><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search title or tracking code" className="w-full rounded-lg border border-slate-300 py-2 pl-10 pr-3 text-sm"/></label></div>
       {error && <div className="m-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
       {loading ? <div className="p-10 text-center text-sm text-slate-500">Loading direct publications…</div> : items.length === 0 ? <div className="p-10 text-center text-sm text-slate-500">No direct publications match this view.</div> :
-        <div className="divide-y divide-slate-100">{items.map((article) => <Link key={article.id} href={`/admin/direct-publications/${article.id}`} className="grid gap-2 p-4 hover:bg-slate-50 md:grid-cols-[1fr_180px_180px] md:items-center">
+        <div className="divide-y divide-slate-100">{items.map((article) => <div key={article.id} className="flex items-center gap-2 hover:bg-slate-50"><Link href={`/admin/direct-publications/${article.id}`} className="grid min-w-0 flex-1 gap-2 p-4 md:grid-cols-[1fr_180px_180px] md:items-center">
           <div><div className="font-semibold text-slate-900">{article.title}</div><div className="mt-1 text-xs text-slate-500">{article.tracking_code} · {article.magazine?.title}</div></div>
           <span className="w-fit rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{String(article.status).replaceAll('_', ' ')}</span>
-          <span className="text-xs text-slate-500 md:text-right">Updated {new Date(article.updated_at).toLocaleDateString()}</span>
-        </Link>)}</div>}
+          <span className="text-xs text-slate-500 md:text-right">Updated {new Date(article.updated_at).toLocaleDateString()}{article.latest_publication_record?.scheduled_for && <><br/>Scheduled {new Date(article.latest_publication_record.scheduled_for).toLocaleString()}</>}{article.published_at && <><br/>Published {new Date(article.published_at).toLocaleDateString()}</>}{article.status === 'direct_publication_draft' && <><br/><strong className="text-indigo-700">Resume Draft</strong></>}</span>
+        </Link>{article.status === 'direct_publication_draft' && <button type="button" onClick={() => deleteDraft(article)} className="mr-4 rounded-lg border border-rose-200 p-2 text-rose-700" aria-label={`Delete ${article.title}`}><Trash2 size={16}/></button>}</div>)}</div>}
     </div>
   </div>;
 }
