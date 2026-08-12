@@ -37,6 +37,7 @@ export default function AssignmentDashboardWorkspace({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [assignments, setAssignments] = useState([]);
+  const isReviewerDashboard = endpoint.includes('/admin/my-reviewer-assignments');
 
   useEffect(() => {
     let active = true;
@@ -70,8 +71,12 @@ export default function AssignmentDashboardWorkspace({
     [assignments],
   );
 
-  const activeItems = activeAssignments.map((assignment) => assignmentQueueItem(assignment, 'Open Workflow'));
-  const completedItems = completedAssignments.map((assignment) => assignmentQueueItem(assignment, 'Review Record'));
+  const withObservedAssignee = (item) => ({
+    ...item,
+    assigneeName: item.assigneeName || observerUser?.name,
+  });
+  const activeItems = activeAssignments.map((assignment) => withObservedAssignee(assignmentQueueItem(assignment, 'Open Workflow')));
+  const completedItems = completedAssignments.map((assignment) => withObservedAssignee(assignmentQueueItem(assignment, 'Review Record')));
 
   return (
     <DashboardWorkspace
@@ -108,6 +113,7 @@ export default function AssignmentDashboardWorkspace({
                 emptyDescription={observerMode && observerUser ? `No active assignments are visible for ${observerUser.name}.` : emptyActive}
                 actionHref={observerMode ? null : primaryHref}
                 actionLabel={observerMode ? null : (fullDeskLabel || 'Open Full Desk')}
+                priority={isReviewerDashboard}
               />
               <DashboardQueue
                 title={completedTitle}

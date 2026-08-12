@@ -20,7 +20,7 @@ export function assignmentQueueItem(assignment, actionLabel = 'Open Task') {
   else if (assignment.primary_action === 'manage_reviewers') primaryActionLabel = 'Manage Reviewers';
   else if (assignment.primary_action === 'review_reviewer_progress') primaryActionLabel = 'Review Reviewer Progress';
   else if (assignment.primary_action === 'submit_recommendation') primaryActionLabel = 'Submit Recommendation';
-  else if (assignment.primary_action === 'accept_decline') primaryActionLabel = 'Accept / Decline Review';
+  else if (assignment.primary_action === 'accept_decline') primaryActionLabel = 'Accept / Decline Invitation';
   else if (assignment.primary_action === 'start_review') primaryActionLabel = 'Start Review';
   else if (assignment.primary_action === 'continue_review') primaryActionLabel = 'Continue Review';
   else if (assignment.primary_action === 'view_submitted_review') primaryActionLabel = 'View Submitted Review';
@@ -31,14 +31,29 @@ export function assignmentQueueItem(assignment, actionLabel = 'Open Task') {
     displayStatus = 'awaiting_review';
   }
 
+  let href = article.id ? `/admin/articles/${article.id}/workflow` : undefined;
+  if (assignment.primary_action === 'accept_decline') {
+    href = '/admin/reviewer?status=pending';
+  } else if (['start_review', 'continue_review', 'view_submitted_review'].includes(assignment.primary_action)) {
+    href = article.id && assignment.article_version_id
+      ? `/admin/articles/${article.id}/workflow?version=${assignment.article_version_id}&assignment=${assignment.id}`
+      : '/admin/reviewer';
+  }
+
+  const baseTrackingCode = article.latest_tracking_code || article.tracking_code;
+  const trackingCode = baseTrackingCode && assignment.version_label
+    ? `${baseTrackingCode} – ${assignment.version_label}`
+    : baseTrackingCode;
+
   return {
     id: assignment.id,
     title: article.title,
     status: displayStatus,
     context: article.magazine?.title || 'Assigned manuscript',
     dueDate: assignment.due_date,
-    href: article.id ? `/admin/articles/${article.id}/workflow` : undefined,
-    trackingCode: article.latest_tracking_code || article.tracking_code,
+    assigneeName: assignment.assignee?.name,
+    href,
+    trackingCode,
     actionLabel: primaryActionLabel,
   };
 }

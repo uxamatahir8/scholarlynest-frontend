@@ -463,12 +463,12 @@ export default function IssueWorkspace() {
                 <textarea rows={3} value={issueForm.description} onChange={(event) => setIssueForm({ ...issueForm, description: event.target.value })} className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]" />
               </label>
               <div className="mt-4 grid gap-4 md:grid-cols-[220px_minmax(0,1fr)] md:items-end">
-                <label className="group relative flex aspect-[4/3] cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)]">
+                <label className="group relative flex aspect-[1/1.414] cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)]">
                   {issueForm.cover_image || issueForm.cover_image_url ? (
                     <img
                       src={issueForm.cover_image ? URL.createObjectURL(issueForm.cover_image) : issueForm.cover_image_url}
                       alt=""
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-contain"
                     />
                   ) : (
                     <div className="flex flex-col items-center text-center">

@@ -170,7 +170,8 @@ export default function MagazineArticleCarousel({ articles = [], coverImage = ''
               <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${articlesPerSlide}, minmax(0, 1fr))` }}>
                 {slide.map((article) => {
                   const articleLink = publicArticlePath(article);
-                  const imageSrc = getImageUrl ? getImageUrl(article.featured_image || coverImage) : article.featured_image || coverImage;
+                  const featuredImage = article.featured_image_url || article.featured_image;
+                  const imageSrc = getImageUrl ? getImageUrl(featuredImage || coverImage) : featuredImage || coverImage;
                   const issueLabel = getIssueLabel(article);
                   const publishedDate = formatDate(article.published_at || article.created_at);
                   const excerpt = stripHtml(article.abstract) || 'No abstract summary provided for this research article.';
@@ -179,7 +180,7 @@ export default function MagazineArticleCarousel({ articles = [], coverImage = ''
                     <article key={article.id} className="min-w-0 h-full flex flex-col rounded-xl border border-zinc-200/70 dark:border-zinc-850 bg-white/80 dark:bg-zinc-900/30 p-4 shadow-sm transition-colors hover:border-amber-500/30">
                       {imageSrc && (
                         <div className="w-full aspect-[16/9] rounded-lg overflow-hidden border border-zinc-100 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 mb-4">
-                          <img src={imageSrc} alt="" className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" loading="lazy" />
+                          <img src={imageSrc} alt="" className={`h-full w-full ${featuredImage ? 'object-cover transition-transform duration-500 hover:scale-105' : 'object-contain'}`} loading="lazy" />
                         </div>
                       )}
 

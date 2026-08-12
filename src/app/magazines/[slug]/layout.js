@@ -110,7 +110,7 @@ export default function MagazinePublicLayout({ children }) {
           <img
             src={heroImage}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover object-center"
+            className={`absolute inset-0 h-full w-full object-center ${bannerImage ? 'object-cover' : 'object-contain'}`}
             aria-hidden="true"
           />
         ) : (
@@ -121,11 +121,11 @@ export default function MagazinePublicLayout({ children }) {
       <div className="mx-auto grid w-full max-w-[1440px] gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[300px_1fr] lg:px-8">
         <aside className="lg:sticky lg:top-28 lg:self-start" aria-label="Publication identity and navigation">
           <div className="hidden lg:block">
-            <div className="w-full max-w-[190px] overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900">
+            <div className="aspect-[1/1.414] w-full max-w-[190px] overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-900">
               {coverImage ? (
-                <img src={coverImage} alt={`${magazine.title} cover`} className="aspect-[3/4] w-full object-cover" />
+                <img src={coverImage} alt={`${magazine.title} cover`} className="h-full w-full object-contain" />
               ) : (
-                <div className="flex aspect-[3/4] w-full items-center justify-center bg-zinc-100 dark:bg-zinc-900">
+                <div className="flex h-full w-full items-center justify-center bg-zinc-100 dark:bg-zinc-900">
                   <BookOpen className="h-8 w-8 text-zinc-400" aria-hidden="true" />
                 </div>
               )}

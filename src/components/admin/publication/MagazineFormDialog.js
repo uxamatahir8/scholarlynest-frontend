@@ -30,7 +30,7 @@ const emptyForm = {
   remove_banner_image: false,
 };
 
-function ImageUploadField({ label, helper, file, existingUrl, removed, readOnly, aspectClass, onFile, onRemove }) {
+function ImageUploadField({ label, helper, file, existingUrl, removed, readOnly, aspectClass, objectFit = 'cover', onFile, onRemove }) {
   const previewUrl = useMemo(() => file ? URL.createObjectURL(file) : (!removed ? existingUrl : ''), [file, existingUrl, removed]);
   useEffect(() => () => { if (file && previewUrl) URL.revokeObjectURL(previewUrl); }, [file, previewUrl]);
 
@@ -44,7 +44,7 @@ function ImageUploadField({ label, helper, file, existingUrl, removed, readOnly,
         {!readOnly && previewUrl && <button type="button" onClick={onRemove} className="text-xs font-bold text-red-600 hover:underline">Remove</button>}
       </div>
       <label className={`group relative mt-3 flex ${aspectClass} cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] text-center ${readOnly ? 'pointer-events-none opacity-60' : ''}`}>
-        {previewUrl ? <img src={previewUrl} alt={`${label} preview`} className="h-full w-full object-cover" /> : (
+        {previewUrl ? <img src={previewUrl} alt={`${label} preview`} className={`h-full w-full ${objectFit === 'contain' ? 'object-contain' : 'object-cover'}`} /> : (
           <div className="flex flex-col items-center p-4">
             <ImagePlus className="h-6 w-6 text-[var(--muted)]" aria-hidden="true" />
             <span className="mt-2 text-sm font-semibold text-[var(--foreground)]">Choose image</span>
@@ -178,7 +178,7 @@ export default function MagazineFormDialog({
               <section className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] p-4">
                 <h3 className="text-sm font-bold text-[var(--foreground)]">Publication Appearance</h3>
                 <div className="mt-4 space-y-6">
-                  <ImageUploadField label="Main Image / Cover Image" helper="Recommended A2 ratio image. Example: 4961 × 3508 px or similar A2-ratio image." file={form.cover_image_file} existingUrl={magazine?.main_image_url || magazine?.cover_image_url} removed={form.remove_cover_image} readOnly={readOnly} aspectClass="aspect-[1/1.414]" onFile={(file) => setForm((current) => ({ ...current, cover_image_file: file, remove_cover_image: false }))} onRemove={() => setForm((current) => ({ ...current, cover_image_file: null, remove_cover_image: true }))} />
+                  <ImageUploadField label="Main Image / Cover Image" helper="Recommended A4 portrait image. Example: 2480 × 3508 px at 300 DPI, or the same 1:1.414 ratio." file={form.cover_image_file} existingUrl={magazine?.main_image_url || magazine?.cover_image_url} removed={form.remove_cover_image} readOnly={readOnly} aspectClass="aspect-[1/1.414]" objectFit="contain" onFile={(file) => setForm((current) => ({ ...current, cover_image_file: file, remove_cover_image: false }))} onRemove={() => setForm((current) => ({ ...current, cover_image_file: null, remove_cover_image: true }))} />
                   <ImageUploadField label="Banner Image / Hero Banner Image" helper="Recommended web banner: 1920 × 600 px or 1600 × 500 px. Use a wide landscape image for the public hero section." file={form.banner_image_file} existingUrl={magazine?.banner_image_url} removed={form.remove_banner_image} readOnly={readOnly} aspectClass="aspect-[16/5]" onFile={(file) => setForm((current) => ({ ...current, banner_image_file: file, remove_banner_image: false }))} onRemove={() => setForm((current) => ({ ...current, banner_image_file: null, remove_banner_image: true }))} />
                 </div>
               </section>

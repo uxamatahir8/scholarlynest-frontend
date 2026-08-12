@@ -386,6 +386,8 @@ export default function ArticleDetail() {
   const publicationAbstract = allPublicationSections.find((section) => section.section_key === 'abstract');
   const abstractHtml = publicationAbstract?.content_html || article.abstract;
   const publicationSections = allPublicationSections.filter((section) => section.section_key !== 'abstract');
+  const publicationCoverUrl = article.magazine?.cover_image_url || getFullImageUrl(article.magazine?.cover_image);
+  const publicationCoverLabel = article.magazine?.publication_type === 'journal' ? 'Journal cover' : 'Magazine cover';
   const details = [
     article.open_access_label && { label: 'Access', value: article.open_access_label },
     article.is_peer_reviewed && { label: 'Review', value: 'Peer-reviewed' },
@@ -457,8 +459,34 @@ export default function ArticleDetail() {
         </div>
 
         <div ref={articleLayoutRef} style={{ '--article-rail-start': `${railStartOffset}px` }} data-testid="article-layout" className={`mx-auto grid w-full max-w-[1600px] items-start gap-8 lg:grid-cols-[minmax(190px,230px)_minmax(0,900px)] lg:justify-center ${advertisements?.right_sidebar?.length ? 'xl:grid-cols-[minmax(190px,230px)_minmax(0,900px)_minmax(195px,240px)]' : ''}`}>
-          <aside data-testid="article-left-rail" className="hidden self-stretch space-y-7 pt-[var(--article-rail-start)] lg:block">
+          <aside data-testid="article-left-rail" className={`hidden self-stretch space-y-7 lg:block ${publicationCoverUrl ? '' : 'pt-[var(--article-rail-start)]'}`}>
             <div data-testid="article-left-rail-sticky" className="sticky top-[var(--article-sticky-offset)] space-y-7">
+              {publicationCoverUrl && (
+                <Link
+                  href={`/magazines/${article.magazine.slug}`}
+                  data-testid="article-publication-cover"
+                  aria-label={`View ${article.magazine.title}`}
+                  className="group block overflow-hidden rounded-2xl bg-white/90 shadow-sm ring-1 ring-zinc-200/70 transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:bg-zinc-900/80 dark:ring-zinc-800"
+                >
+                  <figure>
+                    <div className="aspect-[1/1.414] overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                      <img
+                        src={publicationCoverUrl}
+                        alt={`${article.magazine.title} cover`}
+                        width="700"
+                        height="990"
+                        loading="eager"
+                        decoding="async"
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                    <figcaption className="p-4">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-400">{publicationCoverLabel}</p>
+                      <p className="mt-1 line-clamp-2 text-sm font-bold leading-snug text-zinc-900 dark:text-white">{article.magazine.title}</p>
+                    </figcaption>
+                  </figure>
+                </Link>
+              )}
               <ArticleTableOfContents items={contentNav} />
               <AdvertisementSlot placement="left_sidebar" ads={advertisements?.left_sidebar} context={advertisementContext} />
             </div>
@@ -477,7 +505,7 @@ export default function ArticleDetail() {
                     <img 
                       src={article.magazine.cover_image_url || getFullImageUrl(article.magazine.cover_image)}
                       alt={article.magazine.title} 
-                      className="w-full h-full object-cover"
+                      className="h-full w-full object-contain"
                     />
                   </div>
                 )}

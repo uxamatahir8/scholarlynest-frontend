@@ -1,22 +1,8 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { 
-  FileText, 
-  CheckSquare, 
-  Gavel, 
-  Users, 
-  UserCheck, 
-  Layers, 
-  Clock, 
-  ShieldAlert, 
-  FileImage, 
-  Files, 
-  Sheet,
-  FileCheck2,
-  CheckCircle2
-} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
+import { FileImage, Files, Sheet } from 'lucide-react';
 import api, { buildApiUrl } from '../../../../../utils/api';
 import { safeApiMessage } from '../../../../../utils/safeErrors';
 import { logError } from '../../../../../utils/safeLogger';
@@ -25,33 +11,31 @@ import { useToast } from '../../../../../context/ToastContext';
 import LoadingState from '../../../../../components/ui/LoadingState';
 import PageTitle from '../../../../../components/PageTitle';
 import ErrorState from '../../../../../components/ui/ErrorState';
-import Alert from '../../../../../components/ui/Alert';
 import EmptyState from '../../../../../components/ui/EmptyState';
+import StatusBadge from '../../../../../components/ui/StatusBadge';
 import ImageLightboxGallery from '../../../../../components/ui/ImageLightboxGallery';
-import CurrentWorkflowActionPanel from '../../../../../components/admin/CurrentWorkflowActionPanel';
-import { PUBLISHABLE_STATUSES } from '../../../../../components/admin/articleWorkflow';
+import ScopedWorkflowActionPanel from '../../../../../components/admin/ScopedWorkflowActionPanel';
 import ManuscriptHeader from '../../../../../components/admin/workflow/ManuscriptHeader';
 import ArticleMetadataPanel from '../../../../../components/admin/workflow/ArticleMetadataPanel';
-import AssignmentSummary from '../../../../../components/admin/workflow/AssignmentSummary';
 import { 
   DownloadRow, 
   supplementaryGroup, 
   galleryImage, 
-  assetTitle, 
-  assetMeta 
+  assetTitle
 } from '../../../../../components/admin/workflow/ArticleFilesPanel';
 import WorkflowTimeline from '../../../../../components/admin/workflow/WorkflowTimeline';
 import WorkflowProgressPath from '../../../../../components/admin/workflow/WorkflowProgressPath';
+import { ProofRoundsPanel } from '../../../../../components/admin/workflow/LifecycleRecordPanels';
 import { 
-  canViewReviewerIdentity, 
-  isAuthorViewer, 
   formatDate, 
   labelize, 
   fileTypeLabels,
   submissionVersionLabel,
-  hasAcceptedReviewInvitation,
 } from '../../../../../components/admin/workflow/workflowDisplay';
-import { normalizeStatus } from '../../../../../utils/status';
+import ArticleThreadWorkspace from '../../../../../components/admin/threads/ArticleThreadWorkspace';
+import { firstVisibleSidebarKey, initialWorkspaceTab, scopeArticleToVersion, visibleWorkspaceTabs, workspaceVersionForTab } from '../../../../../components/admin/workflow/workspaceManifest.mjs';
+import ReviewersPanel from '../../../../../components/admin/workflow/ReviewersPanel';
+import AcceptedManuscriptInformationPanel from '../../../../../components/admin/workflow/AcceptedManuscriptInformationPanel';
 
 // Helper component for Editorial Decision Tab
 function EditorialDecisionTab({ article }) {
@@ -338,17 +322,16 @@ function VersionTabContent({ version, article, isLatest, user, hasRole, unassign
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3 mb-6">
         <div>
           <h3 className="text-base font-bold text-[var(--foreground)]">
-            {submissionVersionLabel(version)} {article.tracking_code && `(${article.tracking_code})`}
+            {version.workspace_heading}
           </h3>
           <p className="mt-1 text-xs text-[var(--muted)]">
-            Submitted at {formatDate(version.created_at)} {version.user?.name && `by ${version.user.name}`}
+            Submitted at {formatDate(version.submitted_at || version.created_at)} {version.user?.name && `by ${version.user.name}`}
           </p>
         </div>
-        {isLatest && (
-          <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">
-            Latest Submission
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={article.status} />
+          {isLatest && <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300">Latest Submission</span>}
+        </div>
       </div>
 
       {isLatest && unassignedLegacyAlert && (
@@ -919,56 +902,70 @@ function FinalFilesTab({ article }) {
   );
 }
 
-// Actions checker
-function hasWorkflowActions(article, user, hasRole) {
-  const isAdmin = hasRole('super_admin') || hasRole('admin');
-  const isEditor = hasRole('editor');
-  const isSubEditor = hasRole('sub_editor');
-  const isPublisher = hasRole('publisher');
+function VersionWorkspace({ tab, article, user, hasRole, hasPermission, observerReadonly, onChanged, toast, requestedAssignmentId = null }) {
+  const requestedSection = requestedAssignmentId && (tab.sidebar || []).some((item) => Number(item.review_id) === Number(requestedAssignmentId))
+    ? `review-${requestedAssignmentId}`
+    : null;
+  const [activeSection, setActiveSection] = useState(() => requestedSection || firstVisibleSidebarKey(tab));
+  const selectedVersion = workspaceVersionForTab(article.versions, tab);
+  if (!selectedVersion) return <EmptyState title="Version unavailable">This version is not accessible to your role.</EmptyState>;
+  const scopedArticle = scopeArticleToVersion(article, selectedVersion, tab);
+  const selectedReviewId = activeSection.startsWith('review-') ? Number(activeSection.replace('review-', '')) : null;
+  const selectedReview = scopedArticle.reviewer_assignments.find((item) => Number(item.id) === selectedReviewId);
+  const actionProps = {
+    article: scopedArticle,
+    workflowContext: scopedArticle,
+    user,
+    hasRole,
+    hasPermission,
+    onWorkflowChanged: onChanged,
+    toast,
+    hideIfNoAction: true,
+  };
 
-  const canEditorial = isAdmin || isEditor;
-  const canAssignReviewer = isAdmin || isEditor || isSubEditor;
-  const canPublish = isAdmin || isPublisher;
-  const canAssignProduction = isAdmin || isPublisher;
+  useEffect(() => {
+    setActiveSection(requestedSection || firstVisibleSidebarKey(tab));
+  }, [tab.key, requestedSection]);
 
-  const status = normalizeStatus(article.status);
+  const content = (() => {
+    if (activeSection === 'manuscript-information') {
+      return <VersionTabContent version={selectedVersion} article={scopedArticle} isLatest={Number(article.current_version_id) === Number(selectedVersion.id)} user={user} hasRole={hasRole} />;
+    }
+    if (activeSection === 'editorial-decision') {
+      return <div className="space-y-5">{!observerReadonly && <ScopedWorkflowActionPanel {...actionProps} actionScope="editorial-decision" />}<EditorialDecisionTab article={scopedArticle} /></div>;
+    }
+    if (activeSection === 'sub-editor-recommendation') {
+      return <div className="space-y-5">
+        {!observerReadonly && <ScopedWorkflowActionPanel {...actionProps} actionScope="sub-editor-recommendation" />}
+        {scopedArticle.sub_editor_assignments.length ? scopedArticle.sub_editor_assignments.map((assignment) => <SubEditorRecommendationTabContent key={assignment.id} assignment={assignment} article={scopedArticle} />) : <EmptyState title="No sub-editor assigned">Assignment status will appear here when an editor assigns this version.</EmptyState>}
+      </div>;
+    }
+    if (activeSection === 'reviewers') {
+      return <ReviewersPanel article={scopedArticle} version={selectedVersion} versionTab={tab} user={user} hasRole={hasRole} hasPermission={hasPermission} observerReadonly={observerReadonly} onWorkflowChanged={onChanged} toast={toast} />;
+    }
+    if (selectedReview) return selectedReview.status === 'completed'
+      ? <ReviewerRecommendationTabContent assignment={selectedReview} article={scopedArticle} />
+      : <ScopedWorkflowActionPanel {...actionProps} actionScope="reviewer-review" />;
+    return <EmptyState title="Section unavailable">This version section is not available.</EmptyState>;
+  })();
 
-  if (
-    status === 'in_transit'
-    && article.can_respond_transfer_request
-    && article.pending_transfer_request?.status === 'pending'
-  ) return true;
-  
-  if (canEditorial && (status === 'submitted' || status === 'resubmitted')) return true;
-  if (isAdmin) return true;
-  if (canEditorial && status === 'screening') return true;
-  if (canAssignReviewer && ['under_review', 'assigned_to_sub_editor', 'reviewer_assigned', 'review_in_progress'].includes(status)) return true;
-
-  const myReviewerAssignment = (article.reviewer_assignments || []).find((item) => Number(item.reviewer_id) === Number(user.id));
-  if (myReviewerAssignment && (myReviewerAssignment.invitation_state === 'invited' || myReviewerAssignment.status === 'accepted' || myReviewerAssignment.status === 'in_progress')) return true;
-
-  const mySubEditorAssignment = (article.sub_editor_assignments || []).find((item) => Number(item.sub_editor_id) === Number(user.id));
-  if (mySubEditorAssignment && mySubEditorAssignment.status !== 'completed') return true;
-
-  if (canEditorial && ['under_review', 'review_in_progress', 'assigned_to_sub_editor'].includes(status)) return true;
-
-  if (article.can_author_final_review) return true;
-
-  if (canAssignProduction && status === 'accepted') return true;
-
-  const myProductionAssignment = (article.production_assignments || []).find((item) => Number(item.user_id) === Number(user.id) && item.status !== 'completed');
-  if (myProductionAssignment) return true;
-
-  if (canPublish && ['ready_for_publication', 'copy_editing', 'proofreading'].includes(status)) return true;
-
-  if (canPublish && status === 'published') return true;
-
-  return false;
+  return (
+    <div className="grid gap-5 lg:grid-cols-[230px_minmax(0,1fr)]">
+      <nav className="flex gap-2 overflow-x-auto lg:block" aria-label={`${tab.label} sections`}>
+        {(tab.sidebar || []).map((item) => (
+          <button key={item.key} type="button" onClick={() => setActiveSection(item.key)} aria-current={activeSection === item.key ? 'page' : undefined}
+            className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-2.5 text-left text-sm font-semibold transition-colors lg:mb-1 lg:w-full ${activeSection === item.key ? 'border-[var(--accent)] bg-amber-500/10 text-[var(--accent)]' : 'border-transparent text-[var(--muted)] hover:border-[var(--border)] hover:bg-[var(--surface-muted)]'}`}>
+            {item.label}
+          </button>
+        ))}
+      </nav>
+      <div className="min-w-0">{content}</div>
+    </div>
+  );
 }
 
 export default function ArticleWorkflowPage() {
   const params = useParams();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const articleId = params?.id;
   const { user, hasRole, hasPermission, loading: authLoading } = useAuth();
@@ -976,7 +973,7 @@ export default function ArticleWorkflowPage() {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('metadata');
+  const [activeTab, setActiveTab] = useState(searchParams.get('thread') ? 'communication' : null);
   const observerReadonly = searchParams.get('observer_readonly') === '1';
 
   const loadWorkflow = async () => {
@@ -989,6 +986,8 @@ export default function ArticleWorkflowPage() {
         ...response.data.article,
         files: response.data.files || response.data.article.files || [],
         versions: response.data.versions || response.data.article.versions || [],
+        workflow_manifest: response.data.workflow_manifest || null,
+        status_projection: response.data.status_projection || response.data.article.status_projection || null,
       } : null;
       setArticle(nextArticle);
     } catch (err) {
@@ -1003,172 +1002,16 @@ export default function ArticleWorkflowPage() {
     loadWorkflow();
   }, [articleId, user, authLoading]);
 
-  const canPublish = useMemo(() => (
-    Boolean(article)
-      && (hasRole('super_admin') || hasRole('admin') || hasRole('publisher'))
-      && PUBLISHABLE_STATUSES.has(article.status)
-  ), [article, hasRole]);
-
-  const showReviewerIdentity = useMemo(() => canViewReviewerIdentity(user, hasRole), [user, hasRole]);
-
-  const tabs = useMemo(() => {
-    if (!article) return [];
-
-    const list = [];
-    const isAuthor = isAuthorViewer(user, article);
-    const hasHistoryAccess = article.capabilities?.view_workflow_history;
-
-    const legacyFiles = article.unassigned_legacy_files || [];
-    const unassignedLegacyAlert = hasHistoryAccess && legacyFiles.length > 0 ? (
-      <div className="mb-6">
-        <Alert tone="warning" title="Unassigned Legacy Files Found">
-          <div className="space-y-2">
-            <p className="text-xs">
-              The following files are associated with this article but have no active version linkage. Please verify their contents:
-            </p>
-            <ul className="grid gap-2 mt-2">
-              {legacyFiles.map((file) => (
-                <DownloadRow
-                  key={file.id}
-                  item={file}
-                  title={file.original_name || 'Legacy File'}
-                  meta={`${fileTypeLabels[file.file_type] || labelize(file.file_type)} · Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`}
-                />
-              ))}
-            </ul>
-          </div>
-        </Alert>
-      </div>
-    ) : null;
-
-    const canViewReviewWorkflow = hasRole('super_admin') || hasRole('admin') || hasRole('editor') || hasRole('sub_editor');
-    const isReviewer = hasRole('reviewer');
-    const orderedVersions = [...(article.versions || [])].sort((a, b) => Number(a.version_number || 0) - Number(b.version_number || 0));
-    
-    const visibleVersions = orderedVersions.filter((version) => {
-      if (isReviewer && !canViewReviewWorkflow) {
-        return (version.files || []).length > 0 || (version.sections || []).some(s => s.files && s.files.length > 0);
-      }
-      return true;
-    });
-
-    if (!hasRole('copy_editor')) {
-      visibleVersions.forEach((version, index) => {
-        const isLatest = version.id === (orderedVersions[orderedVersions.length - 1]?.id);
-
-        list.push({
-          id: `version-${version.id}`,
-          label: article.tracking_code ? `${submissionVersionLabel(version)} (${article.tracking_code})` : submissionVersionLabel(version),
-          icon: Layers,
-          content: (
-            <VersionTabContent
-              version={version}
-              article={article}
-              isLatest={isLatest}
-              user={user}
-              hasRole={hasRole}
-              unassignedLegacyAlert={unassignedLegacyAlert}
-            />
-          ),
-        });
-      });
-    }
-
-    const showEditorialDecisionTab = article.capabilities?.view_editorial_decision;
-    if (showEditorialDecisionTab) {
-      list.push({
-        id: 'editorial',
-        label: 'Editorial Decision',
-        icon: Gavel,
-        content: (
-          <EditorialDecisionTab article={article} />
-        ),
-      });
-    }
-
-    const subEditorAssignments = (article.sub_editor_assignments || []).filter(
-      (assignment) => assignment.status === 'completed' || Boolean(assignment.completed_at || assignment.recommendation)
-    );
-    subEditorAssignments.forEach((assignment, index) => {
-      const subEditorName = assignment.sub_editor?.name || `Sub Editor ${index + 1}`;
-      const label = `Sub Editor — ${subEditorName}`;
-      
-      list.push({
-        id: `subeditor-${assignment.id}`,
-        label: label,
-        icon: UserCheck,
-        content: (
-          <SubEditorRecommendationTabContent assignment={assignment} article={article} />
-        ),
-      });
-    });
-
-    const reviewerAssignments = (article.reviewer_assignments || []).filter(
-      (assignment) => assignment.status !== 'pending' && assignment.status !== 'declined' && (assignment.status === 'completed' || Boolean(assignment.completed_at || assignment.recommendation || assignment.questionnaire_instance))
-    );
-    reviewerAssignments.forEach((assignment, index) => {
-      const reviewerBaseName = showReviewerIdentity
-        ? (assignment.invitee_name || assignment.reviewer?.name || `Reviewer ${index + 1}`)
-        : `Reviewer ${index + 1}`;
-      
-      const label = `Reviewer — ${reviewerBaseName}`;
-
-      list.push({
-        id: `reviewer-${assignment.id}`,
-        label: label,
-        icon: Users,
-        content: (
-          <ReviewerRecommendationTabContent 
-            assignment={assignment} 
-            article={article}
-            canSeeReviewerIdentity={showReviewerIdentity}
-          />
-        ),
-      });
-    });
-
-    const showCopyeditingTab = article.capabilities?.view_copy_editing;
-    if (showCopyeditingTab) {
-      list.push({
-        id: 'copyediting',
-        label: 'Copy Editing',
-        icon: FileCheck2,
-        content: (
-          <CopyeditingTab article={article} user={user} hasRole={hasRole} />
-        ),
-      });
-    }
-
-    const showFinalFilesTab = article.capabilities?.view_final_files && article.status === 'published';
-    if (showFinalFilesTab) {
-      list.push({
-        id: 'finalfiles',
-        label: 'Final Files',
-        icon: CheckCircle2,
-        content: (
-          <FinalFilesTab article={article} />
-        ),
-      });
-    }
-
-    if (hasHistoryAccess && article.audit_logs && article.audit_logs.length > 0) {
-      list.push({
-        id: 'history',
-        label: 'Workflow History',
-        icon: Clock,
-        content: (
-          <WorkflowTimeline article={article} />
-        ),
-      });
-    }
-
-    return list;
-  }, [article, user, hasRole, observerReadonly, showReviewerIdentity, loadWorkflow, toast]);
+  const tabs = visibleWorkspaceTabs(article?.workflow_manifest);
 
   // Handle activeTab adjustment when tabs list changes
   useEffect(() => {
-    if (tabs.length > 0 && !tabs.some((t) => t.id === activeTab)) {
-      setActiveTab(tabs[0].id);
+    if (tabs.length > 0 && !tabs.some((tab) => tab.key === activeTab)) {
+      const requestedVersionId = Number(searchParams.get('version'));
+      const requestedVersionTab = requestedVersionId
+        ? tabs.find((tab) => Number(tab.version_id) === requestedVersionId)
+        : null;
+      setActiveTab(requestedVersionTab?.key || initialWorkspaceTab(tabs, Boolean(searchParams.get('thread'))));
     }
   }, [tabs, activeTab]);
 
@@ -1183,58 +1026,46 @@ export default function ArticleWorkflowPage() {
   return (
     <main className="space-y-6">
       <PageTitle title={`Workflow - ${article.title}`} />
-      <ManuscriptHeader
-        article={article}
-        user={user}
-        hasRole={hasRole}
-        canPublish={canPublish && !observerReadonly}
-        onPublish={() => router.push(`/admin/articles/${article.id}/publish`)}
-      />
+      <ManuscriptHeader article={article} />
 
       <WorkflowProgressPath article={article} />
 
-      {observerReadonly ? (
-        <Alert tone="info" title="Super Admin Review Mode">
-          This manuscript record was opened from an observer queue. Workflow actions are disabled in this view.
-        </Alert>
-      ) : (
-        <CurrentWorkflowActionPanel
-          article={article}
-          workflowContext={article}
-          user={user}
-          hasRole={hasRole}
-          hasPermission={hasPermission}
-          onWorkflowChanged={loadWorkflow}
-          onOpenPublish={() => router.push(`/admin/articles/${article.id}/publish`)}
-          toast={toast}
-        />
-      )}
-
-      <div className="border-b border-[var(--border)]">
-        <nav className="flex space-x-6 overflow-x-auto pb-2 tab-scroller" aria-label="Tabs">
+      <nav className="flex gap-2 overflow-x-auto border-b border-[var(--border)] pb-2" aria-label="Article workspace tabs">
           {tabs.map((tab) => {
-            const Icon = tab.icon;
             return (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 whitespace-nowrap border-b-2 py-4 px-1 text-sm font-semibold transition-all cursor-pointer ${
-                  activeTab === tab.id
-                    ? 'border-[var(--accent)] text-[var(--accent)]'
-                    : 'border-transparent text-[var(--muted)] hover:border-[var(--muted-border)] hover:text-[var(--foreground)]'
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                aria-current={activeTab === tab.key ? 'page' : undefined}
+                className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2.5 text-sm font-semibold transition-colors ${
+                  activeTab === tab.key
+                    ? 'border-[var(--accent)] bg-amber-500/10 text-[var(--accent)]'
+                    : 'border-transparent text-[var(--muted)] hover:border-[var(--border)] hover:bg-[var(--surface-muted)] hover:text-[var(--foreground)]'
                 }`}
               >
-                <Icon className="h-4 w-4 shrink-0" />
                 <span>{tab.label}</span>
+                {tab.key === 'communication' && tab.unread_count > 0 && <span className="rounded-full bg-rose-600 px-2 py-0.5 text-xs font-bold text-white">{tab.unread_count}</span>}
               </button>
             );
           })}
-        </nav>
-      </div>
+      </nav>
 
-      <div className="mt-6">
-        {tabs.find((t) => t.id === activeTab)?.content}
-      </div>
+      <section className="min-w-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-6" aria-live="polite">
+        {(() => {
+          const tab = tabs.find((item) => item.key === activeTab);
+          if (!tab) return null;
+          const commonActions = { article, workflowContext: article, user, hasRole, hasPermission, onWorkflowChanged: loadWorkflow, toast, hideIfNoAction: true };
+          if (tab.type === 'accepted_manuscript') return <AcceptedManuscriptInformationPanel articleId={article.id} />;
+          if (tab.type === 'article_version') return <VersionWorkspace key={tab.key} tab={tab} article={article} user={user} hasRole={hasRole} hasPermission={hasPermission} observerReadonly={observerReadonly} onChanged={loadWorkflow} toast={toast} requestedAssignmentId={searchParams.get('assignment')} />;
+          if (tab.type === 'final_editorial_decision') return <div className="space-y-5">{!observerReadonly && <ScopedWorkflowActionPanel {...commonActions} actionScope="final-editorial-decision" />}<EditorialDecisionTab article={article} /></div>;
+          if (tab.type === 'copy_editing') return <div className="space-y-5">{!article.accepted_file_set ? <EmptyState title="Copy editing unavailable">Copy editing becomes available after editorial acceptance.</EmptyState> : <><ScopedWorkflowActionPanel {...commonActions} actionScope="copy-editing" /><AcceptedFilesTab acceptedFileSet={article.accepted_file_set} compact /><CopyeditingTab article={article} user={user} hasRole={hasRole} /></>}</div>;
+          if (tab.type === 'proofreading') return <div className="space-y-5"><ScopedWorkflowActionPanel {...commonActions} actionScope="proofreading" /><ProofRoundsPanel article={article} /></div>;
+          if (tab.type === 'workflow_history') return <WorkflowTimeline article={article} />;
+          if (tab.type === 'communication') return <ArticleThreadWorkspace articleId={article.id} availableFiles={article.files || []} initialThreadId={searchParams.get('thread')} />;
+          return <EmptyState title="Workspace unavailable">This workspace section is not available.</EmptyState>;
+        })()}
+      </section>
 
     </main>
   );

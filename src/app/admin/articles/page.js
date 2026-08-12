@@ -260,7 +260,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
   const isMagazineEditor = hasRole('magazine_editor');
   const isJournalEditor = hasRole('journal_editor');
 
-  const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || hasPermission('articles.auto-approve') || isEditor) : false;
+  const isAdminOrEditor = hasPermission ? (hasPermission('articles.approve') || isEditor) : false;
   const isAuthorWorkspace = !isAdminOrEditor;
 
   const [articles, setArticles] = useState([]);
@@ -719,7 +719,7 @@ function AdminArticlesBoardContent({ observerMode = false, observerParams = {} }
                             <img 
                               src={art.featured_image_url || art.magazine?.cover_image_url || getFullImageUrl(art.featured_image || art.magazine?.cover_image)}
                               alt="" 
-                              className="w-full h-full object-cover" 
+                              className={`h-full w-full ${(art.featured_image_url || art.featured_image) ? 'object-cover' : 'object-contain'}`}
                             />
                           ) : (
                             <FileText className="w-5 h-5 text-zinc-400" />

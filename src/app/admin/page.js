@@ -279,7 +279,7 @@ export default function AdminOverview() {
           label: 'Open Article Queue',
         }}
         queues={superAdminQueues}
-        quickLinks={dashboardLinksFromNavigation(navigation, ['/admin/users', '/admin/articles', '/admin/magazines', '/admin/cms/faqs', '/admin/newsletter', '/admin/settings'])}
+        quickLinks={dashboardLinksFromNavigation(navigation, ['/admin/direct-publications', '/admin/users', '/admin/articles', '/admin/magazines', '/admin/cms/faqs', '/admin/newsletter', '/admin/settings'])}
       />
     );
   }

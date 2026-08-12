@@ -92,7 +92,7 @@ function SearchResultsContent() {
                 <img
                   src={item.additional.cover_image_url || getFullImageUrl(item.additional.cover_image)}
                   alt={item.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  className="h-full w-full object-contain"
                 />
               </div>
             )}

@@ -16,6 +16,7 @@ import LoadingState from '../../ui/LoadingState';
 import ErrorState from '../../ui/ErrorState';
 import EmptyState from '../../ui/EmptyState';
 import Pagination from '../../ui/Pagination';
+import DeskRecordMetadata from '../desk-observer/DeskRecordMetadata';
 import { Button } from '../../ui/Button';
 import { ConfirmationModal } from '../../ui/ConfirmationModal';
 
@@ -184,9 +185,13 @@ export default function CopyEditorTaskList({
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-[var(--muted)]">
                       <span>{article.magazine?.title || 'Magazine not recorded'}</span>
                       <span>Assigned {formatDate(task.created_at)}</span>
-                      <span>Due {formatDate(task.due_date)}</span>
                       {task.completed_at && <span>Completed {formatDate(task.completed_at)}</span>}
                     </div>
+                    <DeskRecordMetadata
+                      trackingCode={article.tracking_code}
+                      assigneeName={task.assignee?.name || observerUser?.name}
+                      dueDate={task.due_date}
+                    />
                   </div>
 
                   <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">

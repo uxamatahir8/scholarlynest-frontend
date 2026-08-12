@@ -5,7 +5,7 @@ export default function MonthVolumeCard({ monthYear, coverImage, isActive, onCli
   return (
     <button
       onClick={onClick}
-      className={`group relative w-full aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer border text-left transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none ${
+      className={`group relative w-full aspect-[1/1.414] rounded-2xl overflow-hidden cursor-pointer border text-left transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none ${
         isActive
           ? 'border-[var(--accent-gold)] ring-2 ring-[var(--accent-gold)]/60 shadow-lg scale-[1.02]'
           : 'border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-100 dark:bg-zinc-900 hover:shadow-md'
@@ -16,7 +16,7 @@ export default function MonthVolumeCard({ monthYear, coverImage, isActive, onCli
         <img
           src={coverImage}
           alt={monthYear}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 pointer-events-none"
+          className="absolute inset-0 h-full w-full object-contain pointer-events-none"
           loading="lazy"
         />
       ) : (
