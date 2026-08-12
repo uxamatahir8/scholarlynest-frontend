@@ -1,0 +1,75 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useParams, usePathname } from 'next/navigation';
+import DOMPurify from 'dompurify';
+import { ArrowLeft } from 'lucide-react';
+import api from '../../../../utils/api';
+import { logWarn } from '../../../../utils/safeLogger';
+import SeoHead from '../../../../components/SeoHead';
+import LoadingState from '../../../../components/ui/LoadingState';
+import ErrorState from '../../../../components/ui/ErrorState';
+
+export default function MagazineCustomPage() {
+  const params = useParams();
+  const pathname = usePathname();
+  const routePrefix = pathname?.startsWith('/journals/') ? 'journals' : 'magazines';
+  const slug = params?.slug;
+  const pageSlug = params?.pageSlug;
+  const [data, setData] = useState(null);
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!slug || !pageSlug) return;
+
+    const fetchPage = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await api.get(`/${routePrefix}/${slug}/pages/${pageSlug}`);
+        setData(response.data);
+        setContent(DOMPurify.sanitize(response.data?.page?.content || ''));
+      } catch (err) {
+        logWarn('Custom magazine page unavailable', err.message);
+        setError('The requested custom editorial page could not be found.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPage();
+  }, [routePrefix, slug, pageSlug]);
+
+  if (loading) {
+    return <LoadingState label="Loading page..." className="min-h-[320px]" />;
+  }
+
+  if (error || !data?.page) {
+    return (
+      <div className="space-y-6">
+        <ErrorState title="Page could not be loaded">{error || 'Page could not be resolved.'}</ErrorState>
+        <Link href={`/${routePrefix}/${slug}/about-and-overview`} className="inline-flex items-center gap-2 text-sm font-bold text-amber-700 underline-offset-4 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:text-amber-300">
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to magazine overview</span>
+        </Link>
+      </div>
+    );
+  }
+
+  const publicationLabel = routePrefix === 'journals' ? 'Journal' : 'Magazine';
+  const pageTitle = data.seo?.title || `${data.page.title} - ${data.magazine?.title || publicationLabel}`;
+
+  return (
+    <article className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 md:p-8 lg:p-10">
+      <SeoHead title={pageTitle} ogTitle={data.seo?.title || `${data.page.title} | ${data.magazine?.title || publicationLabel} | ScholarlyNest`} description={data.seo?.description} keywords={data.seo?.keywords} ogImage={data.seo?.og_image} ogUrl={`/${routePrefix}/${slug}/${pageSlug}`} />
+      <div className="border-b border-[var(--border)] pb-6">
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">{publicationLabel} page</p>
+        <h2 className="mt-2 font-serif text-4xl font-bold leading-tight text-zinc-950 dark:text-white">{data.page.title}</h2>
+      </div>
+      <div className="cms-content-prose mt-8 max-w-none" dangerouslySetInnerHTML={{ __html: content }} />
+    </article>
+  );
+}
